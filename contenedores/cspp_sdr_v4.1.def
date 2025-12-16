@@ -1,0 +1,48 @@
+Bootstrap: docker
+From: rockylinux:8
+
+%labels
+    Author LANOT - Laboratorio Nacional de Observación de la Tierra
+    Institution UNAM
+    Contact lanotadm@lanot.unam.mx
+    Description CSPP SDR v4.1 (Procesamiento VIIRS/ATMS/CrIS para NPP/JPSS)
+    Version 4.1-LANOT
+
+%files
+    # El instalador principal de Wisconsin
+    CSPP_SDR_V4.1.tar.gz /opt/
+
+%post
+    # 1. Dependencias del Sistema
+    dnf install -y epel-release
+    dnf update -y
+    # CSPP SDR requiere Java 8, Python 3, wget y librerías numéricas
+    dnf install -y java-1.8.0-openjdk wget tar gzip libgfortran which python3
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+    # 2. Instalación
+    cd /opt
+    echo "Instalando CSPP SDR v4.1..."
+    tar -zxf CSPP_SDR_V4.1.tar.gz
+    rm -f CSPP_SDR_V4.1.tar.gz
+    
+    # Nota: CSPP SDR v4.1 crea la carpeta 'CSPP_SDR_V4.1'
+    # Creamos un enlace simbólico 'cspp_sdr' para facilitar rutas futuras
+    ln -s CSPP_SDR_V4.1 cspp_sdr
+
+%environment
+    # Variables de entorno Oficiales
+    export CSPP_SDR_HOME=/opt/cspp_sdr
+    # Variable para datos auxiliares. Coincide con la estructura del host (/data/ancillary)
+    # Esto es crucial para que los scripts como ancillary_download.sh funcionen correctamente.
+    export CSPP_ANC_ROOT=/data/ancillary
+    export PATH=$CSPP_SDR_HOME/common:$CSPP_SDR_HOME/viirs/sdr/scripts:$PATH
+    export LC_ALL=C
+
+%runscript
+    # Al correr el contenedor sin argumentos, muestra ayuda
+    echo "Contenedor CSPP SDR v4.1 (LANOT) Listo."
+    echo "Herramientas disponibles: viirs_sdr.sh, atms_sdr.sh, cris_sdr.sh"
+    exec "$@"
+    

@@ -1,0 +1,44 @@
+Bootstrap: docker
+From: rockylinux:8
+
+%labels
+    Author LANOT - Laboratorio Nacional de Observación de la Tierra
+    Institution UNAM
+    Contact lanotadm@lanot.unam.mx
+    Description Polar2Grid v3.1 (Generación de GeoTIFFs VIIRS/MODIS/AVHRR)
+    Version 3.1-LANOT
+
+%files
+    CSPP_POLAR2GRID_V3.1.tar.gz /opt/
+
+%post
+    # 1. Dependencias
+    dnf install -y epel-release
+    dnf update -y
+    # Polar2Grid necesita Python 3 y librerías gráficas básicas
+    dnf install -y python3 tar gzip which mesa-libGL
+    dnf clean all
+
+    # 2. Instalación
+    cd /opt
+    echo "Instalando Polar2Grid v3.1..."
+    tar -zxf CSPP_POLAR2GRID_V3.1.tar.gz
+    rm -f CSPP_POLAR2GRID_V3.1.tar.gz
+    
+    # Polar2Grid v3.1 crea carpeta 'polar2grid_v_3_1'
+    ln -s polar2grid_v_3_1 p2g
+
+    # Script de inicialización (necesario en v3.1 la primera vez)
+    # Se ejecuta en build time para fijar las rutas internas
+    export POLAR2GRID_HOME=/opt/p2g
+    bash $POLAR2GRID_HOME/bin/p2g_glue
+
+%environment
+    export POLAR2GRID_HOME=/opt/p2g
+    export PATH=$POLAR2GRID_HOME/bin:$PATH
+    export LC_ALL=C
+
+%runscript
+    echo "Contenedor Polar2Grid v3.1 Listo."
+    exec "$@"
+    

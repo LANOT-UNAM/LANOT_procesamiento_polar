@@ -1,0 +1,22 @@
+# Ignorar binarios gigantes y comprimidos
+*.tar.gz
+*.zip
+*.iso
+
+# Ignorar las imágenes de contenedor construidas (pesan GBs)
+*.sif
+*.img
+
+# Ignorar datos satelitales
+*.h5
+*.nc
+*.tif
+
+# Ignorar logs y temporales
+*.log
+tmp/
+temp/
+
+# Ignorar archivos del sistema
+.DS_Store
+

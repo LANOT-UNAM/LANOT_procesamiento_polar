@@ -1,0 +1,51 @@
+Bootstrap: docker
+From: rockylinux:8
+
+%labels
+    Author LANOT - Laboratorio Nacional de Observación de la Tierra
+    Institution UNAM
+    Contact lanotadm@lanot.unam.mx
+    Description RT-STPS v7.0 + Patch 1 (Soporte NPP, NOAA-20/21)
+    Version 1.0-LANOT
+
+%files
+    # Asegúrate de tener estos archivos en la misma carpeta al compilar
+    RT-STPS_7.0.tar.gz /opt/
+    RT-STPS_7.0_PATCH_1.tar.gz /opt/
+
+%post
+    # 1. Instalar Java 11 (Requerido para v7.0) y utilidades
+    dnf install -y epel-release
+    dnf update -y
+    dnf install -y java-11-openjdk-devel wget tar gzip which sed
+    dnf clean all
+
+    # 2. Descomprimir RT-STPS 7.0 Base
+    cd /opt
+    echo "Instalando Base..."
+    tar -zxf RT-STPS_7.0.tar.gz
+    
+    # Estandarización de directorio
+    if [ ! -d "rt-stps" ]; then
+        DIR_NAME=$(ls -d RT-STPS*)
+        ln -s $DIR_NAME rt-stps
+    fi
+
+    # 3. Aplicar PARCHE 1 (Crítico para JPSS-2/NOAA-21)
+    echo "Aplicando Patch 1..."
+    tar -zxf RT-STPS_7.0_PATCH_1.tar.gz
+    
+    # 4. Limpieza y Permisos
+    rm -f *.tar.gz
+    chmod +x /opt/rt-stps/bin/*.sh
+    chmod +x /opt/rt-stps/jsw/bin/*
+
+%environment
+    export RTSTPS_HOME=/opt/rt-stps
+    export PATH=$RTSTPS_HOME/bin:$PATH
+    export LC_ALL=C
+    export JAVA_HOME=/usr/lib/jvm/jre-11-openjdk
+
+%runscript
+    exec "$@"
+    
