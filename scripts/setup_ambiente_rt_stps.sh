@@ -45,11 +45,11 @@ BASE_DATA="/data"
 DIRS=(
     "/data/opt/RT-STPS/rt-stps/config"
     "/data/ancillary/common"
-    "/data/products/level0"
-    "/data/products/level1"
-    "/data/products/level2"
-    "/data/products/geotiff"
-    "/data/raw"
+    "/data/output/level0"
+    "/data/output/level1"
+    "/data/output/level2"
+    "/data/output/geotiff"
+    "/datawork/input/polar/raw"
     "/var/log/lanot/polares/rt-stps"
     "/var/log/lanot/polares/cspp-sdr"
     "/var/log/lanot/polares/polar2grid"
@@ -219,8 +219,8 @@ echo -e "${YELLOW}[4/4] Configurando permisos...${NC}"
 # Asegurar que los directorios son accesibles
 chmod -R 755 /data/opt/RT-STPS 2>/dev/null || true
 chmod -R 755 /data/ancillary 2>/dev/null || true
-chmod -R 775 /data/products 2>/dev/null || true
-chmod -R 775 /data/raw 2>/dev/null || true
+chmod -R 775 /data/output 2>/dev/null || true
+chmod -R 775 /datawork/input 2>/dev/null || true
 chmod -R 775 /var/log/lanot 2>/dev/null || true
 
 echo "  ✓ Permisos configurados"
@@ -270,7 +270,7 @@ echo ""
 echo "  3. Verifica que leapsec.dat esté actualizado (último segundo intercalar: 2016)"
 echo ""
 echo "  4. Prueba el procesamiento:"
-echo "     ./scripts/procesar_rt_stps_solo.sh /data/raw/tu_archivo.raw"
+echo "     ./scripts/procesar_rt_stps_solo.sh /datawork/input/polar/raw/tu_archivo.raw"
 echo ""
 echo "=============================================================================="
 

@@ -12,7 +12,7 @@
 #   ./procesar_rt_stps_solo.sh <archivo_raw>
 #
 # Ejemplo:
-#   ./procesar_rt_stps_solo.sh /data/raw/chain2-20251216_123045.raw
+#   ./procesar_rt_stps_solo.sh /datawork/input/polar/raw/chain2-20251216_123045.raw
 #
 ################################################################################
 
@@ -30,7 +30,7 @@ HOST_CONFIG_DIR="/data/opt/RT-STPS/rt-stps/config"
 HOST_LEAPSEC="/data/ancillary/common/leapsec.dat"
 
 # Directorio de salida
-DIR_L0="/data/products/level0"
+DIR_L0="/data/output/level0"
 
 # Directorio de logs
 LOG_BASE="/var/log/lanot/polares"
