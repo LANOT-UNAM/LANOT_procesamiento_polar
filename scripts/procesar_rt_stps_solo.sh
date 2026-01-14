@@ -64,6 +64,17 @@ if [ ! -f "$CONTAINER_RT_STPS" ]; then
     exit 1
 fi
 
+# Verificar que el archivo leapsec existe y no está vacío
+if [ ! -f "$HOST_LEAPSEC" ]; then
+    echo "ERROR: Archivo leapsec.dat no encontrado: $HOST_LEAPSEC" >&2
+    exit 1
+fi
+
+if [ ! -s "$HOST_LEAPSEC" ]; then
+    echo "ERROR: Archivo leapsec.dat está vacío: $HOST_LEAPSEC" >&2
+    exit 1
+fi
+
 echo "=============================================================================="
 echo "[$TIMESTAMP] PROCESAMIENTO RT-STPS: $FILENAME"
 echo "=============================================================================="
@@ -129,32 +140,11 @@ sed -i 's|<directory>.*</directory>|<directory>/output</directory>|g' "$WORK_DIR
 sed -i 's|\.\./data|/output|g' "$WORK_DIR/config_temp.xml"
 sed -i 's|/opt/rt-stps/data|/output|g' "$WORK_DIR/config_temp.xml"
 
-echo "[$TIMESTAMP] Ejecutando RT-STPS en contenedor..."
-echo "  - Input:  $INPUT_FILE"
-echo "  - Output: $DIR_L0"
-echo "  - Config: $XML_TARGET"
+echo "[$TIMESTAMP] Procesando con RT-STPS..."
 
 LOG_FILE="${LOG_RT_STPS}/${TIMESTAMP_FILE}_${SATELLITE}.log"
 
 # --- Ejecución del contenedor ---
-# Monta directorios del host dentro del contenedor:
-#   - INPUT_DIR  → /input           (lectura del RAW)
-#   - DIR_L0     → /output          (escritura de RDRs)
-#   - WORK_DIR   → /config_bind     (configuración temporal)
-#   - LEAPSEC    → /opt/rt-stps/... (segundos intercalares)
-
-echo ""
-echo "Comando a ejecutar:"
-echo "  apptainer exec \\"
-echo "    --bind $INPUT_DIR:/input \\"
-echo "    --bind $DIR_L0:/output \\"
-echo "    --bind $WORK_DIR:/config_bind \\"
-echo "    --bind $HOST_LEAPSEC:/opt/rt-stps/leapsec.dat \\"
-echo "    $CONTAINER_RT_STPS \\"
-echo "    /bin/bash -c 'cd /opt/rt-stps && ./bin/batch.sh /config_bind/config_temp.xml /input/$FILENAME'"
-echo ""
-
-# Ejecutar y capturar salida tanto en pantalla como en log
 apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$DIR_L0":/output \
@@ -162,40 +152,28 @@ apptainer exec \
     --bind "$HOST_LEAPSEC":/opt/rt-stps/leapsec.dat \
     "$CONTAINER_RT_STPS" \
     /bin/bash -c "cd /opt/rt-stps && ./bin/batch.sh /config_bind/config_temp.xml /input/$FILENAME" \
-    2>&1 | tee "$LOG_FILE"
+    > "$LOG_FILE" 2>&1
 
-# Capturar el código de salida del pipeline
-APPTAINER_EXIT_CODE=${PIPESTATUS[0]}
+# Capturar el código de salida
+APPTAINER_EXIT_CODE=$?
 
 # Verificar éxito del procesamiento
 if [ $APPTAINER_EXIT_CODE -ne 0 ]; then
-    echo ""
-    echo "[$TIMESTAMP] ERROR: RT-STPS falló con código $APPTAINER_EXIT_CODE" >&2
-    echo "[$TIMESTAMP] Revise log: $LOG_FILE" >&2
+    echo "[$TIMESTAMP] ERROR: RT-STPS falló (código $APPTAINER_EXIT_CODE)" >&2
+    echo "[$TIMESTAMP] Ver log: $LOG_FILE" >&2
     exit 1
 fi
-
-echo ""
-echo "[$TIMESTAMP] RT-STPS completado exitosamente"
 
 # Contar archivos RDR generados
 RDR_COUNT=$(find "$DIR_L0" -name "*.h5" -newer "$INPUT_FILE" 2>/dev/null | wc -l)
 
 echo ""
 echo "=============================================================================="
-echo "[$TIMESTAMP] PROCESAMIENTO COMPLETADO EXITOSAMENTE"
+echo "[$TIMESTAMP] PROCESAMIENTO COMPLETADO"
 echo "=============================================================================="
-echo "  Satélite:         $SATELLITE"
-echo "  Archivos RDR:     $RDR_COUNT"
-echo "  Directorio L0:    $DIR_L0"
-echo "  Log:              $LOG_FILE"
+echo "  Satélite:      $SATELLITE"
+echo "  Archivos RDR:  $RDR_COUNT archivos .h5"
+echo "  Log:           $LOG_FILE"
 echo "=============================================================================="
-
-# Listar archivos generados
-if [ $RDR_COUNT -gt 0 ]; then
-    echo ""
-    echo "Archivos RDR generados:"
-    find "$DIR_L0" -name "*.h5" -newer "$INPUT_FILE" -exec basename {} \;
-fi
 
 exit 0

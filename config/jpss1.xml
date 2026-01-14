@@ -1,0 +1,621 @@
+<?xml version="1.0"?>
+<!DOCTYPE rt_stps SYSTEM "rt-stps.dtd">
+<rt_stps id="JPSS-1">
+	<frame_sync frameLength="1024" PnEncoded="true">
+		<timestamp epoch="19580101000000"/>
+	</frame_sync>
+	<reed_solomon useStandardCCSDS="true" doBlockCorrection="true" discardUncorrectables="true" interleave="4"/>
+	<spacecrafts>
+		<!-- Define spacecraft ID here -->
+		<spacecraft label="spid1" id="159"/>
+	</spacecrafts>
+	<cadu_service>
+		<!-- Define virtual channels here -->
+		<svlink vcid="0" spid="159" label="VCID0"/>
+		<svlink vcid="1" spid="159" label="VCID1"/>
+		<svlink vcid="6" spid="159" label="VCID6"/>
+		<svlink vcid="11" spid="159" label="VCID11"/>
+		<svlink vcid="13" spid="159" label="VCID13"/>
+		<svlink vcid="16" spid="159" label="VCID16"/>
+		<svlink vcid="24" spid="159" label="VCID24"/>
+	</cadu_service>
+	<ccsds_services>
+		<!-- Define desired APIDs from each defined virtual channels -->
+		<path label="VCID0" spacecraft="spid1" maxRationalPacketSize="65535">
+		    <pklink appid="0" label="SC_0"/>
+		    <pklink appid="8" label="SC_8"/>
+		    <pklink appid="11" label="SC_11"/>
+		</path>
+		<path label="VCID1" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="515" label="ATMS_515"/>
+			<pklink appid="528" label="ATMS_528"/>
+			<pklink appid="530" label="ATMS_530"/>
+			<pklink appid="531" label="ATMS_531"/>
+		</path>
+		<path label="VCID6" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="1289" label="CRIS_1289"/>
+			<pklink appid="1290" label="CRIS_1290"/>
+			<pklink appid="1315" label="CRIS_1315"/>
+			<pklink appid="1316" label="CRIS_1316"/>
+			<pklink appid="1317" label="CRIS_1317"/>
+			<pklink appid="1318" label="CRIS_1318"/>
+			<pklink appid="1319" label="CRIS_1319"/>
+			<pklink appid="1320" label="CRIS_1320"/>
+			<pklink appid="1321" label="CRIS_1321"/>
+			<pklink appid="1322" label="CRIS_1322"/>
+			<pklink appid="1323" label="CRIS_1323"/>
+			<pklink appid="1324" label="CRIS_1324"/>
+			<pklink appid="1325" label="CRIS_1325"/>
+			<pklink appid="1326" label="CRIS_1326"/>
+			<pklink appid="1327" label="CRIS_1327"/>
+			<pklink appid="1328" label="CRIS_1328"/>
+			<pklink appid="1329" label="CRIS_1329"/>
+			<pklink appid="1330" label="CRIS_1330"/>
+			<pklink appid="1331" label="CRIS_1331"/>
+			<pklink appid="1332" label="CRIS_1332"/>
+			<pklink appid="1333" label="CRIS_1333"/>
+			<pklink appid="1334" label="CRIS_1334"/>
+			<pklink appid="1335" label="CRIS_1335"/>
+			<pklink appid="1336" label="CRIS_1336"/>
+			<pklink appid="1337" label="CRIS_1337"/>
+			<pklink appid="1338" label="CRIS_1338"/>
+			<pklink appid="1339" label="CRIS_1339"/>
+			<pklink appid="1340" label="CRIS_1340"/>
+			<pklink appid="1341" label="CRIS_1341"/>
+			<pklink appid="1342" label="CRIS_1342"/>
+			<pklink appid="1343" label="CRIS_1343"/>
+			<pklink appid="1344" label="CRIS_1344"/>
+			<pklink appid="1345" label="CRIS_1345"/>
+			<pklink appid="1346" label="CRIS_1346"/>
+			<pklink appid="1347" label="CRIS_1347"/>
+			<pklink appid="1348" label="CRIS_1348"/>
+			<pklink appid="1349" label="CRIS_1349"/>
+			<pklink appid="1350" label="CRIS_1350"/>
+			<pklink appid="1351" label="CRIS_1351"/>
+			<pklink appid="1352" label="CRIS_1352"/>
+			<pklink appid="1353" label="CRIS_1353"/>
+			<pklink appid="1354" label="CRIS_1354"/>
+			<pklink appid="1355" label="CRIS_1355"/>
+			<pklink appid="1356" label="CRIS_1356"/>
+			<pklink appid="1357" label="CRIS_1357"/>
+			<pklink appid="1358" label="CRIS_1358"/>
+			<pklink appid="1359" label="CRIS_1359"/>
+			<pklink appid="1360" label="CRIS_1360"/>
+			<pklink appid="1361" label="CRIS_1361"/>
+			<pklink appid="1362" label="CRIS_1362"/>
+			<pklink appid="1363" label="CRIS_1363"/>
+			<pklink appid="1364" label="CRIS_1364"/>
+			<pklink appid="1365" label="CRIS_1365"/>
+			<pklink appid="1366" label="CRIS_1366"/>
+			<pklink appid="1367" label="CRIS_1367"/>
+			<pklink appid="1368" label="CRIS_1368"/>
+			<pklink appid="1369" label="CRIS_1369"/>
+			<pklink appid="1370" label="CRIS_1370"/>
+			<pklink appid="1371" label="CRIS_1371"/>
+			<pklink appid="1372" label="CRIS_1372"/>
+			<pklink appid="1373" label="CRIS_1373"/>
+			<pklink appid="1374" label="CRIS_1374"/>
+			<pklink appid="1375" label="CRIS_1375"/>
+			<pklink appid="1376" label="CRIS_1376"/>
+			<pklink appid="1377" label="CRIS_1377"/>
+			<pklink appid="1378" label="CRIS_1378"/>
+			<pklink appid="1379" label="CRIS_1379"/>
+			<pklink appid="1380" label="CRIS_1380"/>
+			<pklink appid="1381" label="CRIS_1381"/>	
+			<pklink appid="1382" label="CRIS_1382"/>
+			<pklink appid="1383" label="CRIS_1383"/>
+			<pklink appid="1384" label="CRIS_1384"/>
+			<pklink appid="1385" label="CRIS_1385"/>
+			<pklink appid="1386" label="CRIS_1386"/>
+			<pklink appid="1387" label="CRIS_1387"/>
+			<pklink appid="1388" label="CRIS_1388"/>
+			<pklink appid="1389" label="CRIS_1389"/>
+			<pklink appid="1390" label="CRIS_1390"/>
+			<pklink appid="1391" label="CRIS_1391"/>
+			<pklink appid="1392" label="CRIS_1392"/>
+			<pklink appid="1393" label="CRIS_1393"/>
+			<pklink appid="1394" label="CRIS_1394"/>
+			<pklink appid="1395" label="CRIS_1395"/>
+		</path>
+		<path label="VCID11" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="560" label="OMPS_560"/>
+			<pklink appid="561" label="OMPS_561"/>
+			<pklink appid="592" label="OMPS_592"/>
+			<pklink appid="593" label="OMPS_593"/>
+			<pklink appid="608" label="OMPS_608"/>
+			<pklink appid="609" label="OMPS_609"/>
+			<pklink appid="616" label="OMPS_616"/>
+			<pklink appid="617" label="OMPS_617"/>
+		</path>
+		<path label="VCID13" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="576" label="OMPS_576"/>
+			<pklink appid="577" label="OMPS_577"/>
+		</path>
+		<path label="VCID16" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="800" label="VIIRS_800"/>
+			<pklink appid="801" label="VIIRS_801"/>
+			<pklink appid="802" label="VIIRS_802"/>
+			<pklink appid="803" label="VIIRS_803"/>
+			<pklink appid="804" label="VIIRS_804"/>
+			<pklink appid="805" label="VIIRS_805"/>
+			<pklink appid="806" label="VIIRS_806"/>
+			<pklink appid="807" label="VIIRS_807"/>
+			<pklink appid="808" label="VIIRS_808"/>
+			<pklink appid="809" label="VIIRS_809"/>
+			<pklink appid="810" label="VIIRS_810"/>
+			<pklink appid="811" label="VIIRS_811"/>
+			<pklink appid="812" label="VIIRS_812"/>
+			<pklink appid="813" label="VIIRS_813"/>
+			<pklink appid="814" label="VIIRS_814"/>
+			<pklink appid="815" label="VIIRS_815"/>
+			<pklink appid="816" label="VIIRS_816"/>
+			<pklink appid="817" label="VIIRS_817"/>
+			<pklink appid="818" label="VIIRS_818"/>
+			<pklink appid="819" label="VIIRS_819"/>
+			<pklink appid="820" label="VIIRS_820"/>
+			<pklink appid="821" label="VIIRS_821"/>
+			<pklink appid="822" label="VIIRS_822"/>
+			<pklink appid="823" label="VIIRS_823"/>
+			<pklink appid="825" label="VIIRS_825"/>
+			<pklink appid="826" label="VIIRS_826"/>
+			<pklink appid="827" label="VIIRS_827"/>
+			<pklink appid="828" label="VIIRS_828"/>
+		</path>
+		<path label="VCID24" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="147" label="CERES_147"/>
+			<pklink appid="149" label="CERES_149"/>
+		</path>
+	</ccsds_services>
+	<packets>
+		<!-- Define application packets here -->
+		<!-- SPACECRAFT DIARY -->
+		<packet appid="0" label="SC_0" minSize="7" maxSize="65535"/>
+		<packet appid="8" label="SC_8" minSize="7" maxSize="65535"/>
+		<packet appid="11" label="SC_11" minSize="7" maxSize="65535"/>
+		<!-- ATMS -->
+		<packet appid="515" label="ATMS_515" minSize="7" maxSize="65535"/>
+		<packet appid="528" label="ATMS_528" minSize="7" maxSize="65535"/>
+		<packet appid="530" label="ATMS_530" minSize="7" maxSize="65535"/>
+		<packet appid="531" label="ATMS_531" minSize="7" maxSize="65535"/>
+		<!-- CERES -->
+		<packet appid="147" label="CERES_147" minSize="7" maxSize="65535"/>
+		<packet appid="149" label="CERES_149" minSize="7" maxSize="65535"/>
+		<!-- VIIRS -->
+		<packet appid="800" label="VIIRS_800" minSize="180" maxSize="65535"/>
+		<packet appid="801" label="VIIRS_801" minSize="7" maxSize="65535"/>
+		<packet appid="802" label="VIIRS_802" minSize="7" maxSize="65535"/>
+		<packet appid="803" label="VIIRS_803" minSize="7" maxSize="65535"/>
+		<packet appid="804" label="VIIRS_804" minSize="7" maxSize="65535"/>
+		<packet appid="805" label="VIIRS_805" minSize="7" maxSize="65535"/>
+		<packet appid="806" label="VIIRS_806" minSize="7" maxSize="65535"/>
+		<packet appid="807" label="VIIRS_807" minSize="7" maxSize="65535"/>
+		<packet appid="808" label="VIIRS_808" minSize="7" maxSize="65535"/>
+		<packet appid="809" label="VIIRS_809" minSize="7" maxSize="65535"/>
+		<packet appid="810" label="VIIRS_810" minSize="7" maxSize="65535"/>
+		<packet appid="811" label="VIIRS_811" minSize="7" maxSize="65535"/>
+		<packet appid="812" label="VIIRS_812" minSize="7" maxSize="65535"/>
+		<packet appid="813" label="VIIRS_813" minSize="7" maxSize="65535"/>
+		<packet appid="814" label="VIIRS_814" minSize="7" maxSize="65535"/>
+		<packet appid="815" label="VIIRS_815" minSize="7" maxSize="65535"/>
+		<packet appid="816" label="VIIRS_816" minSize="7" maxSize="65535"/>
+		<packet appid="817" label="VIIRS_817" minSize="7" maxSize="65535"/>
+		<packet appid="818" label="VIIRS_818" minSize="7" maxSize="65535"/>
+		<packet appid="819" label="VIIRS_819" minSize="7" maxSize="65535"/>
+		<packet appid="820" label="VIIRS_820" minSize="7" maxSize="65535"/>
+		<packet appid="821" label="VIIRS_821" minSize="7" maxSize="65535"/>
+		<packet appid="822" label="VIIRS_822" minSize="7" maxSize="65535"/>
+		<packet appid="823" label="VIIRS_823" minSize="7" maxSize="65535"/>
+		<packet appid="825" label="VIIRS_825" minSize="7" maxSize="65535"/>
+		<packet appid="826" label="VIIRS_826" minSize="7" maxSize="65535"/>
+		<packet appid="827" label="VIIRS_827" minSize="7" maxSize="65535"/>
+		<packet appid="828" label="VIIRS_828" minSize="7" maxSize="65535"/>
+		<!-- OMPS -->
+		<packet appid="560" label="OMPS_560" minSize="7" maxSize="65535"/>
+		<packet appid="561" label="OMPS_561" minSize="7" maxSize="65535"/>
+		<packet appid="576" label="OMPS_576" minSize="7" maxSize="65535"/>
+		<packet appid="577" label="OMPS_577" minSize="7" maxSize="65535"/>
+		<packet appid="592" label="OMPS_592" minSize="7" maxSize="65535"/>
+		<packet appid="593" label="OMPS_593" minSize="7" maxSize="65535"/>
+		<packet appid="608" label="OMPS_608" minSize="7" maxSize="65535"/>
+		<packet appid="609" label="OMPS_609" minSize="7" maxSize="65535"/>
+		<packet appid="616" label="OMPS_616" minSize="7" maxSize="65535"/>
+		<packet appid="617" label="OMPS_617" minSize="7" maxSize="65535"/>
+		<!-- CrIS -->
+		<packet appid="1289" label="CRIS_1289" minSize="7" maxSize="65535"/>
+		<packet appid="1290" label="CRIS_1290" minSize="7" maxSize="65535"/>
+		<packet appid="1315" label="CRIS_1315" minSize="7" maxSize="65535"/>
+		<packet appid="1316" label="CRIS_1316" minSize="7" maxSize="65535"/>
+		<packet appid="1317" label="CRIS_1317" minSize="7" maxSize="65535"/>
+		<packet appid="1318" label="CRIS_1318" minSize="7" maxSize="65535"/>
+		<packet appid="1319" label="CRIS_1319" minSize="7" maxSize="65535"/>
+		<packet appid="1320" label="CRIS_1320" minSize="7" maxSize="65535"/>
+		<packet appid="1321" label="CRIS_1321" minSize="7" maxSize="65535"/>
+		<packet appid="1322" label="CRIS_1322" minSize="7" maxSize="65535"/>
+		<packet appid="1323" label="CRIS_1323" minSize="7" maxSize="65535"/>
+		<packet appid="1324" label="CRIS_1324" minSize="7" maxSize="65535"/>
+		<packet appid="1325" label="CRIS_1325" minSize="7" maxSize="65535"/>
+		<packet appid="1326" label="CRIS_1326" minSize="7" maxSize="65535"/>
+		<packet appid="1327" label="CRIS_1327" minSize="7" maxSize="65535"/>
+		<packet appid="1328" label="CRIS_1328" minSize="7" maxSize="65535"/>
+		<packet appid="1329" label="CRIS_1329" minSize="7" maxSize="65535"/>
+		<packet appid="1330" label="CRIS_1330" minSize="7" maxSize="65535"/>
+		<packet appid="1331" label="CRIS_1331" minSize="7" maxSize="65535"/>
+		<packet appid="1332" label="CRIS_1332" minSize="7" maxSize="65535"/>
+		<packet appid="1333" label="CRIS_1333" minSize="7" maxSize="65535"/>
+		<packet appid="1334" label="CRIS_1334" minSize="7" maxSize="65535"/>
+		<packet appid="1335" label="CRIS_1335" minSize="7" maxSize="65535"/>
+		<packet appid="1336" label="CRIS_1336" minSize="7" maxSize="65535"/>
+		<packet appid="1337" label="CRIS_1337" minSize="7" maxSize="65535"/>
+		<packet appid="1338" label="CRIS_1338" minSize="7" maxSize="65535"/>
+		<packet appid="1339" label="CRIS_1339" minSize="7" maxSize="65535"/>
+		<packet appid="1340" label="CRIS_1340" minSize="7" maxSize="65535"/>
+		<packet appid="1341" label="CRIS_1341" minSize="7" maxSize="65535"/>
+		<packet appid="1342" label="CRIS_1342" minSize="7" maxSize="65535"/>
+		<packet appid="1343" label="CRIS_1343" minSize="7" maxSize="65535"/>
+		<packet appid="1344" label="CRIS_1344" minSize="7" maxSize="65535"/>
+		<packet appid="1345" label="CRIS_1345" minSize="7" maxSize="65535"/>
+		<packet appid="1346" label="CRIS_1346" minSize="7" maxSize="65535"/>
+		<packet appid="1347" label="CRIS_1347" minSize="7" maxSize="65535"/>
+		<packet appid="1348" label="CRIS_1348" minSize="7" maxSize="65535"/>
+		<packet appid="1349" label="CRIS_1349" minSize="7" maxSize="65535"/>
+		<packet appid="1350" label="CRIS_1350" minSize="7" maxSize="65535"/>
+		<packet appid="1351" label="CRIS_1351" minSize="7" maxSize="65535"/>
+		<packet appid="1352" label="CRIS_1352" minSize="7" maxSize="65535"/>
+		<packet appid="1353" label="CRIS_1353" minSize="7" maxSize="65535"/>
+		<packet appid="1354" label="CRIS_1354" minSize="7" maxSize="65535"/>
+		<packet appid="1355" label="CRIS_1355" minSize="7" maxSize="65535"/>
+		<packet appid="1356" label="CRIS_1356" minSize="7" maxSize="65535"/>
+		<packet appid="1357" label="CRIS_1357" minSize="7" maxSize="65535"/>
+		<packet appid="1358" label="CRIS_1358" minSize="7" maxSize="65535"/>
+		<packet appid="1359" label="CRIS_1359" minSize="7" maxSize="65535"/>
+		<packet appid="1360" label="CRIS_1360" minSize="7" maxSize="65535"/>
+		<packet appid="1361" label="CRIS_1361" minSize="7" maxSize="65535"/>
+		<packet appid="1362" label="CRIS_1362" minSize="7" maxSize="65535"/>
+		<packet appid="1363" label="CRIS_1363" minSize="7" maxSize="65535"/>
+		<packet appid="1364" label="CRIS_1364" minSize="7" maxSize="65535"/>
+		<packet appid="1365" label="CRIS_1365" minSize="7" maxSize="65535"/>
+		<packet appid="1366" label="CRIS_1366" minSize="7" maxSize="65535"/>
+		<packet appid="1367" label="CRIS_1367" minSize="7" maxSize="65535"/>
+		<packet appid="1368" label="CRIS_1368" minSize="7" maxSize="65535"/>
+		<packet appid="1369" label="CRIS_1369" minSize="7" maxSize="65535"/>
+		<packet appid="1370" label="CRIS_1370" minSize="7" maxSize="65535"/>
+		<packet appid="1371" label="CRIS_1371" minSize="7" maxSize="65535"/>
+		<packet appid="1372" label="CRIS_1372" minSize="7" maxSize="65535"/>
+		<packet appid="1373" label="CRIS_1373" minSize="7" maxSize="65535"/>
+		<packet appid="1374" label="CRIS_1374" minSize="7" maxSize="65535"/>
+		<packet appid="1375" label="CRIS_1375" minSize="7" maxSize="65535"/>
+		<packet appid="1376" label="CRIS_1376" minSize="7" maxSize="65535"/>
+		<packet appid="1377" label="CRIS_1377" minSize="7" maxSize="65535"/>
+		<packet appid="1378" label="CRIS_1378" minSize="7" maxSize="65535"/>
+		<packet appid="1379" label="CRIS_1379" minSize="7" maxSize="65535"/>
+		<packet appid="1380" label="CRIS_1380" minSize="7" maxSize="65535"/>
+		<packet appid="1381" label="CRIS_1381" minSize="7" maxSize="65535"/>
+		<packet appid="1382" label="CRIS_1382" minSize="7" maxSize="65535"/>
+		<packet appid="1383" label="CRIS_1383" minSize="7" maxSize="65535"/>
+		<packet appid="1384" label="CRIS_1384" minSize="7" maxSize="65535"/>
+		<packet appid="1385" label="CRIS_1385" minSize="7" maxSize="65535"/>
+		<packet appid="1386" label="CRIS_1386" minSize="7" maxSize="65535"/>
+		<packet appid="1387" label="CRIS_1387" minSize="7" maxSize="65535"/>
+		<packet appid="1388" label="CRIS_1388" minSize="7" maxSize="65535"/>
+		<packet appid="1389" label="CRIS_1389" minSize="7" maxSize="65535"/>
+		<packet appid="1390" label="CRIS_1390" minSize="7" maxSize="65535"/>
+		<packet appid="1391" label="CRIS_1391" minSize="7" maxSize="65535"/>
+		<packet appid="1392" label="CRIS_1392" minSize="7" maxSize="65535"/>
+		<packet appid="1393" label="CRIS_1393" minSize="7" maxSize="65535"/>
+		<packet appid="1394" label="CRIS_1394" minSize="7" maxSize="65535"/>
+		<packet appid="1395" label="CRIS_1395" minSize="7" maxSize="65535"/>
+	</packets>
+	<output_channels>
+		<!-- Define output channels here (e.g. RDR, socket, etc.) -->
+
+		<!-- JPSS-1 RDR output channels -->
+		<RDR label="VIIRS_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="ATMS_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="CERES_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="CRIS_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="OMPS_NPSCI_AE_RDR" directory="../data/" mission="JPSS-1" />
+		<RDR label="OMPS_TCSCI_AE_RDR" directory="../data/" mission="JPSS-1" />
+
+		<!-- 6.0 Patch 1: Simulcast output channel for JPSS-1 is port 3514 now -->
+		<socket label="VIIRS_SIMULCAST" unitType="PACKET" annotation="NONE" host="localhost" port="3514" bufferSize="65536" />
+
+		<!-- Sorcerers (PDS) for SNPP S/C packets (One APID per PDS) -->
+		<sorcerer label="JPSS1_SC_0" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="0" vcid="0" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_SC_8" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="8" vcid="0" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_SC_11" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="11" vcid="0" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+
+		<!-- Sorcerers (PDS) for OMPS NP/TC science/diagnostic packets (One APID per PDS) -->
+		<sorcerer label="JPSS1_OMPS_560" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="560" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_OMPS_561" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="561" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_OMPS_576" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="576" vcid="13" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_OMPS_577" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="577" vcid="13" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+
+		<!-- 6.0 Patch 2: Additional sorcerers for OMPS NP/TC science for when instrument is in different configurations -->
+		<!-- OMPS TC Science: Uncompressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_592" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="592" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS NP Science: Uncompressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_593" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="593" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS TC Science: Compressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_608" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="608" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS NP Science: Compressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_609" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="609" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS TC Science: Compressed -->
+		<sorcerer label="JPSS1_OMPS_616" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="616" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS NP Science: Compressed -->
+		<sorcerer label="JPSS1_OMPS_617" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="617" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+
+		<!-- Sorcerer (PDS) for VIIRS Science packets -->
+		<sorcerer label="JPSS1_VIIRS_SCI" path="../data" spid="159" format="SNPP" productID="0826VIIRSSCIENCEA" tsIndicator="S" >		
+			<appid id="800" vcid="16" minLength="180" maxLength="65535" CUCtime="false" />
+			<appid id="801" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="802" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="803" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="804" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="805" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="806" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="807" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="808" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="809" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="810" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="811" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="812" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="813" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="814" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="815" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="816" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="817" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="818" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="819" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="820" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="821" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="822" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="823" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="825" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="826" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="827" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="828" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+	</output_channels>
+	<links>
+		<!-- This is where the data pipeline is defined -->
+		<link from="frame_sync" to="pn"/>
+		<link from="pn" to="reed_solomon"/>
+		<link from="reed_solomon" to="frame_status"/>
+		<link from="frame_status" to="cadu_service"/>
+
+		<!-- APs to S/C and OMPS PDS outputs -->
+		<link from="SC_0" to="JPSS1_SC_0"/>
+		<link from="SC_8" to="JPSS1_SC_8"/>
+		<link from="SC_11" to="JPSS1_SC_11"/>
+
+		<link from="OMPS_560" to="JPSS1_OMPS_560"/>
+		<link from="OMPS_561" to="JPSS1_OMPS_561"/>
+		<link from="OMPS_576" to="JPSS1_OMPS_576"/>
+		<link from="OMPS_577" to="JPSS1_OMPS_577"/>
+
+		<!-- 6.0 Patch 2: Additional APs to OMPS Science outputs -->
+		<link from="OMPS_592" to="JPSS1_OMPS_592"/>
+		<link from="OMPS_593" to="JPSS1_OMPS_593"/>
+		<link from="OMPS_608" to="JPSS1_OMPS_608"/>
+		<link from="OMPS_609" to="JPSS1_OMPS_609"/>
+		<link from="OMPS_616" to="JPSS1_OMPS_616"/>
+		<link from="OMPS_617" to="JPSS1_OMPS_617"/>
+
+		<!-- APs to VIIRS Science PDS output -->
+		<link from="VIIRS_800" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_801" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_802" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_803" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_804" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_805" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_806" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_807" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_808" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_809" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_810" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_811" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_812" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_813" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_814" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_815" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_816" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_817" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_818" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_819" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_820" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_821" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_822" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_823" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_825" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_826" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_827" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_828" to="JPSS1_VIIRS_SCI"/>
+
+		<!-- APs to VIIRS-SCIENCE-RDR output -->
+		<link from="SC_0" to="VIIRS_SCI_AE_RDR"/>
+		<link from="SC_8" to="VIIRS_SCI_AE_RDR"/>
+		<link from="SC_11" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_800" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_801" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_802" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_803" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_804" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_805" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_806" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_807" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_808" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_809" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_810" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_811" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_812" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_813" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_814" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_815" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_816" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_817" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_818" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_819" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_820" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_821" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_822" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_823" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_825" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_826" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_827" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_828" to="VIIRS_SCI_AE_RDR"/>
+
+		<!-- APs to VIIRS Simulcast socket output -->
+		<link from="VIIRS_800" to="VIIRS_SIMULCAST"/>
+		<link from="VIIRS_801" to="VIIRS_SIMULCAST"/>
+		<link from="VIIRS_802" to="VIIRS_SIMULCAST"/>
+		<link from="VIIRS_812" to="VIIRS_SIMULCAST"/>
+
+		<!-- APs to ATMS-SCIENCE-RDR output -->
+		<link from="SC_0" to="ATMS_SCI_AE_RDR"/>
+		<link from="SC_8" to="ATMS_SCI_AE_RDR"/>
+		<link from="SC_11" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_515" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_528" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_530" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_531" to="ATMS_SCI_AE_RDR"/>
+
+		<!-- APs to CERES-SCIENCE-RDR output -->
+		<link from="SC_0" to="CERES_SCI_AE_RDR"/>
+		<link from="SC_8" to="CERES_SCI_AE_RDR"/>
+		<link from="SC_11" to="CERES_SCI_AE_RDR"/>
+		<link from="CERES_147" to="CERES_SCI_AE_RDR"/>
+		<link from="CERES_149" to="CERES_SCI_AE_RDR"/>
+
+		<!-- APs to OMPS-NPSCIENCE-RDR output -->
+		<link from="SC_0" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="SC_8" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="SC_11" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_561" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_593" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_609" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_617" to="OMPS_NPSCI_AE_RDR"/>
+
+		<!-- APs to OMPS-TCSCIENCE-RDR output -->
+		<link from="SC_0" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="SC_8" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="SC_11" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_560" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_592" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_608" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_616" to="OMPS_TCSCI_AE_RDR"/>
+
+		<!-- APs to CRIS-SCIENCE-RDR output -->
+		<link from="SC_0" to="CRIS_SCI_AE_RDR"/>
+		<link from="SC_8" to="CRIS_SCI_AE_RDR"/>
+		<link from="SC_11" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1289" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1290" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1315" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1316" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1317" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1318" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1319" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1320" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1321" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1322" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1323" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1324" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1325" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1326" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1327" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1328" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1329" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1330" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1331" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1332" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1333" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1334" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1335" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1336" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1337" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1338" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1339" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1340" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1341" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1342" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1343" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1344" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1345" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1346" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1347" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1348" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1349" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1350" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1351" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1352" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1353" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1354" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1355" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1356" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1357" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1358" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1359" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1360" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1361" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1362" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1363" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1364" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1365" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1366" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1367" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1368" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1369" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1370" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1371" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1372" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1373" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1374" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1375" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1376" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1377" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1378" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1379" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1380" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1381" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1382" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1383" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1384" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1385" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1386" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1387" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1388" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1389" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1390" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1391" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1392" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1393" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1394" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1395" to="CRIS_SCI_AE_RDR"/>
+	</links>
+</rt_stps>
