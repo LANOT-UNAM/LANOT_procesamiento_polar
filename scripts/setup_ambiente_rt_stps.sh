@@ -64,6 +64,7 @@ echo -e "${YELLOW}[1/4] Creando estructura de directorios...${NC}"
 for dir in "${DIRS[@]}"; do
     if [ ! -d "$dir" ]; then
         mkdir -p "$dir"
+        chown lanotadm:lanotadm "$dir"
         echo "  ✓ Creado: $dir"
     else
         echo "  ○ Ya existe: $dir"
@@ -222,7 +223,11 @@ chmod -R 755 /data/ancillary 2>/dev/null || true
 chmod -R 775 /data/output 2>/dev/null || true
 chmod -R 775 /datawork/input 2>/dev/null || true
 chmod -R 775 /var/log/lanot 2>/dev/null || true
-
+chown -R lanotadm:lanotadm /data/opt
+chown -R lanotadm:lanotadm /data/ancillary
+chown -R lanotadm:lanotadm /data/output
+chown -R lanotadm:lanotadm /datawork/input
+chown -R lanotadm:lanotadm /var/log/lanot     
 echo "  ✓ Permisos configurados"
 echo ""
 
