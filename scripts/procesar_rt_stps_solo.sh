@@ -120,7 +120,14 @@ if [ ! -f "$HOST_CONFIG_DIR/$XML_TARGET" ]; then
 fi
 
 cp "$HOST_CONFIG_DIR/$XML_TARGET" "$WORK_DIR/config_temp.xml"
+
+# Reemplazar todas las referencias a directorios de datos con /output
 sed -i 's|<dest>.*</dest>|<dest>/output</dest>|g' "$WORK_DIR/config_temp.xml"
+sed -i 's|<outputPath>.*</outputPath>|<outputPath>/output</outputPath>|g' "$WORK_DIR/config_temp.xml"
+sed -i 's|<directory>.*</directory>|<directory>/output</directory>|g' "$WORK_DIR/config_temp.xml"
+# Reemplazar cualquier referencia a ../data o rutas absolutas
+sed -i 's|\.\./data|/output|g' "$WORK_DIR/config_temp.xml"
+sed -i 's|/opt/rt-stps/data|/output|g' "$WORK_DIR/config_temp.xml"
 
 echo "[$TIMESTAMP] Ejecutando RT-STPS en contenedor..."
 echo "  - Input:  $INPUT_FILE"
