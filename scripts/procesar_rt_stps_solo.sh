@@ -136,6 +136,18 @@ LOG_FILE="${LOG_RT_STPS}/${TIMESTAMP_FILE}_${SATELLITE}.log"
 #   - WORK_DIR   → /config_bind     (configuración temporal)
 #   - LEAPSEC    → /opt/rt-stps/... (segundos intercalares)
 
+echo ""
+echo "Comando a ejecutar:"
+echo "  apptainer exec \\"
+echo "    --bind $INPUT_DIR:/input \\"
+echo "    --bind $DIR_L0:/output \\"
+echo "    --bind $WORK_DIR:/config_bind \\"
+echo "    --bind $HOST_LEAPSEC:/opt/rt-stps/leapsec.dat \\"
+echo "    $CONTAINER_RT_STPS \\"
+echo "    /bin/bash -c 'cd /opt/rt-stps && ./bin/batch.sh /config_bind/config_temp.xml /input/$FILENAME'"
+echo ""
+
+# Ejecutar y capturar salida tanto en pantalla como en log
 apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$DIR_L0":/output \
@@ -143,13 +155,21 @@ apptainer exec \
     --bind "$HOST_LEAPSEC":/opt/rt-stps/leapsec.dat \
     "$CONTAINER_RT_STPS" \
     /bin/bash -c "cd /opt/rt-stps && ./bin/batch.sh /config_bind/config_temp.xml /input/$FILENAME" \
-    &> "$LOG_FILE"
+    2>&1 | tee "$LOG_FILE"
+
+# Capturar el código de salida del pipeline
+APPTAINER_EXIT_CODE=${PIPESTATUS[0]}
 
 # Verificar éxito del procesamiento
-if [ $? -ne 0 ]; then
-    echo "[$TIMESTAMP] ERROR: RT-STPS falló. Revise log: $LOG_FILE" >&2
+if [ $APPTAINER_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "[$TIMESTAMP] ERROR: RT-STPS falló con código $APPTAINER_EXIT_CODE" >&2
+    echo "[$TIMESTAMP] Revise log: $LOG_FILE" >&2
     exit 1
 fi
+
+echo ""
+echo "[$TIMESTAMP] RT-STPS completado exitosamente"
 
 # Contar archivos RDR generados
 RDR_COUNT=$(find "$DIR_L0" -name "*.h5" -newer "$INPUT_FILE" 2>/dev/null | wc -l)
