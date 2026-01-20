@@ -22,7 +22,7 @@ if [ ! -f "$INPUT_FILE" ]; then
 fi
 
 # 2. CONFIGURACIÓN DE INFRAESTRUCTURA (RUTAS FIJAS)
-SIF_CSPP="/opt/lanot/contenedores/cspp_sdr_v4.1.sif"
+SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
 HOST_STATIC="/data/opt/SDR_4_1"       # Donde están tus LUTs y Tiles estáticos
 HOST_DYNAMIC="/data/ancillary"        # Donde están los TLEs y GFS diarios
 BASE_OUTPUT="/data/output/jpss/level1"     # Raíz de la salida Level 1
