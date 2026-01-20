@@ -30,7 +30,7 @@ HOST_CONFIG_DIR="/data/opt/RT-STPS/rt-stps/config"
 HOST_LEAPSEC="/data/ancillary/common/leapsec.dat"
 
 # Directorio de salida
-DIR_L0="/data/output/level0"
+DIR_L0="/data/output/jpss/level0"
 
 # Directorio de logs
 LOG_BASE="/var/log/lanot/polares"
