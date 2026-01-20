@@ -3,20 +3,17 @@ From: rockylinux:8
 
 %labels
     Author LANOT - UNAM
-    Description CSPP SDR v4.1 (Procesamiento VIIRS/ATMS/CrIS para NPP/JPSS)
+    Description CSPP SDR v4.1 (Motor Ligero - Sin Java - Datos montados externamente)
     Version 4.1-LANOT-LIGHT
 
 %files
-    # Solo necesitamos el tarball del código (~100MB)
+    # Solo necesitamos el tarball del código
     CSPP_SDR_V4.1.tar.gz /opt/
 
 %post
-    # 1. Dependencias Mínimas (CORREGIDO: Sin Java)
+    # 1. Dependencias Mínimas
     dnf install -y epel-release
     dnf update -y
-    # libgfortran: Necesario para los binarios compilados
-    # python3: Necesario para los scripts envoltorios (wrapper scripts)
-    # which/tar/gzip: Utilerías básicas
     dnf install -y wget tar gzip libgfortran which python3
     dnf clean all
 
@@ -26,29 +23,32 @@ From: rockylinux:8
     tar -zxf CSPP_SDR_V4.1.tar.gz
     rm -f CSPP_SDR_V4.1.tar.gz
     
-    # Creamos enlace simbólico para estandarizar la ruta
+    # 3. Crear el enlace simbólico (Esto sigue igual)
     ln -s CSPP_SDR_V4.1 cspp_sdr
 
-    # 3. PREPARAR PUNTOS DE MONTAJE (CRÍTICO)
-    # Creamos las carpetas vacías EXACTAMENTE donde el software las busca.
-    # NO borres esto, es vital para que funcionen los --bind.
+    # 4. PREPARAR PUNTOS DE MONTAJE (CORREGIDO)
+    # === CORRECCIÓN ===
+    # Usamos el nombre REAL del directorio para crear las carpetas, 
+    # evitando el error con el enlace simbólico.
     
-    BASE=/opt/cspp_sdr
+    REAL_BASE=/opt/CSPP_SDR_V4.1
     
-    # VIIRS (LUTs y Tiles de Terreno)
-    mkdir -p $BASE/viirs/luts
-    mkdir -p $BASE/viirs/tiles
+    echo "Creando estructura de carpetas en $REAL_BASE..."
+
+    # VIIRS
+    mkdir -p $REAL_BASE/viirs/luts
+    mkdir -p $REAL_BASE/viirs/tiles
     
-    # Sensores de Sondeo (ATMS, CrIS, OMPS)
-    mkdir -p $BASE/atms/luts
-    mkdir -p $BASE/cris/luts
-    mkdir -p $BASE/omps/luts
+    # Sensores de Sondeo
+    mkdir -p $REAL_BASE/atms/luts
+    mkdir -p $REAL_BASE/cris/luts
+    mkdir -p $REAL_BASE/omps/luts
     
-    # Datos Auxiliares Estáticos (Stray Light y Cache)
-    # Según tu anc.tree, tienes datos en /anc/static y /anc/cache
-    mkdir -p $BASE/anc
+    # Datos Auxiliares
+    mkdir -p $REAL_BASE/anc
 
 %environment
+    # Aquí sí usamos el enlace simbólico, porque al ejecutar ya no hay problema
     export CSPP_SDR_HOME=/opt/cspp_sdr
     export PATH=$CSPP_SDR_HOME/common:$CSPP_SDR_HOME/viirs/sdr/scripts:$PATH
     export LC_ALL=C
