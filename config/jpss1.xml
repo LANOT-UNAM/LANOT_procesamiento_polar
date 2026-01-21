@@ -1,55 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE rt_stps SYSTEM "rt-stps.dtd">
 <rt_stps id="JPSS-1">
+    
     <frame_sync frameLength="1024" PnEncoded="true">
         <timestamp epoch="19580101000000"/>
     </frame_sync>
+    
     <reed_solomon useStandardCCSDS="true" doBlockCorrection="true" discardUncorrectables="true" interleave="4"/>
-
-    <config>
-        <packetMap label="RNSCA-Map">
-            <apid range="0-127"/>
-        </packetMap>
-        
-        <packetMap label="VIIRS-Map">
-            <apid range="800-823"/>
-        </packetMap>
-        
-        <packetMap label="ATMS-Map">
-            <apid range="528-531"/>
-            <apid value="515"/>
-        </packetMap>
-        
-        <packetMap label="CRIS-Map">
-            <apid range="1280-1400"/>
-        </packetMap>
-        
-        <packetMap label="OMPS-Map">
-            <apid range="560-600"/>
-        </packetMap>
-    </config>
 
     <dest>
         <file>/output</file>
     </dest>
 
     <rdr label="RVIIRS">
-        <packetMap ref="VIIRS-Map"/>
+        <packetMap>
+            <apid range="800-823"/>
+        </packetMap>
     </rdr>
 
     <rdr label="RATMS">
-        <packetMap ref="ATMS-Map"/>
+        <packetMap>
+            <apid range="528-531"/>
+            <apid value="515"/>
+        </packetMap>
     </rdr>
 
     <rdr label="RCRIS">
-        <packetMap ref="CRIS-Map"/>
+        <packetMap>
+            <apid range="1280-1400"/>
+        </packetMap>
     </rdr>
-    
+
     <rdr label="ROMPS">
-        <packetMap ref="OMPS-Map"/>
+        <packetMap>
+            <apid range="560-600"/>
+        </packetMap>
     </rdr>
 
     <rdr label="RNSCA">
-        <packetMap ref="RNSCA-Map"/>
+        <packetMap>
+            <apid range="0-127"/>
+        </packetMap>
     </rdr>
+
 </rt_stps>
