@@ -1,7 +1,6 @@
 #!/bin/bash
 # ==============================================================================
 # SCRIPT MODULAR: Procesamiento CSPP SDR (Level 0 -> Level 1)
-# Uso: ./run_sdr.sh /ruta/completa/al/archivo_RDR.h5
 # ==============================================================================
 
 # 1. VALIDACIÓN DE ENTRADA
@@ -19,31 +18,35 @@ if [ ! -f "$INPUT_FILE" ]; then
     exit 1
 fi
 
-# 2. CONFIGURACIÓN DE INFRAESTRUCTURA
+# 2. CONFIGURACIÓN
 SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
+HOST_STATIC="/data/opt/SDR_4_1"
+HOST_DYNAMIC="/data/ancillary"
+BASE_OUTPUT="/data/output/jpss/level1"
 
-HOST_STATIC="/data/opt/SDR_4_1"       # Base de datos estáticos
-HOST_DYNAMIC="/data/ancillary"        # Datos dinámicos diarios
-BASE_OUTPUT="/data/output/jpss/level1" # Raíz de salida
-
-# 3. DETECCIÓN DE SENSOR Y COMANDO
-# Usamos rutas absolutas al binario para evitar problemas de PATH
+# 3. DETECCIÓN DE SENSOR Y FLAGS
 case "$FILENAME" in
     RVIIRS*)
         SENSOR="viirs"
         EXEC_CMD="/opt/cspp_sdr/bin/viirs_sdr.sh"
+        # VIIRS usa flag explícito -a
+        CMD_ARGS="-p 8 -a /ancillary /input/$FILENAME"
         ;;
     RNSCA*|RATMS*) 
         SENSOR="atms"
         EXEC_CMD="/opt/cspp_sdr/bin/atms_sdr.sh"
+        # ATMS NO usa flag -a con ruta, usa variable de entorno
+        CMD_ARGS="-p 8 /input/$FILENAME"
         ;;
     RCRIS*)
         SENSOR="cris"
         EXEC_CMD="/opt/cspp_sdr/bin/cris_sdr.sh"
+        CMD_ARGS="-p 8 /input/$FILENAME"
         ;;
     ROMPS*)
         SENSOR="omps"
         EXEC_CMD="/opt/cspp_sdr/bin/omps_sdr.sh"
+        CMD_ARGS="-p 8 /input/$FILENAME"
         ;;
     *)
         echo "Error: Sensor no reconocido en $FILENAME"
@@ -51,7 +54,7 @@ case "$FILENAME" in
         ;;
 esac
 
-# 4. CARPETA DE SALIDA (Plana, sin fechas)
+# 4. PREPARAR SALIDA
 OUTPUT_DIR="$BASE_OUTPUT/$SENSOR"
 mkdir -p "$OUTPUT_DIR"
 
@@ -59,18 +62,13 @@ echo "=== PROCESANDO $SENSOR ==="
 echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
 
-# 5. CONSTRUCCIÓN INTELIGENTE DE BINDS
+# 5. BINDS (Igual que antes)
 BIND_ARGS="--bind $INPUT_DIR:/input --bind $OUTPUT_DIR:/output --bind $HOST_DYNAMIC:/ancillary"
 
 add_bind_if_exists() {
-    local HOST_PATH="$1"
-    local CONT_PATH="$2"
-    if [ -d "$HOST_PATH" ]; then
-        BIND_ARGS="$BIND_ARGS --bind $HOST_PATH:$CONT_PATH"
-    fi
+    if [ -d "$1" ]; then BIND_ARGS="$BIND_ARGS --bind $1:$2"; fi
 }
 
-# Inyección de datos estáticos (Solo si existen en el Host)
 add_bind_if_exists "$HOST_STATIC/viirs/luts"  "/opt/cspp_sdr/viirs/luts"
 add_bind_if_exists "$HOST_STATIC/viirs/tiles" "/opt/cspp_sdr/viirs/tiles"
 add_bind_if_exists "$HOST_STATIC/atms/luts"   "/opt/cspp_sdr/atms/luts"
@@ -78,32 +76,36 @@ add_bind_if_exists "$HOST_STATIC/cris/luts"   "/opt/cspp_sdr/cris/luts"
 add_bind_if_exists "$HOST_STATIC/omps/luts"   "/opt/cspp_sdr/omps/luts"
 add_bind_if_exists "$HOST_STATIC/anc"         "/opt/cspp_sdr/anc"
 
-# 6. EJECUCIÓN (MODIFICADO)
-# CAMBIO CLAVE 1: Eliminamos '-o /output'.
-# CAMBIO CLAVE 2: Hacemos 'cd /output' antes de ejecutar.
-# CAMBIO CLAVE 3: Agregamos 'set -e' para que cualquier error interno corte el proceso.
+# 6. EJECUCIÓN (CON LÓGICA DIFERENCIADA)
+# Usamos un archivo temporal para capturar la salida y buscar errores reales
+LOG_TEMP=$(mktemp)
 
-apptainer exec $BIND_ARGS \
-    "$SIF_CSPP" \
-    /bin/bash -c "
-        set -e  # Abortar si algo falla
-        cd /output
-        
-        # Ejecutamos sin el flag -o, escribirá en el directorio actual (/output)
-        # Nota: quitamos -p 8 temporalmente para ATMS ya que el error sugería 
-        # conflictos, pero CSPP suele aceptarlo. Si falla de nuevo, quita '-p 8'.
-        $EXEC_CMD -p 8 -a /ancillary /input/$FILENAME
-    "
+apptainer exec $BIND_ARGS "$SIF_CSPP" /bin/bash -c "
+    set -e
+    cd /output
+    
+    # Definimos la variable de entorno para TODOS (no hace daño a VIIRS y salva a ATMS)
+    export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
+    
+    echo 'Iniciando procesamiento...'
+    $EXEC_CMD $CMD_ARGS
+" > "$LOG_TEMP" 2>&1
 
-# Capturar código de salida de Apptainer
-RETVAL=$?
+# 7. ANÁLISIS DE RESULTADOS
+EXIT_CODE=$?
+cat "$LOG_TEMP" # Mostramos el log al usuario
 
-if [ $RETVAL -eq 0 ]; then
+# Búsqueda de errores fatales comunes en el log
+if grep -q "Traceback" "$LOG_TEMP" || grep -q "did not complete without errors" "$LOG_TEMP"; then
+    echo "❌ FALLA DETECTADA (Log Analysis)"
+    rm -f "$LOG_TEMP"
+    exit 1
+elif [ $EXIT_CODE -eq 0 ]; then
     echo "✅ Éxito: Archivos generados en $OUTPUT_DIR"
-    # Opcional: Listar lo generado para confirmar
-    ls -lh "$OUTPUT_DIR" | head -n 5
+    rm -f "$LOG_TEMP"
+    exit 0
 else
-    echo "❌ Falla Crítica: El proceso $SENSOR terminó con código de error $RETVAL"
-    exit $RETVAL
+    echo "❌ Falla: Código de salida $EXIT_CODE"
+    rm -f "$LOG_TEMP"
+    exit $EXIT_CODE
 fi
-
