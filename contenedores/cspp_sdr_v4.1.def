@@ -3,8 +3,8 @@ From: rockylinux:8
 
 %labels
     Author LANOT - UNAM
-    Description CSPP SDR v4.1 
-    Version 4.1-LANOT-FINAL
+    Description CSPP SDR v4.1 (Auto-detectable)
+    Version 4.1-LANOT-FINAL-AUTO
 
 %files
     CSPP_SDR_V4.1.tar.gz /opt/
@@ -13,46 +13,62 @@ From: rockylinux:8
     # 1. Dependencias
     dnf install -y epel-release
     dnf update -y
-    # AGREGADO: findutils (para el comando find)
     dnf install -y wget tar gzip libgfortran which python3 findutils
     dnf clean all
 
-    # 2. Instalación
+    # 2. Descomprimir
     cd /opt
-    echo "--- Descomprimiendo ---"
+    echo "--- Descomprimiendo Software ---"
     tar -zxf CSPP_SDR_V4.1.tar.gz
     rm -f CSPP_SDR_V4.1.tar.gz
+
+    # 3. AUTO-DETECCION (La Magia)
+    # Buscamos dónde quedó el script 'viirs_sdr.sh'
+    # La estructura estándar es .../viirs/sdr/scripts/viirs_sdr.sh
+    # Así que el 'HOME' es 3 niveles arriba de la carpeta de scripts.
     
-    # 3. CORRECCIÓN DEL ENLACE SIMBÓLICO
-    # El tarball crea la estructura: /opt/CSPP/SDR_4_1
-    echo "--- Creando enlace simbólico ---"
-    ln -s CSPP/SDR_4_1 cspp_sdr
+    echo "--- Localizando instalación ---"
+    SCRIPT_PATH=$(find /opt -name "viirs_sdr.sh" | head -n 1)
     
-    # 4. PREPARAR PUNTOS DE MONTAJE
-    REAL_BASE=/opt/CSPP/SDR_4_1
+    if [ -z "$SCRIPT_PATH" ]; then
+        echo "ERROR FATAL: No se encontró viirs_sdr.sh tras descomprimir."
+        echo "Contenido de /opt:"
+        ls -R /opt
+        exit 1
+    fi
     
+    # Calculamos el directorio base (HOME) recortando la ruta
+    # Si ruta es /opt/CSPP/SDR_4_1/viirs/sdr/scripts/viirs_sdr.sh
+    # Queremos /opt/CSPP/SDR_4_1
+    
+    # Truco seguro: El directorio que contiene la carpeta 'viirs' es el HOME
+    REAL_BASE=$(find /opt -type d -name "viirs" -print -quit | xargs dirname)
+    
+    echo "¡Instalación encontrada en: $REAL_BASE !"
+
+    # 4. ENLACE SIMBÓLICO
+    echo "--- Creando enlace /opt/cspp_sdr -> $REAL_BASE ---"
+    ln -s "$REAL_BASE" /opt/cspp_sdr
+
+    # 5. PREPARAR PUNTOS DE MONTAJE
+    # Usamos la variable detectada para crear las carpetas
     echo "--- Creando carpetas de datos en $REAL_BASE ---"
-    mkdir -p $REAL_BASE/viirs/luts
-    mkdir -p $REAL_BASE/viirs/tiles
-    mkdir -p $REAL_BASE/atms/luts
-    mkdir -p $REAL_BASE/cris/luts
-    mkdir -p $REAL_BASE/omps/luts
-    mkdir -p $REAL_BASE/anc
+    mkdir -p "$REAL_BASE/viirs/luts"
+    mkdir -p "$REAL_BASE/viirs/tiles"
+    mkdir -p "$REAL_BASE/atms/luts"
+    mkdir -p "$REAL_BASE/cris/luts"
+    mkdir -p "$REAL_BASE/omps/luts"
+    mkdir -p "$REAL_BASE/anc"
     
-    # 5. VERIFICACIÓN VISUAL
-    echo "--- VERIFICACIÓN DE INSTALACIÓN ---"
-    ls -l /opt/cspp_sdr
-    echo "Buscando scripts clave..."
-    # Ahora sí funcionará el find
-    find /opt/cspp_sdr -name "atms_sdr.sh"
+    # 6. VERIFICACIÓN FINAL
+    echo "--- VERIFICANDO PATH ---"
+    /opt/cspp_sdr/viirs/sdr/scripts/viirs_sdr.sh --help > /dev/null && echo "CHECK: VIIRS OK" || echo "FAIL: VIIRS"
 
 %environment
     export CSPP_SDR_HOME=/opt/cspp_sdr
-    # Rutas corregidas para todos los sensores
     export PATH=$CSPP_SDR_HOME/common:$PATH
     export PATH=$CSPP_SDR_HOME/viirs/sdr/scripts:$PATH
     export PATH=$CSPP_SDR_HOME/atms/sdr/scripts:$PATH
     export PATH=$CSPP_SDR_HOME/cris/sdr/scripts:$PATH
     export PATH=$CSPP_SDR_HOME/omps/sdr/scripts:$PATH
     export LC_ALL=C
-
