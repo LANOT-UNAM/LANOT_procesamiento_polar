@@ -25,16 +25,18 @@ From: rockylinux:8
     echo "Instalando Base..."
     tar -zxf RT-STPS_7.0.tar.gz
     
-    # Estandarización de directorio (aseguramos que exista /opt/rt-stps)
-    DIR_NAME=$(ls -d RT-STPS_7.0*)
-    if [ ! -L "rt-stps" ]; then
-        ln -s $DIR_NAME rt-stps
-    fi
+    # Identificamos el nombre real de la carpeta (ej. RT-STPS_7.0)
+    REAL_DIR=$(ls -d RT-STPS_7.0*)
+    
+    # Creamos el enlace simbólico 'rt-stps' ANTES del parche
+    ln -s "$REAL_DIR" rt-stps
 
-    # 3. APLICAR EL PARCHE CORRECTAMENTE
-    echo "Aplicando Patch 1 sobre la instalación..."
-    # IMPORTANTE: Usar -C para que los archivos del parche caigan dentro de rt-stps
-    tar -zxf RT-STPS_7.0_PATCH_1.tar.gz -C /opt/rt-stps/ --strip-components=1
+    # 3. APLICAR EL PARCHE (Siguiendo el README)
+    echo "Aplicando Patch 1..."
+    # El README dice que se debe extraer al mismo nivel que la carpeta 'rt-stps'
+    # Como el parche contiene una carpeta 'rt-stps/', sobrescribirá el enlace simbólico 
+    # o entrará a través de él a la carpeta real.
+    tar -zxf RT-STPS_7.0_PATCH_1.tar.gz -C /opt/
     
     # 4. Limpieza y Permisos
     rm -f *.tar.gz
