@@ -15,7 +15,7 @@ FILENAME=$(basename "$INPUT_FILE")
 
 # 2. CONFIGURACIÓN DE RUTAS
 SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
-HOST_STATIC="/data/opt/SDR_4_1"       # Tu carpeta con LUTs, DB y Scripts
+HOST_STATIC="/data/opt/SDR_4_1/anc" 
 HOST_DYNAMIC="/data/ancillary"        # Datos TLE/GFS diarios
 BASE_OUTPUT="/data/output/jpss/level1"
 
@@ -51,28 +51,24 @@ echo "=== PROCESANDO $SENSOR ==="
 echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
 
-# 4. EJECUCIÓN CON MONTAJE INTEGRAL
+# 4. EJECUCIÓN CON MONTAJE SELECTIVO
+# Montamos tus datos de /data/opt/SDR_4_1/anc DENTRO de la carpeta anc del contenedor.
+# Esto preserva la carpeta /opt/cspp_sdr/bin que ya existe en el .sif
 apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR":/output \
     --bind "$HOST_DYNAMIC":/ancillary \
-    --bind "$HOST_STATIC":/opt/cspp_sdr \
+    --bind "$HOST_STATIC":/opt/cspp_sdr/anc \
     "$SIF_CSPP" /bin/bash -c "
         export CSPP_SDR_HOME=/opt/cspp_sdr
+        export PATH=\$CSPP_SDR_HOME/bin:\$PATH
         export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
         
-        # Agregamos la ruta al PATH por si los scripts llaman a otros binarios
-        export PATH=\$CSPP_SDR_HOME:\$PATH
+        echo '--- Verificando entorno ---'
+        ls -l /opt/cspp_sdr/bin/viirs_sdr.sh
         
-        echo '--- Verificando ubicación del script ---'
-        if [ -f \"$EXEC_CMD\" ]; then
-            $EXEC_CMD -p 8 -a /ancillary -o /output /input/$FILENAME
-        else
-            echo 'ERROR: No se encontró el script en $EXEC_CMD'
-            echo 'Contenido de /opt/cspp_sdr:'
-            ls /opt/cspp_sdr
-            exit 1
-        fi
+        # Ejecutamos el script que vive DENTRO del contenedor
+        viirs_sdr.sh -p 8 -a /ancillary -o /output /input/$FILENAME
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
