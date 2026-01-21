@@ -3,7 +3,7 @@ From: rockylinux:8
 
 %labels
     Author LANOT - UNAM
-    Description CSPP SDR v4.1 (Corregido path de instalación)
+    Description CSPP SDR v4.1 
     Version 4.1-LANOT-FINAL
 
 %files
@@ -13,7 +13,8 @@ From: rockylinux:8
     # 1. Dependencias
     dnf install -y epel-release
     dnf update -y
-    dnf install -y wget tar gzip libgfortran which python3
+    # AGREGADO: findutils (para el comando find)
+    dnf install -y wget tar gzip libgfortran which python3 findutils
     dnf clean all
 
     # 2. Instalación
@@ -24,13 +25,10 @@ From: rockylinux:8
     
     # 3. CORRECCIÓN DEL ENLACE SIMBÓLICO
     # El tarball crea la estructura: /opt/CSPP/SDR_4_1
-    # Nosotros queremos que /opt/cspp_sdr apunte ahí.
-    
     echo "--- Creando enlace simbólico ---"
     ln -s CSPP/SDR_4_1 cspp_sdr
     
     # 4. PREPARAR PUNTOS DE MONTAJE
-    # Usamos la ruta canónica (la real) para evitar problemas
     REAL_BASE=/opt/CSPP/SDR_4_1
     
     echo "--- Creando carpetas de datos en $REAL_BASE ---"
@@ -41,10 +39,11 @@ From: rockylinux:8
     mkdir -p $REAL_BASE/omps/luts
     mkdir -p $REAL_BASE/anc
     
-    # 5. VERIFICACIÓN VISUAL (Para que estés tranquilo)
+    # 5. VERIFICACIÓN VISUAL
     echo "--- VERIFICACIÓN DE INSTALACIÓN ---"
     ls -l /opt/cspp_sdr
     echo "Buscando scripts clave..."
+    # Ahora sí funcionará el find
     find /opt/cspp_sdr -name "atms_sdr.sh"
 
 %environment
