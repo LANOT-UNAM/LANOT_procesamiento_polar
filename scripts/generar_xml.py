@@ -1,13 +1,13 @@
 import os
 
-# Mapeo de APIDs según la lógica de JPSS-1 (NOAA-20)
-# Separamos los APIDs por el sensor al que pertenecen
+# Definición exacta de APIDs por sensor para JPSS-1 (NOAA-20)
+# Solo incluimos los APIDs que sabemos que existen para evitar el error de "Identifier must appear"
 config_sensores = {
     "VIIRS": {"vcid": 6,  "apids": range(800, 824)},
     "ATMS":  {"vcid": 11, "apids": [515, 528, 530, 531]},
     "CRIS":  {"vcid": 13, "apids": range(1280, 1401)},
     "OMPS":  {"vcid": 16, "apids": range(560, 601)},
-    "RNSCA": {"vcid": 0,  "apids": range(0, 128)} # Incluimos navegación por separado
+    "RNSCA": {"vcid": 0,  "apids": range(0, 128)}
 }
 
 xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -35,13 +35,14 @@ xml = """<?xml version="1.0" encoding="UTF-8"?>
     <ccsds_services>
 """
 
-# Generamos los <path> usando la sintaxis exacta de tu jpss2.xml
+# Definimos los <path>. La clave aquí es que el label del pklink 
+# sea el MISMO que usaremos después en el link 'from'.
 for sensor, data in config_sensores.items():
     vcid = data['vcid']
-    # Usamos los atributos que vimos en tu sed: label, spacecraft, etc.
     xml += f'        <path label="VCID{vcid}" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">\n'
     for apid in data['apids']:
-        xml += f'            <pklink appid="{apid}" label="{sensor}_{apid}"/>\n'
+        # El label debe ser único y coincidir exactamente abajo
+        xml += f'            <pklink appid="{apid}" label="ID_{sensor}_{apid}"/>\n'
     xml += '        </path>\n'
 
 xml += """    </ccsds_services>
@@ -49,7 +50,7 @@ xml += """    </ccsds_services>
     <links>
 """
 
-# Definimos los targets RDR nativos (los que vimos en tus logs anteriores)
+# Targets nativos de RT-STPS
 targets = {
     "VIIRS": "VIIRS_SCI_AE_RDR",
     "ATMS":  "ATMS_SCI_AE_RDR",
@@ -61,7 +62,8 @@ targets = {
 for sensor, target in targets.items():
     xml += f'\n        \n'
     for apid in config_sensores[sensor]['apids']:
-        xml += f'        <link from="{sensor}_{apid}" to="{target}"/>\n'
+        # El 'from' debe coincidir con el 'label' del pklink de arriba
+        xml += f'        <link from="ID_{sensor}_{apid}" to="{target}"/>\n'
 
 xml += """    </links>
 </rt_stps>
@@ -71,5 +73,5 @@ output_path = "config/jpss1.xml"
 with open(output_path, "w") as f:
     f.write(xml)
 
-print(f"✅ XML V5 Generado exitosamente.")
+print(f"✅ XML V6 Generado exitosamente.")
 
