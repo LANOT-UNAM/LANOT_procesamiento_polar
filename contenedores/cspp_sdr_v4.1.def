@@ -14,8 +14,9 @@ From: rockylinux:8
     dnf install -y epel-release
     dnf update -y
     # Agregamos findutils y procps-ng por si acaso
-    dnf install -y wget tar gzip libgfortran which python3 findutils
-    dnf clean all
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5
+    dnf clean all && \
+    rm -rf /var/cache/dnf
 
     # 2. Instalación
     cd /opt
@@ -23,8 +24,7 @@ From: rockylinux:8
     tar -zxf CSPP_SDR_V4.1.tar.gz
     rm -f CSPP_SDR_V4.1.tar.gz
     
-    # 3. ENLACE SIMBÓLICO (CORREGIDO)
-    # Según tu tree, la carpeta resultante es SDR_4_1
+    # 3. ENLACE SIMBÓLICO 
     if [ -d "SDR_4_1" ]; then
         echo "Directorio SDR_4_1 detectado correctamente."
         ln -s SDR_4_1 cspp_sdr
