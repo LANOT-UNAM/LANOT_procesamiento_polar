@@ -96,18 +96,17 @@ apptainer exec $BIND_ARGS "$SIF_CSPP" /bin/bash -c "
     set -e
     cd /output
     
-    # Variable necesaria para ATMS/CrIS (no afecta a VIIRS)
+    # Informamos al motor dónde buscar los datos dinámicos (TLE/Ancillary)
     export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
+    export CSPP_SDR_HOME=/opt/cspp_sdr
     
     echo '--- Inicio de Procesamiento: $(date) ---'
-    echo 'Comando: $EXEC_CMD $CMD_ARGS'
     
-    $EXEC_CMD $CMD_ARGS
+    # Ejecutamos el script desde la ruta montada
+    /opt/cspp_sdr/bin/viirs_sdr.sh -p 8 -a /ancillary -o /output /input/$FILENAME
     
     echo '--- Fin de Procesamiento: $(date) ---'
 " > "$LOG_FILE" 2>&1
-
-EXIT_CODE=$?
 
 # 7. ANÁLISIS DE RESULTADOS
 # Buscamos errores fatales en el log generado
