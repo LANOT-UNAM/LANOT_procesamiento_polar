@@ -7,35 +7,68 @@
     </frame_sync>
     <reed_solomon useStandardCCSDS="true" doBlockCorrection="true" discardUncorrectables="true" interleave="4"/>
 
-    <rdr label="RVIIRS">
-        <packetMap>
+    <spacecrafts>
+        <spacecraft label="spid1" id="159"/>
+    </spacecrafts>
+
+    <cadu_service>
+        <svlink vcid="0" spid="159" label="VCID0"/>
+        <svlink vcid="1" spid="159" label="VCID1"/>
+        <svlink vcid="6" spid="159" label="VCID6"/>  <svlink vcid="11" spid="159" label="VCID11"/> <svlink vcid="13" spid="159" label="VCID13"/> <svlink vcid="16" spid="159" label="VCID16"/> <svlink vcid="24" spid="159" label="VCID24"/>
+    </cadu_service>
+
+    <ccsds_services>
+        <pkt_service label="VCID0-Pkt" channel_link="VCID0"/>
+        <pkt_service label="VCID1-Pkt" channel_link="VCID1"/>
+        <pkt_service label="VCID6-Pkt" channel_link="VCID6"/>
+        <pkt_service label="VCID11-Pkt" channel_link="VCID11"/>
+        <pkt_service label="VCID13-Pkt" channel_link="VCID13"/>
+        <pkt_service label="VCID16-Pkt" channel_link="VCID16"/>
+        <pkt_service label="VCID24-Pkt" channel_link="VCID24"/>
+    </ccsds_services>
+
+    <config>
+        <packetMap label="RNSCA-Map" service_link="VCID0-Pkt VCID1-Pkt VCID24-Pkt">
+            <apid range="0-127"/>
+        </packetMap>
+        
+        <packetMap label="VIIRS-Map" service_link="VCID6-Pkt">
             <apid range="800-823"/>
         </packetMap>
-    </rdr>
-
-    <rdr label="RATMS">
-        <packetMap>
+        
+        <packetMap label="ATMS-Map" service_link="VCID11-Pkt">
             <apid range="528-531"/>
             <apid value="515"/>
         </packetMap>
-    </rdr>
-
-    <rdr label="RCRIS">
-        <packetMap>
+        
+        <packetMap label="CRIS-Map" service_link="VCID13-Pkt">
             <apid range="1280-1400"/>
         </packetMap>
-    </rdr>
-
-    <rdr label="ROMPS">
-        <packetMap>
+        
+        <packetMap label="OMPS-Map" service_link="VCID16-Pkt">
             <apid range="560-600"/>
         </packetMap>
-    </rdr>
+    </config>
 
-    <rdr label="RNSCA">
-        <packetMap>
-            <apid range="0-127"/>
-        </packetMap>
-    </rdr>
+    <dest>
+        <file>/output</file> <rdr label="RVIIRS">
+            <packetMap ref="VIIRS-Map"/>
+        </rdr>
 
+        <rdr label="RATMS">
+            <packetMap ref="ATMS-Map"/>
+        </rdr>
+
+        <rdr label="RCRIS">
+            <packetMap ref="CRIS-Map"/>
+        </rdr>
+        
+        <rdr label="ROMPS">
+            <packetMap ref="OMPS-Map"/>
+        </rdr>
+
+        <rdr label="RNSCA">
+            <packetMap ref="RNSCA-Map"/>
+        </rdr>
+    </dest>
 </rt_stps>
