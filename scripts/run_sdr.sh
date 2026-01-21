@@ -52,8 +52,6 @@ echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
 
 # 4. EJECUCIÓN CON MONTAJE SELECTIVO
-# Montamos tus datos de /data/opt/SDR_4_1/anc DENTRO de la carpeta anc del contenedor.
-# Esto preserva la carpeta /opt/cspp_sdr/bin que ya existe en el .sif
 apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR":/output \
@@ -64,11 +62,12 @@ apptainer exec \
         export PATH=\$CSPP_SDR_HOME/bin:\$PATH
         export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
         
-        echo '--- Verificando entorno ---'
-        ls -l /opt/cspp_sdr/bin/viirs_sdr.sh
+        # CRÍTICO: Entrar a la carpeta de salida porque ahí se guardarán los SDR
+        cd /output
         
-        # Ejecutamos el script que vive DENTRO del contenedor
-        viirs_sdr.sh -p 8 -a /ancillary -o /output /input/$FILENAME
+        echo '--- Iniciando CSPP SDR ---'
+        # Eliminamos el '-o /output' ya que el resultado cae en el dir actual
+        viirs_sdr.sh -p 8 -a /ancillary /input/$FILENAME
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
