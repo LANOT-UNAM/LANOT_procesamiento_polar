@@ -20,7 +20,7 @@ if [ ! -f "$INPUT_FILE" ]; then
 fi
 
 # 2. CONFIGURACIÓN DE INFRAESTRUCTURA
-SIF_CSPP="/opt/lanot/contenedores/cspp_sdr_v4.1.sif"
+SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
 HOST_STATIC="/data/opt/SDR_4_1"       # Base de datos estáticos
 HOST_DYNAMIC="/data/ancillary"        # Datos dinámicos diarios
 BASE_OUTPUT="/data/output/jpss/level1" # Ajustado a tu estructura JPSS
