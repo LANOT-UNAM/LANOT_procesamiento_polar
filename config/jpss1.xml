@@ -1,1158 +1,621 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <!DOCTYPE rt_stps SYSTEM "rt-stps.dtd">
 <rt_stps id="JPSS-1">
-    <frame_sync frameLength="1024" PnEncoded="true">
-        <timestamp epoch="19580101000000"/>
-    </frame_sync>
-    <reed_solomon useStandardCCSDS="true" doBlockCorrection="true" discardUncorrectables="true" interleave="4"/>
+	<frame_sync frameLength="1024" PnEncoded="true">
+		<timestamp epoch="19580101000000"/>
+	</frame_sync>
+	<reed_solomon useStandardCCSDS="true" doBlockCorrection="true" discardUncorrectables="true" interleave="4"/>
+	<spacecrafts>
+		<!-- Define spacecraft ID here -->
+		<spacecraft label="spid1" id="159"/>
+	</spacecrafts>
+	<cadu_service>
+		<!-- Define virtual channels here -->
+		<svlink vcid="0" spid="159" label="VCID0"/>
+		<svlink vcid="1" spid="159" label="VCID1"/>
+		<svlink vcid="6" spid="159" label="VCID6"/>
+		<svlink vcid="11" spid="159" label="VCID11"/>
+		<svlink vcid="13" spid="159" label="VCID13"/>
+		<svlink vcid="16" spid="159" label="VCID16"/>
+		<svlink vcid="24" spid="159" label="VCID24"/>
+	</cadu_service>
+	<ccsds_services>
+		<!-- Define desired APIDs from each defined virtual channels -->
+		<path label="VCID0" spacecraft="spid1" maxRationalPacketSize="65535">
+		    <pklink appid="0" label="SC_0"/>
+		    <pklink appid="8" label="SC_8"/>
+		    <pklink appid="11" label="SC_11"/>
+		</path>
+		<path label="VCID1" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="515" label="ATMS_515"/>
+			<pklink appid="528" label="ATMS_528"/>
+			<pklink appid="530" label="ATMS_530"/>
+			<pklink appid="531" label="ATMS_531"/>
+		</path>
+		<path label="VCID6" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="1289" label="CRIS_1289"/>
+			<pklink appid="1290" label="CRIS_1290"/>
+			<pklink appid="1315" label="CRIS_1315"/>
+			<pklink appid="1316" label="CRIS_1316"/>
+			<pklink appid="1317" label="CRIS_1317"/>
+			<pklink appid="1318" label="CRIS_1318"/>
+			<pklink appid="1319" label="CRIS_1319"/>
+			<pklink appid="1320" label="CRIS_1320"/>
+			<pklink appid="1321" label="CRIS_1321"/>
+			<pklink appid="1322" label="CRIS_1322"/>
+			<pklink appid="1323" label="CRIS_1323"/>
+			<pklink appid="1324" label="CRIS_1324"/>
+			<pklink appid="1325" label="CRIS_1325"/>
+			<pklink appid="1326" label="CRIS_1326"/>
+			<pklink appid="1327" label="CRIS_1327"/>
+			<pklink appid="1328" label="CRIS_1328"/>
+			<pklink appid="1329" label="CRIS_1329"/>
+			<pklink appid="1330" label="CRIS_1330"/>
+			<pklink appid="1331" label="CRIS_1331"/>
+			<pklink appid="1332" label="CRIS_1332"/>
+			<pklink appid="1333" label="CRIS_1333"/>
+			<pklink appid="1334" label="CRIS_1334"/>
+			<pklink appid="1335" label="CRIS_1335"/>
+			<pklink appid="1336" label="CRIS_1336"/>
+			<pklink appid="1337" label="CRIS_1337"/>
+			<pklink appid="1338" label="CRIS_1338"/>
+			<pklink appid="1339" label="CRIS_1339"/>
+			<pklink appid="1340" label="CRIS_1340"/>
+			<pklink appid="1341" label="CRIS_1341"/>
+			<pklink appid="1342" label="CRIS_1342"/>
+			<pklink appid="1343" label="CRIS_1343"/>
+			<pklink appid="1344" label="CRIS_1344"/>
+			<pklink appid="1345" label="CRIS_1345"/>
+			<pklink appid="1346" label="CRIS_1346"/>
+			<pklink appid="1347" label="CRIS_1347"/>
+			<pklink appid="1348" label="CRIS_1348"/>
+			<pklink appid="1349" label="CRIS_1349"/>
+			<pklink appid="1350" label="CRIS_1350"/>
+			<pklink appid="1351" label="CRIS_1351"/>
+			<pklink appid="1352" label="CRIS_1352"/>
+			<pklink appid="1353" label="CRIS_1353"/>
+			<pklink appid="1354" label="CRIS_1354"/>
+			<pklink appid="1355" label="CRIS_1355"/>
+			<pklink appid="1356" label="CRIS_1356"/>
+			<pklink appid="1357" label="CRIS_1357"/>
+			<pklink appid="1358" label="CRIS_1358"/>
+			<pklink appid="1359" label="CRIS_1359"/>
+			<pklink appid="1360" label="CRIS_1360"/>
+			<pklink appid="1361" label="CRIS_1361"/>
+			<pklink appid="1362" label="CRIS_1362"/>
+			<pklink appid="1363" label="CRIS_1363"/>
+			<pklink appid="1364" label="CRIS_1364"/>
+			<pklink appid="1365" label="CRIS_1365"/>
+			<pklink appid="1366" label="CRIS_1366"/>
+			<pklink appid="1367" label="CRIS_1367"/>
+			<pklink appid="1368" label="CRIS_1368"/>
+			<pklink appid="1369" label="CRIS_1369"/>
+			<pklink appid="1370" label="CRIS_1370"/>
+			<pklink appid="1371" label="CRIS_1371"/>
+			<pklink appid="1372" label="CRIS_1372"/>
+			<pklink appid="1373" label="CRIS_1373"/>
+			<pklink appid="1374" label="CRIS_1374"/>
+			<pklink appid="1375" label="CRIS_1375"/>
+			<pklink appid="1376" label="CRIS_1376"/>
+			<pklink appid="1377" label="CRIS_1377"/>
+			<pklink appid="1378" label="CRIS_1378"/>
+			<pklink appid="1379" label="CRIS_1379"/>
+			<pklink appid="1380" label="CRIS_1380"/>
+			<pklink appid="1381" label="CRIS_1381"/>	
+			<pklink appid="1382" label="CRIS_1382"/>
+			<pklink appid="1383" label="CRIS_1383"/>
+			<pklink appid="1384" label="CRIS_1384"/>
+			<pklink appid="1385" label="CRIS_1385"/>
+			<pklink appid="1386" label="CRIS_1386"/>
+			<pklink appid="1387" label="CRIS_1387"/>
+			<pklink appid="1388" label="CRIS_1388"/>
+			<pklink appid="1389" label="CRIS_1389"/>
+			<pklink appid="1390" label="CRIS_1390"/>
+			<pklink appid="1391" label="CRIS_1391"/>
+			<pklink appid="1392" label="CRIS_1392"/>
+			<pklink appid="1393" label="CRIS_1393"/>
+			<pklink appid="1394" label="CRIS_1394"/>
+			<pklink appid="1395" label="CRIS_1395"/>
+		</path>
+		<path label="VCID11" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="560" label="OMPS_560"/>
+			<pklink appid="561" label="OMPS_561"/>
+			<pklink appid="592" label="OMPS_592"/>
+			<pklink appid="593" label="OMPS_593"/>
+			<pklink appid="608" label="OMPS_608"/>
+			<pklink appid="609" label="OMPS_609"/>
+			<pklink appid="616" label="OMPS_616"/>
+			<pklink appid="617" label="OMPS_617"/>
+		</path>
+		<path label="VCID13" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="576" label="OMPS_576"/>
+			<pklink appid="577" label="OMPS_577"/>
+		</path>
+		<path label="VCID16" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="800" label="VIIRS_800"/>
+			<pklink appid="801" label="VIIRS_801"/>
+			<pklink appid="802" label="VIIRS_802"/>
+			<pklink appid="803" label="VIIRS_803"/>
+			<pklink appid="804" label="VIIRS_804"/>
+			<pklink appid="805" label="VIIRS_805"/>
+			<pklink appid="806" label="VIIRS_806"/>
+			<pklink appid="807" label="VIIRS_807"/>
+			<pklink appid="808" label="VIIRS_808"/>
+			<pklink appid="809" label="VIIRS_809"/>
+			<pklink appid="810" label="VIIRS_810"/>
+			<pklink appid="811" label="VIIRS_811"/>
+			<pklink appid="812" label="VIIRS_812"/>
+			<pklink appid="813" label="VIIRS_813"/>
+			<pklink appid="814" label="VIIRS_814"/>
+			<pklink appid="815" label="VIIRS_815"/>
+			<pklink appid="816" label="VIIRS_816"/>
+			<pklink appid="817" label="VIIRS_817"/>
+			<pklink appid="818" label="VIIRS_818"/>
+			<pklink appid="819" label="VIIRS_819"/>
+			<pklink appid="820" label="VIIRS_820"/>
+			<pklink appid="821" label="VIIRS_821"/>
+			<pklink appid="822" label="VIIRS_822"/>
+			<pklink appid="823" label="VIIRS_823"/>
+			<pklink appid="825" label="VIIRS_825"/>
+			<pklink appid="826" label="VIIRS_826"/>
+			<pklink appid="827" label="VIIRS_827"/>
+			<pklink appid="828" label="VIIRS_828"/>
+		</path>
+		<path label="VCID24" spacecraft="spid1" maxRationalPacketSize="65535">
+			<pklink appid="147" label="CERES_147"/>
+			<pklink appid="149" label="CERES_149"/>
+		</path>
+	</ccsds_services>
+	<packets>
+		<!-- Define application packets here -->
+		<!-- SPACECRAFT DIARY -->
+		<packet appid="0" label="SC_0" minSize="7" maxSize="65535"/>
+		<packet appid="8" label="SC_8" minSize="7" maxSize="65535"/>
+		<packet appid="11" label="SC_11" minSize="7" maxSize="65535"/>
+		<!-- ATMS -->
+		<packet appid="515" label="ATMS_515" minSize="7" maxSize="65535"/>
+		<packet appid="528" label="ATMS_528" minSize="7" maxSize="65535"/>
+		<packet appid="530" label="ATMS_530" minSize="7" maxSize="65535"/>
+		<packet appid="531" label="ATMS_531" minSize="7" maxSize="65535"/>
+		<!-- CERES -->
+		<packet appid="147" label="CERES_147" minSize="7" maxSize="65535"/>
+		<packet appid="149" label="CERES_149" minSize="7" maxSize="65535"/>
+		<!-- VIIRS -->
+		<packet appid="800" label="VIIRS_800" minSize="180" maxSize="65535"/>
+		<packet appid="801" label="VIIRS_801" minSize="7" maxSize="65535"/>
+		<packet appid="802" label="VIIRS_802" minSize="7" maxSize="65535"/>
+		<packet appid="803" label="VIIRS_803" minSize="7" maxSize="65535"/>
+		<packet appid="804" label="VIIRS_804" minSize="7" maxSize="65535"/>
+		<packet appid="805" label="VIIRS_805" minSize="7" maxSize="65535"/>
+		<packet appid="806" label="VIIRS_806" minSize="7" maxSize="65535"/>
+		<packet appid="807" label="VIIRS_807" minSize="7" maxSize="65535"/>
+		<packet appid="808" label="VIIRS_808" minSize="7" maxSize="65535"/>
+		<packet appid="809" label="VIIRS_809" minSize="7" maxSize="65535"/>
+		<packet appid="810" label="VIIRS_810" minSize="7" maxSize="65535"/>
+		<packet appid="811" label="VIIRS_811" minSize="7" maxSize="65535"/>
+		<packet appid="812" label="VIIRS_812" minSize="7" maxSize="65535"/>
+		<packet appid="813" label="VIIRS_813" minSize="7" maxSize="65535"/>
+		<packet appid="814" label="VIIRS_814" minSize="7" maxSize="65535"/>
+		<packet appid="815" label="VIIRS_815" minSize="7" maxSize="65535"/>
+		<packet appid="816" label="VIIRS_816" minSize="7" maxSize="65535"/>
+		<packet appid="817" label="VIIRS_817" minSize="7" maxSize="65535"/>
+		<packet appid="818" label="VIIRS_818" minSize="7" maxSize="65535"/>
+		<packet appid="819" label="VIIRS_819" minSize="7" maxSize="65535"/>
+		<packet appid="820" label="VIIRS_820" minSize="7" maxSize="65535"/>
+		<packet appid="821" label="VIIRS_821" minSize="7" maxSize="65535"/>
+		<packet appid="822" label="VIIRS_822" minSize="7" maxSize="65535"/>
+		<packet appid="823" label="VIIRS_823" minSize="7" maxSize="65535"/>
+		<packet appid="825" label="VIIRS_825" minSize="7" maxSize="65535"/>
+		<packet appid="826" label="VIIRS_826" minSize="7" maxSize="65535"/>
+		<packet appid="827" label="VIIRS_827" minSize="7" maxSize="65535"/>
+		<packet appid="828" label="VIIRS_828" minSize="7" maxSize="65535"/>
+		<!-- OMPS -->
+		<packet appid="560" label="OMPS_560" minSize="7" maxSize="65535"/>
+		<packet appid="561" label="OMPS_561" minSize="7" maxSize="65535"/>
+		<packet appid="576" label="OMPS_576" minSize="7" maxSize="65535"/>
+		<packet appid="577" label="OMPS_577" minSize="7" maxSize="65535"/>
+		<packet appid="592" label="OMPS_592" minSize="7" maxSize="65535"/>
+		<packet appid="593" label="OMPS_593" minSize="7" maxSize="65535"/>
+		<packet appid="608" label="OMPS_608" minSize="7" maxSize="65535"/>
+		<packet appid="609" label="OMPS_609" minSize="7" maxSize="65535"/>
+		<packet appid="616" label="OMPS_616" minSize="7" maxSize="65535"/>
+		<packet appid="617" label="OMPS_617" minSize="7" maxSize="65535"/>
+		<!-- CrIS -->
+		<packet appid="1289" label="CRIS_1289" minSize="7" maxSize="65535"/>
+		<packet appid="1290" label="CRIS_1290" minSize="7" maxSize="65535"/>
+		<packet appid="1315" label="CRIS_1315" minSize="7" maxSize="65535"/>
+		<packet appid="1316" label="CRIS_1316" minSize="7" maxSize="65535"/>
+		<packet appid="1317" label="CRIS_1317" minSize="7" maxSize="65535"/>
+		<packet appid="1318" label="CRIS_1318" minSize="7" maxSize="65535"/>
+		<packet appid="1319" label="CRIS_1319" minSize="7" maxSize="65535"/>
+		<packet appid="1320" label="CRIS_1320" minSize="7" maxSize="65535"/>
+		<packet appid="1321" label="CRIS_1321" minSize="7" maxSize="65535"/>
+		<packet appid="1322" label="CRIS_1322" minSize="7" maxSize="65535"/>
+		<packet appid="1323" label="CRIS_1323" minSize="7" maxSize="65535"/>
+		<packet appid="1324" label="CRIS_1324" minSize="7" maxSize="65535"/>
+		<packet appid="1325" label="CRIS_1325" minSize="7" maxSize="65535"/>
+		<packet appid="1326" label="CRIS_1326" minSize="7" maxSize="65535"/>
+		<packet appid="1327" label="CRIS_1327" minSize="7" maxSize="65535"/>
+		<packet appid="1328" label="CRIS_1328" minSize="7" maxSize="65535"/>
+		<packet appid="1329" label="CRIS_1329" minSize="7" maxSize="65535"/>
+		<packet appid="1330" label="CRIS_1330" minSize="7" maxSize="65535"/>
+		<packet appid="1331" label="CRIS_1331" minSize="7" maxSize="65535"/>
+		<packet appid="1332" label="CRIS_1332" minSize="7" maxSize="65535"/>
+		<packet appid="1333" label="CRIS_1333" minSize="7" maxSize="65535"/>
+		<packet appid="1334" label="CRIS_1334" minSize="7" maxSize="65535"/>
+		<packet appid="1335" label="CRIS_1335" minSize="7" maxSize="65535"/>
+		<packet appid="1336" label="CRIS_1336" minSize="7" maxSize="65535"/>
+		<packet appid="1337" label="CRIS_1337" minSize="7" maxSize="65535"/>
+		<packet appid="1338" label="CRIS_1338" minSize="7" maxSize="65535"/>
+		<packet appid="1339" label="CRIS_1339" minSize="7" maxSize="65535"/>
+		<packet appid="1340" label="CRIS_1340" minSize="7" maxSize="65535"/>
+		<packet appid="1341" label="CRIS_1341" minSize="7" maxSize="65535"/>
+		<packet appid="1342" label="CRIS_1342" minSize="7" maxSize="65535"/>
+		<packet appid="1343" label="CRIS_1343" minSize="7" maxSize="65535"/>
+		<packet appid="1344" label="CRIS_1344" minSize="7" maxSize="65535"/>
+		<packet appid="1345" label="CRIS_1345" minSize="7" maxSize="65535"/>
+		<packet appid="1346" label="CRIS_1346" minSize="7" maxSize="65535"/>
+		<packet appid="1347" label="CRIS_1347" minSize="7" maxSize="65535"/>
+		<packet appid="1348" label="CRIS_1348" minSize="7" maxSize="65535"/>
+		<packet appid="1349" label="CRIS_1349" minSize="7" maxSize="65535"/>
+		<packet appid="1350" label="CRIS_1350" minSize="7" maxSize="65535"/>
+		<packet appid="1351" label="CRIS_1351" minSize="7" maxSize="65535"/>
+		<packet appid="1352" label="CRIS_1352" minSize="7" maxSize="65535"/>
+		<packet appid="1353" label="CRIS_1353" minSize="7" maxSize="65535"/>
+		<packet appid="1354" label="CRIS_1354" minSize="7" maxSize="65535"/>
+		<packet appid="1355" label="CRIS_1355" minSize="7" maxSize="65535"/>
+		<packet appid="1356" label="CRIS_1356" minSize="7" maxSize="65535"/>
+		<packet appid="1357" label="CRIS_1357" minSize="7" maxSize="65535"/>
+		<packet appid="1358" label="CRIS_1358" minSize="7" maxSize="65535"/>
+		<packet appid="1359" label="CRIS_1359" minSize="7" maxSize="65535"/>
+		<packet appid="1360" label="CRIS_1360" minSize="7" maxSize="65535"/>
+		<packet appid="1361" label="CRIS_1361" minSize="7" maxSize="65535"/>
+		<packet appid="1362" label="CRIS_1362" minSize="7" maxSize="65535"/>
+		<packet appid="1363" label="CRIS_1363" minSize="7" maxSize="65535"/>
+		<packet appid="1364" label="CRIS_1364" minSize="7" maxSize="65535"/>
+		<packet appid="1365" label="CRIS_1365" minSize="7" maxSize="65535"/>
+		<packet appid="1366" label="CRIS_1366" minSize="7" maxSize="65535"/>
+		<packet appid="1367" label="CRIS_1367" minSize="7" maxSize="65535"/>
+		<packet appid="1368" label="CRIS_1368" minSize="7" maxSize="65535"/>
+		<packet appid="1369" label="CRIS_1369" minSize="7" maxSize="65535"/>
+		<packet appid="1370" label="CRIS_1370" minSize="7" maxSize="65535"/>
+		<packet appid="1371" label="CRIS_1371" minSize="7" maxSize="65535"/>
+		<packet appid="1372" label="CRIS_1372" minSize="7" maxSize="65535"/>
+		<packet appid="1373" label="CRIS_1373" minSize="7" maxSize="65535"/>
+		<packet appid="1374" label="CRIS_1374" minSize="7" maxSize="65535"/>
+		<packet appid="1375" label="CRIS_1375" minSize="7" maxSize="65535"/>
+		<packet appid="1376" label="CRIS_1376" minSize="7" maxSize="65535"/>
+		<packet appid="1377" label="CRIS_1377" minSize="7" maxSize="65535"/>
+		<packet appid="1378" label="CRIS_1378" minSize="7" maxSize="65535"/>
+		<packet appid="1379" label="CRIS_1379" minSize="7" maxSize="65535"/>
+		<packet appid="1380" label="CRIS_1380" minSize="7" maxSize="65535"/>
+		<packet appid="1381" label="CRIS_1381" minSize="7" maxSize="65535"/>
+		<packet appid="1382" label="CRIS_1382" minSize="7" maxSize="65535"/>
+		<packet appid="1383" label="CRIS_1383" minSize="7" maxSize="65535"/>
+		<packet appid="1384" label="CRIS_1384" minSize="7" maxSize="65535"/>
+		<packet appid="1385" label="CRIS_1385" minSize="7" maxSize="65535"/>
+		<packet appid="1386" label="CRIS_1386" minSize="7" maxSize="65535"/>
+		<packet appid="1387" label="CRIS_1387" minSize="7" maxSize="65535"/>
+		<packet appid="1388" label="CRIS_1388" minSize="7" maxSize="65535"/>
+		<packet appid="1389" label="CRIS_1389" minSize="7" maxSize="65535"/>
+		<packet appid="1390" label="CRIS_1390" minSize="7" maxSize="65535"/>
+		<packet appid="1391" label="CRIS_1391" minSize="7" maxSize="65535"/>
+		<packet appid="1392" label="CRIS_1392" minSize="7" maxSize="65535"/>
+		<packet appid="1393" label="CRIS_1393" minSize="7" maxSize="65535"/>
+		<packet appid="1394" label="CRIS_1394" minSize="7" maxSize="65535"/>
+		<packet appid="1395" label="CRIS_1395" minSize="7" maxSize="65535"/>
+	</packets>
+	<output_channels>
+		<!-- Define output channels here (e.g. RDR, socket, etc.) -->
 
-    <spacecrafts>
-        <spacecraft label="spid1" id="159"/>
-    </spacecrafts>
+		<!-- JPSS-1 RDR output channels -->
+		<RDR label="VIIRS_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="ATMS_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="CERES_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="CRIS_SCI_AE_RDR" directory="../data" mission="JPSS-1" />
+		<RDR label="OMPS_NPSCI_AE_RDR" directory="../data/" mission="JPSS-1" />
+		<RDR label="OMPS_TCSCI_AE_RDR" directory="../data/" mission="JPSS-1" />
 
-    <cadu_service>
-        <svlink vcid="0" spid="159" label="VCID0"/>
-        <svlink vcid="1" spid="159" label="VCID1"/>
-        <svlink vcid="6" spid="159" label="VCID6"/>
-        <svlink vcid="11" spid="159" label="VCID11"/>
-        <svlink vcid="13" spid="159" label="VCID13"/>
-        <svlink vcid="16" spid="159" label="VCID16"/>
-    </cadu_service>
+		<!-- 6.0 Patch 1: Simulcast output channel for JPSS-1 is port 3514 now -->
+		<socket label="VIIRS_SIMULCAST" unitType="PACKET" annotation="NONE" host="localhost" port="3514" bufferSize="65536" />
 
-    <ccsds_services>
-        <path label="VCID0" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <pklink appid="0" label="ID_RNSCA_0"/>
-            <pklink appid="1" label="ID_RNSCA_1"/>
-            <pklink appid="2" label="ID_RNSCA_2"/>
-            <pklink appid="3" label="ID_RNSCA_3"/>
-            <pklink appid="4" label="ID_RNSCA_4"/>
-            <pklink appid="5" label="ID_RNSCA_5"/>
-            <pklink appid="6" label="ID_RNSCA_6"/>
-            <pklink appid="7" label="ID_RNSCA_7"/>
-            <pklink appid="8" label="ID_RNSCA_8"/>
-            <pklink appid="9" label="ID_RNSCA_9"/>
-            <pklink appid="10" label="ID_RNSCA_10"/>
-            <pklink appid="11" label="ID_RNSCA_11"/>
-            <pklink appid="12" label="ID_RNSCA_12"/>
-            <pklink appid="13" label="ID_RNSCA_13"/>
-            <pklink appid="14" label="ID_RNSCA_14"/>
-            <pklink appid="15" label="ID_RNSCA_15"/>
-            <pklink appid="16" label="ID_RNSCA_16"/>
-            <pklink appid="17" label="ID_RNSCA_17"/>
-            <pklink appid="18" label="ID_RNSCA_18"/>
-            <pklink appid="19" label="ID_RNSCA_19"/>
-            <pklink appid="20" label="ID_RNSCA_20"/>
-            <pklink appid="21" label="ID_RNSCA_21"/>
-            <pklink appid="22" label="ID_RNSCA_22"/>
-            <pklink appid="23" label="ID_RNSCA_23"/>
-            <pklink appid="24" label="ID_RNSCA_24"/>
-            <pklink appid="25" label="ID_RNSCA_25"/>
-            <pklink appid="26" label="ID_RNSCA_26"/>
-            <pklink appid="27" label="ID_RNSCA_27"/>
-            <pklink appid="28" label="ID_RNSCA_28"/>
-            <pklink appid="29" label="ID_RNSCA_29"/>
-            <pklink appid="30" label="ID_RNSCA_30"/>
-            <pklink appid="31" label="ID_RNSCA_31"/>
-            <pklink appid="32" label="ID_RNSCA_32"/>
-            <pklink appid="33" label="ID_RNSCA_33"/>
-            <pklink appid="34" label="ID_RNSCA_34"/>
-            <pklink appid="35" label="ID_RNSCA_35"/>
-            <pklink appid="36" label="ID_RNSCA_36"/>
-            <pklink appid="37" label="ID_RNSCA_37"/>
-            <pklink appid="38" label="ID_RNSCA_38"/>
-            <pklink appid="39" label="ID_RNSCA_39"/>
-            <pklink appid="40" label="ID_RNSCA_40"/>
-            <pklink appid="41" label="ID_RNSCA_41"/>
-            <pklink appid="42" label="ID_RNSCA_42"/>
-            <pklink appid="43" label="ID_RNSCA_43"/>
-            <pklink appid="44" label="ID_RNSCA_44"/>
-            <pklink appid="45" label="ID_RNSCA_45"/>
-            <pklink appid="46" label="ID_RNSCA_46"/>
-            <pklink appid="47" label="ID_RNSCA_47"/>
-            <pklink appid="48" label="ID_RNSCA_48"/>
-            <pklink appid="49" label="ID_RNSCA_49"/>
-            <pklink appid="50" label="ID_RNSCA_50"/>
-            <pklink appid="51" label="ID_RNSCA_51"/>
-            <pklink appid="52" label="ID_RNSCA_52"/>
-            <pklink appid="53" label="ID_RNSCA_53"/>
-            <pklink appid="54" label="ID_RNSCA_54"/>
-            <pklink appid="55" label="ID_RNSCA_55"/>
-            <pklink appid="56" label="ID_RNSCA_56"/>
-            <pklink appid="57" label="ID_RNSCA_57"/>
-            <pklink appid="58" label="ID_RNSCA_58"/>
-            <pklink appid="59" label="ID_RNSCA_59"/>
-            <pklink appid="60" label="ID_RNSCA_60"/>
-            <pklink appid="61" label="ID_RNSCA_61"/>
-            <pklink appid="62" label="ID_RNSCA_62"/>
-            <pklink appid="63" label="ID_RNSCA_63"/>
-            <pklink appid="64" label="ID_RNSCA_64"/>
-            <pklink appid="65" label="ID_RNSCA_65"/>
-            <pklink appid="66" label="ID_RNSCA_66"/>
-            <pklink appid="67" label="ID_RNSCA_67"/>
-            <pklink appid="68" label="ID_RNSCA_68"/>
-            <pklink appid="69" label="ID_RNSCA_69"/>
-            <pklink appid="70" label="ID_RNSCA_70"/>
-            <pklink appid="71" label="ID_RNSCA_71"/>
-            <pklink appid="72" label="ID_RNSCA_72"/>
-            <pklink appid="73" label="ID_RNSCA_73"/>
-            <pklink appid="74" label="ID_RNSCA_74"/>
-            <pklink appid="75" label="ID_RNSCA_75"/>
-            <pklink appid="76" label="ID_RNSCA_76"/>
-            <pklink appid="77" label="ID_RNSCA_77"/>
-            <pklink appid="78" label="ID_RNSCA_78"/>
-            <pklink appid="79" label="ID_RNSCA_79"/>
-            <pklink appid="80" label="ID_RNSCA_80"/>
-            <pklink appid="81" label="ID_RNSCA_81"/>
-            <pklink appid="82" label="ID_RNSCA_82"/>
-            <pklink appid="83" label="ID_RNSCA_83"/>
-            <pklink appid="84" label="ID_RNSCA_84"/>
-            <pklink appid="85" label="ID_RNSCA_85"/>
-            <pklink appid="86" label="ID_RNSCA_86"/>
-            <pklink appid="87" label="ID_RNSCA_87"/>
-            <pklink appid="88" label="ID_RNSCA_88"/>
-            <pklink appid="89" label="ID_RNSCA_89"/>
-            <pklink appid="90" label="ID_RNSCA_90"/>
-            <pklink appid="91" label="ID_RNSCA_91"/>
-            <pklink appid="92" label="ID_RNSCA_92"/>
-            <pklink appid="93" label="ID_RNSCA_93"/>
-            <pklink appid="94" label="ID_RNSCA_94"/>
-            <pklink appid="95" label="ID_RNSCA_95"/>
-            <pklink appid="96" label="ID_RNSCA_96"/>
-            <pklink appid="97" label="ID_RNSCA_97"/>
-            <pklink appid="98" label="ID_RNSCA_98"/>
-            <pklink appid="99" label="ID_RNSCA_99"/>
-            <pklink appid="100" label="ID_RNSCA_100"/>
-            <pklink appid="101" label="ID_RNSCA_101"/>
-            <pklink appid="102" label="ID_RNSCA_102"/>
-            <pklink appid="103" label="ID_RNSCA_103"/>
-            <pklink appid="104" label="ID_RNSCA_104"/>
-            <pklink appid="105" label="ID_RNSCA_105"/>
-            <pklink appid="106" label="ID_RNSCA_106"/>
-            <pklink appid="107" label="ID_RNSCA_107"/>
-            <pklink appid="108" label="ID_RNSCA_108"/>
-            <pklink appid="109" label="ID_RNSCA_109"/>
-            <pklink appid="110" label="ID_RNSCA_110"/>
-            <pklink appid="111" label="ID_RNSCA_111"/>
-            <pklink appid="112" label="ID_RNSCA_112"/>
-            <pklink appid="113" label="ID_RNSCA_113"/>
-            <pklink appid="114" label="ID_RNSCA_114"/>
-            <pklink appid="115" label="ID_RNSCA_115"/>
-            <pklink appid="116" label="ID_RNSCA_116"/>
-            <pklink appid="117" label="ID_RNSCA_117"/>
-            <pklink appid="118" label="ID_RNSCA_118"/>
-            <pklink appid="119" label="ID_RNSCA_119"/>
-            <pklink appid="120" label="ID_RNSCA_120"/>
-            <pklink appid="121" label="ID_RNSCA_121"/>
-            <pklink appid="122" label="ID_RNSCA_122"/>
-            <pklink appid="123" label="ID_RNSCA_123"/>
-            <pklink appid="124" label="ID_RNSCA_124"/>
-            <pklink appid="125" label="ID_RNSCA_125"/>
-            <pklink appid="126" label="ID_RNSCA_126"/>
-            <pklink appid="127" label="ID_RNSCA_127"/>
-        </path>
-        <path label="VCID1" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <!-- VCID1 placeholder for future use or diagnostics -->
-        </path>
-        <path label="VCID6" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <pklink appid="800" label="ID_VIIRS_800"/>
-            <pklink appid="801" label="ID_VIIRS_801"/>
-            <pklink appid="802" label="ID_VIIRS_802"/>
-            <pklink appid="803" label="ID_VIIRS_803"/>
-            <pklink appid="804" label="ID_VIIRS_804"/>
-            <pklink appid="805" label="ID_VIIRS_805"/>
-            <pklink appid="806" label="ID_VIIRS_806"/>
-            <pklink appid="807" label="ID_VIIRS_807"/>
-            <pklink appid="808" label="ID_VIIRS_808"/>
-            <pklink appid="809" label="ID_VIIRS_809"/>
-            <pklink appid="810" label="ID_VIIRS_810"/>
-            <pklink appid="811" label="ID_VIIRS_811"/>
-            <pklink appid="812" label="ID_VIIRS_812"/>
-            <pklink appid="813" label="ID_VIIRS_813"/>
-            <pklink appid="814" label="ID_VIIRS_814"/>
-            <pklink appid="815" label="ID_VIIRS_815"/>
-            <pklink appid="816" label="ID_VIIRS_816"/>
-            <pklink appid="817" label="ID_VIIRS_817"/>
-            <pklink appid="818" label="ID_VIIRS_818"/>
-            <pklink appid="819" label="ID_VIIRS_819"/>
-            <pklink appid="820" label="ID_VIIRS_820"/>
-            <pklink appid="821" label="ID_VIIRS_821"/>
-            <pklink appid="822" label="ID_VIIRS_822"/>
-            <pklink appid="823" label="ID_VIIRS_823"/>
-        </path>
-        <path label="VCID11" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <pklink appid="515" label="ID_ATMS_515"/>
-            <pklink appid="528" label="ID_ATMS_528"/>
-            <pklink appid="530" label="ID_ATMS_530"/>
-            <pklink appid="531" label="ID_ATMS_531"/>
-        </path>
-        <path label="VCID13" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <pklink appid="1280" label="ID_CRIS_1280"/>
-            <pklink appid="1281" label="ID_CRIS_1281"/>
-            <pklink appid="1282" label="ID_CRIS_1282"/>
-            <pklink appid="1283" label="ID_CRIS_1283"/>
-            <pklink appid="1284" label="ID_CRIS_1284"/>
-            <pklink appid="1285" label="ID_CRIS_1285"/>
-            <pklink appid="1286" label="ID_CRIS_1286"/>
-            <pklink appid="1287" label="ID_CRIS_1287"/>
-            <pklink appid="1288" label="ID_CRIS_1288"/>
-            <pklink appid="1289" label="ID_CRIS_1289"/>
-            <pklink appid="1290" label="ID_CRIS_1290"/>
-            <pklink appid="1291" label="ID_CRIS_1291"/>
-            <pklink appid="1292" label="ID_CRIS_1292"/>
-            <pklink appid="1293" label="ID_CRIS_1293"/>
-            <pklink appid="1294" label="ID_CRIS_1294"/>
-            <pklink appid="1295" label="ID_CRIS_1295"/>
-            <pklink appid="1296" label="ID_CRIS_1296"/>
-            <pklink appid="1297" label="ID_CRIS_1297"/>
-            <pklink appid="1298" label="ID_CRIS_1298"/>
-            <pklink appid="1299" label="ID_CRIS_1299"/>
-            <pklink appid="1300" label="ID_CRIS_1300"/>
-            <pklink appid="1301" label="ID_CRIS_1301"/>
-            <pklink appid="1302" label="ID_CRIS_1302"/>
-            <pklink appid="1303" label="ID_CRIS_1303"/>
-            <pklink appid="1304" label="ID_CRIS_1304"/>
-            <pklink appid="1305" label="ID_CRIS_1305"/>
-            <pklink appid="1306" label="ID_CRIS_1306"/>
-            <pklink appid="1307" label="ID_CRIS_1307"/>
-            <pklink appid="1308" label="ID_CRIS_1308"/>
-            <pklink appid="1309" label="ID_CRIS_1309"/>
-            <pklink appid="1310" label="ID_CRIS_1310"/>
-            <pklink appid="1311" label="ID_CRIS_1311"/>
-            <pklink appid="1312" label="ID_CRIS_1312"/>
-            <pklink appid="1313" label="ID_CRIS_1313"/>
-            <pklink appid="1314" label="ID_CRIS_1314"/>
-            <pklink appid="1315" label="ID_CRIS_1315"/>
-            <pklink appid="1316" label="ID_CRIS_1316"/>
-            <pklink appid="1317" label="ID_CRIS_1317"/>
-            <pklink appid="1318" label="ID_CRIS_1318"/>
-            <pklink appid="1319" label="ID_CRIS_1319"/>
-            <pklink appid="1320" label="ID_CRIS_1320"/>
-            <pklink appid="1321" label="ID_CRIS_1321"/>
-            <pklink appid="1322" label="ID_CRIS_1322"/>
-            <pklink appid="1323" label="ID_CRIS_1323"/>
-            <pklink appid="1324" label="ID_CRIS_1324"/>
-            <pklink appid="1325" label="ID_CRIS_1325"/>
-            <pklink appid="1326" label="ID_CRIS_1326"/>
-            <pklink appid="1327" label="ID_CRIS_1327"/>
-            <pklink appid="1328" label="ID_CRIS_1328"/>
-            <pklink appid="1329" label="ID_CRIS_1329"/>
-            <pklink appid="1330" label="ID_CRIS_1330"/>
-            <pklink appid="1331" label="ID_CRIS_1331"/>
-            <pklink appid="1332" label="ID_CRIS_1332"/>
-            <pklink appid="1333" label="ID_CRIS_1333"/>
-            <pklink appid="1334" label="ID_CRIS_1334"/>
-            <pklink appid="1335" label="ID_CRIS_1335"/>
-            <pklink appid="1336" label="ID_CRIS_1336"/>
-            <pklink appid="1337" label="ID_CRIS_1337"/>
-            <pklink appid="1338" label="ID_CRIS_1338"/>
-            <pklink appid="1339" label="ID_CRIS_1339"/>
-            <pklink appid="1340" label="ID_CRIS_1340"/>
-            <pklink appid="1341" label="ID_CRIS_1341"/>
-            <pklink appid="1342" label="ID_CRIS_1342"/>
-            <pklink appid="1343" label="ID_CRIS_1343"/>
-            <pklink appid="1344" label="ID_CRIS_1344"/>
-            <pklink appid="1345" label="ID_CRIS_1345"/>
-            <pklink appid="1346" label="ID_CRIS_1346"/>
-            <pklink appid="1347" label="ID_CRIS_1347"/>
-            <pklink appid="1348" label="ID_CRIS_1348"/>
-            <pklink appid="1349" label="ID_CRIS_1349"/>
-            <pklink appid="1350" label="ID_CRIS_1350"/>
-            <pklink appid="1351" label="ID_CRIS_1351"/>
-            <pklink appid="1352" label="ID_CRIS_1352"/>
-            <pklink appid="1353" label="ID_CRIS_1353"/>
-            <pklink appid="1354" label="ID_CRIS_1354"/>
-            <pklink appid="1355" label="ID_CRIS_1355"/>
-            <pklink appid="1356" label="ID_CRIS_1356"/>
-            <pklink appid="1357" label="ID_CRIS_1357"/>
-            <pklink appid="1358" label="ID_CRIS_1358"/>
-            <pklink appid="1359" label="ID_CRIS_1359"/>
-            <pklink appid="1360" label="ID_CRIS_1360"/>
-            <pklink appid="1361" label="ID_CRIS_1361"/>
-            <pklink appid="1362" label="ID_CRIS_1362"/>
-            <pklink appid="1363" label="ID_CRIS_1363"/>
-            <pklink appid="1364" label="ID_CRIS_1364"/>
-            <pklink appid="1365" label="ID_CRIS_1365"/>
-            <pklink appid="1366" label="ID_CRIS_1366"/>
-            <pklink appid="1367" label="ID_CRIS_1367"/>
-            <pklink appid="1368" label="ID_CRIS_1368"/>
-            <pklink appid="1369" label="ID_CRIS_1369"/>
-            <pklink appid="1370" label="ID_CRIS_1370"/>
-            <pklink appid="1371" label="ID_CRIS_1371"/>
-            <pklink appid="1372" label="ID_CRIS_1372"/>
-            <pklink appid="1373" label="ID_CRIS_1373"/>
-            <pklink appid="1374" label="ID_CRIS_1374"/>
-            <pklink appid="1375" label="ID_CRIS_1375"/>
-            <pklink appid="1376" label="ID_CRIS_1376"/>
-            <pklink appid="1377" label="ID_CRIS_1377"/>
-            <pklink appid="1378" label="ID_CRIS_1378"/>
-            <pklink appid="1379" label="ID_CRIS_1379"/>
-            <pklink appid="1380" label="ID_CRIS_1380"/>
-            <pklink appid="1381" label="ID_CRIS_1381"/>
-            <pklink appid="1382" label="ID_CRIS_1382"/>
-            <pklink appid="1383" label="ID_CRIS_1383"/>
-            <pklink appid="1384" label="ID_CRIS_1384"/>
-            <pklink appid="1385" label="ID_CRIS_1385"/>
-            <pklink appid="1386" label="ID_CRIS_1386"/>
-            <pklink appid="1387" label="ID_CRIS_1387"/>
-            <pklink appid="1388" label="ID_CRIS_1388"/>
-            <pklink appid="1389" label="ID_CRIS_1389"/>
-            <pklink appid="1390" label="ID_CRIS_1390"/>
-            <pklink appid="1391" label="ID_CRIS_1391"/>
-            <pklink appid="1392" label="ID_CRIS_1392"/>
-            <pklink appid="1393" label="ID_CRIS_1393"/>
-            <pklink appid="1394" label="ID_CRIS_1394"/>
-            <pklink appid="1395" label="ID_CRIS_1395"/>
-            <pklink appid="1396" label="ID_CRIS_1396"/>
-            <pklink appid="1397" label="ID_CRIS_1397"/>
-            <pklink appid="1398" label="ID_CRIS_1398"/>
-            <pklink appid="1399" label="ID_CRIS_1399"/>
-            <pklink appid="1400" label="ID_CRIS_1400"/>
-        </path>
-        <path label="VCID16" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <pklink appid="560" label="ID_OMPS_560"/>
-            <pklink appid="561" label="ID_OMPS_561"/>
-            <pklink appid="562" label="ID_OMPS_562"/>
-            <pklink appid="563" label="ID_OMPS_563"/>
-            <pklink appid="564" label="ID_OMPS_564"/>
-            <pklink appid="565" label="ID_OMPS_565"/>
-            <pklink appid="566" label="ID_OMPS_566"/>
-            <pklink appid="567" label="ID_OMPS_567"/>
-            <pklink appid="568" label="ID_OMPS_568"/>
-            <pklink appid="569" label="ID_OMPS_569"/>
-            <pklink appid="570" label="ID_OMPS_570"/>
-            <pklink appid="571" label="ID_OMPS_571"/>
-            <pklink appid="572" label="ID_OMPS_572"/>
-            <pklink appid="573" label="ID_OMPS_573"/>
-            <pklink appid="574" label="ID_OMPS_574"/>
-            <pklink appid="575" label="ID_OMPS_575"/>
-            <pklink appid="576" label="ID_OMPS_576"/>
-            <pklink appid="577" label="ID_OMPS_577"/>
-            <pklink appid="578" label="ID_OMPS_578"/>
-            <pklink appid="579" label="ID_OMPS_579"/>
-            <pklink appid="580" label="ID_OMPS_580"/>
-            <pklink appid="581" label="ID_OMPS_581"/>
-            <pklink appid="582" label="ID_OMPS_582"/>
-            <pklink appid="583" label="ID_OMPS_583"/>
-            <pklink appid="584" label="ID_OMPS_584"/>
-            <pklink appid="585" label="ID_OMPS_585"/>
-            <pklink appid="586" label="ID_OMPS_586"/>
-            <pklink appid="587" label="ID_OMPS_587"/>
-            <pklink appid="588" label="ID_OMPS_588"/>
-            <pklink appid="589" label="ID_OMPS_589"/>
-            <pklink appid="590" label="ID_OMPS_590"/>
-            <pklink appid="591" label="ID_OMPS_591"/>
-            <pklink appid="592" label="ID_OMPS_592"/>
-            <pklink appid="593" label="ID_OMPS_593"/>
-            <pklink appid="594" label="ID_OMPS_594"/>
-            <pklink appid="595" label="ID_OMPS_595"/>
-            <pklink appid="596" label="ID_OMPS_596"/>
-            <pklink appid="597" label="ID_OMPS_597"/>
-            <pklink appid="598" label="ID_OMPS_598"/>
-            <pklink appid="599" label="ID_OMPS_599"/>
-            <pklink appid="600" label="ID_OMPS_600"/>
-        </path>
-        <path label="VCID0" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">
-            <pklink appid="0" label="ID_RNSCA_0"/>
-            <pklink appid="1" label="ID_RNSCA_1"/>
-            <pklink appid="2" label="ID_RNSCA_2"/>
-            <pklink appid="3" label="ID_RNSCA_3"/>
-            <pklink appid="4" label="ID_RNSCA_4"/>
-            <pklink appid="5" label="ID_RNSCA_5"/>
-            <pklink appid="6" label="ID_RNSCA_6"/>
-            <pklink appid="7" label="ID_RNSCA_7"/>
-            <pklink appid="8" label="ID_RNSCA_8"/>
-            <pklink appid="9" label="ID_RNSCA_9"/>
-            <pklink appid="10" label="ID_RNSCA_10"/>
-            <pklink appid="11" label="ID_RNSCA_11"/>
-            <pklink appid="12" label="ID_RNSCA_12"/>
-            <pklink appid="13" label="ID_RNSCA_13"/>
-            <pklink appid="14" label="ID_RNSCA_14"/>
-            <pklink appid="15" label="ID_RNSCA_15"/>
-            <pklink appid="16" label="ID_RNSCA_16"/>
-            <pklink appid="17" label="ID_RNSCA_17"/>
-            <pklink appid="18" label="ID_RNSCA_18"/>
-            <pklink appid="19" label="ID_RNSCA_19"/>
-            <pklink appid="20" label="ID_RNSCA_20"/>
-            <pklink appid="21" label="ID_RNSCA_21"/>
-            <pklink appid="22" label="ID_RNSCA_22"/>
-            <pklink appid="23" label="ID_RNSCA_23"/>
-            <pklink appid="24" label="ID_RNSCA_24"/>
-            <pklink appid="25" label="ID_RNSCA_25"/>
-            <pklink appid="26" label="ID_RNSCA_26"/>
-            <pklink appid="27" label="ID_RNSCA_27"/>
-            <pklink appid="28" label="ID_RNSCA_28"/>
-            <pklink appid="29" label="ID_RNSCA_29"/>
-            <pklink appid="30" label="ID_RNSCA_30"/>
-            <pklink appid="31" label="ID_RNSCA_31"/>
-            <pklink appid="32" label="ID_RNSCA_32"/>
-            <pklink appid="33" label="ID_RNSCA_33"/>
-            <pklink appid="34" label="ID_RNSCA_34"/>
-            <pklink appid="35" label="ID_RNSCA_35"/>
-            <pklink appid="36" label="ID_RNSCA_36"/>
-            <pklink appid="37" label="ID_RNSCA_37"/>
-            <pklink appid="38" label="ID_RNSCA_38"/>
-            <pklink appid="39" label="ID_RNSCA_39"/>
-            <pklink appid="40" label="ID_RNSCA_40"/>
-            <pklink appid="41" label="ID_RNSCA_41"/>
-            <pklink appid="42" label="ID_RNSCA_42"/>
-            <pklink appid="43" label="ID_RNSCA_43"/>
-            <pklink appid="44" label="ID_RNSCA_44"/>
-            <pklink appid="45" label="ID_RNSCA_45"/>
-            <pklink appid="46" label="ID_RNSCA_46"/>
-            <pklink appid="47" label="ID_RNSCA_47"/>
-            <pklink appid="48" label="ID_RNSCA_48"/>
-            <pklink appid="49" label="ID_RNSCA_49"/>
-            <pklink appid="50" label="ID_RNSCA_50"/>
-            <pklink appid="51" label="ID_RNSCA_51"/>
-            <pklink appid="52" label="ID_RNSCA_52"/>
-            <pklink appid="53" label="ID_RNSCA_53"/>
-            <pklink appid="54" label="ID_RNSCA_54"/>
-            <pklink appid="55" label="ID_RNSCA_55"/>
-            <pklink appid="56" label="ID_RNSCA_56"/>
-            <pklink appid="57" label="ID_RNSCA_57"/>
-            <pklink appid="58" label="ID_RNSCA_58"/>
-            <pklink appid="59" label="ID_RNSCA_59"/>
-            <pklink appid="60" label="ID_RNSCA_60"/>
-            <pklink appid="61" label="ID_RNSCA_61"/>
-            <pklink appid="62" label="ID_RNSCA_62"/>
-            <pklink appid="63" label="ID_RNSCA_63"/>
-            <pklink appid="64" label="ID_RNSCA_64"/>
-            <pklink appid="65" label="ID_RNSCA_65"/>
-            <pklink appid="66" label="ID_RNSCA_66"/>
-            <pklink appid="67" label="ID_RNSCA_67"/>
-            <pklink appid="68" label="ID_RNSCA_68"/>
-            <pklink appid="69" label="ID_RNSCA_69"/>
-            <pklink appid="70" label="ID_RNSCA_70"/>
-            <pklink appid="71" label="ID_RNSCA_71"/>
-            <pklink appid="72" label="ID_RNSCA_72"/>
-            <pklink appid="73" label="ID_RNSCA_73"/>
-            <pklink appid="74" label="ID_RNSCA_74"/>
-            <pklink appid="75" label="ID_RNSCA_75"/>
-            <pklink appid="76" label="ID_RNSCA_76"/>
-            <pklink appid="77" label="ID_RNSCA_77"/>
-            <pklink appid="78" label="ID_RNSCA_78"/>
-            <pklink appid="79" label="ID_RNSCA_79"/>
-            <pklink appid="80" label="ID_RNSCA_80"/>
-            <pklink appid="81" label="ID_RNSCA_81"/>
-            <pklink appid="82" label="ID_RNSCA_82"/>
-            <pklink appid="83" label="ID_RNSCA_83"/>
-            <pklink appid="84" label="ID_RNSCA_84"/>
-            <pklink appid="85" label="ID_RNSCA_85"/>
-            <pklink appid="86" label="ID_RNSCA_86"/>
-            <pklink appid="87" label="ID_RNSCA_87"/>
-            <pklink appid="88" label="ID_RNSCA_88"/>
-            <pklink appid="89" label="ID_RNSCA_89"/>
-            <pklink appid="90" label="ID_RNSCA_90"/>
-            <pklink appid="91" label="ID_RNSCA_91"/>
-            <pklink appid="92" label="ID_RNSCA_92"/>
-            <pklink appid="93" label="ID_RNSCA_93"/>
-            <pklink appid="94" label="ID_RNSCA_94"/>
-            <pklink appid="95" label="ID_RNSCA_95"/>
-            <pklink appid="96" label="ID_RNSCA_96"/>
-            <pklink appid="97" label="ID_RNSCA_97"/>
-            <pklink appid="98" label="ID_RNSCA_98"/>
-            <pklink appid="99" label="ID_RNSCA_99"/>
-            <pklink appid="100" label="ID_RNSCA_100"/>
-            <pklink appid="101" label="ID_RNSCA_101"/>
-            <pklink appid="102" label="ID_RNSCA_102"/>
-            <pklink appid="103" label="ID_RNSCA_103"/>
-            <pklink appid="104" label="ID_RNSCA_104"/>
-            <pklink appid="105" label="ID_RNSCA_105"/>
-            <pklink appid="106" label="ID_RNSCA_106"/>
-            <pklink appid="107" label="ID_RNSCA_107"/>
-            <pklink appid="108" label="ID_RNSCA_108"/>
-            <pklink appid="109" label="ID_RNSCA_109"/>
-            <pklink appid="110" label="ID_RNSCA_110"/>
-            <pklink appid="111" label="ID_RNSCA_111"/>
-            <pklink appid="112" label="ID_RNSCA_112"/>
-            <pklink appid="113" label="ID_RNSCA_113"/>
-            <pklink appid="114" label="ID_RNSCA_114"/>
-            <pklink appid="115" label="ID_RNSCA_115"/>
-            <pklink appid="116" label="ID_RNSCA_116"/>
-            <pklink appid="117" label="ID_RNSCA_117"/>
-            <pklink appid="118" label="ID_RNSCA_118"/>
-            <pklink appid="119" label="ID_RNSCA_119"/>
-            <pklink appid="120" label="ID_RNSCA_120"/>
-            <pklink appid="121" label="ID_RNSCA_121"/>
-            <pklink appid="122" label="ID_RNSCA_122"/>
-            <pklink appid="123" label="ID_RNSCA_123"/>
-            <pklink appid="124" label="ID_RNSCA_124"/>
-            <pklink appid="125" label="ID_RNSCA_125"/>
-            <pklink appid="126" label="ID_RNSCA_126"/>
-            <pklink appid="127" label="ID_RNSCA_127"/>
-        </path>
-    </ccsds_services>
+		<!-- Sorcerers (PDS) for SNPP S/C packets (One APID per PDS) -->
+		<sorcerer label="JPSS1_SC_0" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="0" vcid="0" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_SC_8" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="8" vcid="0" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_SC_11" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="11" vcid="0" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
 
-    <packets>
-        <!-- VIIRS -->
-        <packet appid="800" label="ID_VIIRS_800" minSize="7" maxSize="65535"/>
-        <packet appid="801" label="ID_VIIRS_801" minSize="7" maxSize="65535"/>
-        <packet appid="802" label="ID_VIIRS_802" minSize="7" maxSize="65535"/>
-        <packet appid="803" label="ID_VIIRS_803" minSize="7" maxSize="65535"/>
-        <packet appid="804" label="ID_VIIRS_804" minSize="7" maxSize="65535"/>
-        <packet appid="805" label="ID_VIIRS_805" minSize="7" maxSize="65535"/>
-        <packet appid="806" label="ID_VIIRS_806" minSize="7" maxSize="65535"/>
-        <packet appid="807" label="ID_VIIRS_807" minSize="7" maxSize="65535"/>
-        <packet appid="808" label="ID_VIIRS_808" minSize="7" maxSize="65535"/>
-        <packet appid="809" label="ID_VIIRS_809" minSize="7" maxSize="65535"/>
-        <packet appid="810" label="ID_VIIRS_810" minSize="7" maxSize="65535"/>
-        <packet appid="811" label="ID_VIIRS_811" minSize="7" maxSize="65535"/>
-        <packet appid="812" label="ID_VIIRS_812" minSize="7" maxSize="65535"/>
-        <packet appid="813" label="ID_VIIRS_813" minSize="7" maxSize="65535"/>
-        <packet appid="814" label="ID_VIIRS_814" minSize="7" maxSize="65535"/>
-        <packet appid="815" label="ID_VIIRS_815" minSize="7" maxSize="65535"/>
-        <packet appid="816" label="ID_VIIRS_816" minSize="7" maxSize="65535"/>
-        <packet appid="817" label="ID_VIIRS_817" minSize="7" maxSize="65535"/>
-        <packet appid="818" label="ID_VIIRS_818" minSize="7" maxSize="65535"/>
-        <packet appid="819" label="ID_VIIRS_819" minSize="7" maxSize="65535"/>
-        <packet appid="820" label="ID_VIIRS_820" minSize="7" maxSize="65535"/>
-        <packet appid="821" label="ID_VIIRS_821" minSize="7" maxSize="65535"/>
-        <packet appid="822" label="ID_VIIRS_822" minSize="7" maxSize="65535"/>
-        <packet appid="823" label="ID_VIIRS_823" minSize="7" maxSize="65535"/>
+		<!-- Sorcerers (PDS) for OMPS NP/TC science/diagnostic packets (One APID per PDS) -->
+		<sorcerer label="JPSS1_OMPS_560" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="560" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_OMPS_561" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="561" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_OMPS_576" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="576" vcid="13" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<sorcerer label="JPSS1_OMPS_577" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="577" vcid="13" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
 
-        <!-- ATMS -->
-        <packet appid="515" label="ID_ATMS_515" minSize="7" maxSize="65535"/>
-        <packet appid="528" label="ID_ATMS_528" minSize="7" maxSize="65535"/>
-        <packet appid="530" label="ID_ATMS_530" minSize="7" maxSize="65535"/>
-        <packet appid="531" label="ID_ATMS_531" minSize="7" maxSize="65535"/>
+		<!-- 6.0 Patch 2: Additional sorcerers for OMPS NP/TC science for when instrument is in different configurations -->
+		<!-- OMPS TC Science: Uncompressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_592" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="592" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS NP Science: Uncompressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_593" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="593" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS TC Science: Compressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_608" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="608" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS NP Science: Compressed reduced frame -->
+		<sorcerer label="JPSS1_OMPS_609" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="609" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS TC Science: Compressed -->
+		<sorcerer label="JPSS1_OMPS_616" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="616" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+		<!-- OMPS NP Science: Compressed -->
+		<sorcerer label="JPSS1_OMPS_617" path="../data" spid="159" format="SNPP" productID="singleAPID" tsIndicator="S" >		
+			<appid id="617" vcid="11" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
 
-        <!-- CRIS -->
-        <packet appid="1280" label="ID_CRIS_1280" minSize="7" maxSize="65535"/>
-        <packet appid="1281" label="ID_CRIS_1281" minSize="7" maxSize="65535"/>
-        <packet appid="1282" label="ID_CRIS_1282" minSize="7" maxSize="65535"/>
-        <packet appid="1283" label="ID_CRIS_1283" minSize="7" maxSize="65535"/>
-        <packet appid="1284" label="ID_CRIS_1284" minSize="7" maxSize="65535"/>
-        <packet appid="1285" label="ID_CRIS_1285" minSize="7" maxSize="65535"/>
-        <packet appid="1286" label="ID_CRIS_1286" minSize="7" maxSize="65535"/>
-        <packet appid="1287" label="ID_CRIS_1287" minSize="7" maxSize="65535"/>
-        <packet appid="1288" label="ID_CRIS_1288" minSize="7" maxSize="65535"/>
-        <packet appid="1289" label="ID_CRIS_1289" minSize="7" maxSize="65535"/>
-        <packet appid="1290" label="ID_CRIS_1290" minSize="7" maxSize="65535"/>
-        <packet appid="1291" label="ID_CRIS_1291" minSize="7" maxSize="65535"/>
-        <packet appid="1292" label="ID_CRIS_1292" minSize="7" maxSize="65535"/>
-        <packet appid="1293" label="ID_CRIS_1293" minSize="7" maxSize="65535"/>
-        <packet appid="1294" label="ID_CRIS_1294" minSize="7" maxSize="65535"/>
-        <packet appid="1295" label="ID_CRIS_1295" minSize="7" maxSize="65535"/>
-        <packet appid="1296" label="ID_CRIS_1296" minSize="7" maxSize="65535"/>
-        <packet appid="1297" label="ID_CRIS_1297" minSize="7" maxSize="65535"/>
-        <packet appid="1298" label="ID_CRIS_1298" minSize="7" maxSize="65535"/>
-        <packet appid="1299" label="ID_CRIS_1299" minSize="7" maxSize="65535"/>
-        <packet appid="1300" label="ID_CRIS_1300" minSize="7" maxSize="65535"/>
-        <packet appid="1301" label="ID_CRIS_1301" minSize="7" maxSize="65535"/>
-        <packet appid="1302" label="ID_CRIS_1302" minSize="7" maxSize="65535"/>
-        <packet appid="1303" label="ID_CRIS_1303" minSize="7" maxSize="65535"/>
-        <packet appid="1304" label="ID_CRIS_1304" minSize="7" maxSize="65535"/>
-        <packet appid="1305" label="ID_CRIS_1305" minSize="7" maxSize="65535"/>
-        <packet appid="1306" label="ID_CRIS_1306" minSize="7" maxSize="65535"/>
-        <packet appid="1307" label="ID_CRIS_1307" minSize="7" maxSize="65535"/>
-        <packet appid="1308" label="ID_CRIS_1308" minSize="7" maxSize="65535"/>
-        <packet appid="1309" label="ID_CRIS_1309" minSize="7" maxSize="65535"/>
-        <packet appid="1310" label="ID_CRIS_1310" minSize="7" maxSize="65535"/>
-        <packet appid="1311" label="ID_CRIS_1311" minSize="7" maxSize="65535"/>
-        <packet appid="1312" label="ID_CRIS_1312" minSize="7" maxSize="65535"/>
-        <packet appid="1313" label="ID_CRIS_1313" minSize="7" maxSize="65535"/>
-        <packet appid="1314" label="ID_CRIS_1314" minSize="7" maxSize="65535"/>
-        <packet appid="1315" label="ID_CRIS_1315" minSize="7" maxSize="65535"/>
-        <packet appid="1316" label="ID_CRIS_1316" minSize="7" maxSize="65535"/>
-        <packet appid="1317" label="ID_CRIS_1317" minSize="7" maxSize="65535"/>
-        <packet appid="1318" label="ID_CRIS_1318" minSize="7" maxSize="65535"/>
-        <packet appid="1319" label="ID_CRIS_1319" minSize="7" maxSize="65535"/>
-        <packet appid="1320" label="ID_CRIS_1320" minSize="7" maxSize="65535"/>
-        <packet appid="1321" label="ID_CRIS_1321" minSize="7" maxSize="65535"/>
-        <packet appid="1322" label="ID_CRIS_1322" minSize="7" maxSize="65535"/>
-        <packet appid="1323" label="ID_CRIS_1323" minSize="7" maxSize="65535"/>
-        <packet appid="1324" label="ID_CRIS_1324" minSize="7" maxSize="65535"/>
-        <packet appid="1325" label="ID_CRIS_1325" minSize="7" maxSize="65535"/>
-        <packet appid="1326" label="ID_CRIS_1326" minSize="7" maxSize="65535"/>
-        <packet appid="1327" label="ID_CRIS_1327" minSize="7" maxSize="65535"/>
-        <packet appid="1328" label="ID_CRIS_1328" minSize="7" maxSize="65535"/>
-        <packet appid="1329" label="ID_CRIS_1329" minSize="7" maxSize="65535"/>
-        <packet appid="1330" label="ID_CRIS_1330" minSize="7" maxSize="65535"/>
-        <packet appid="1331" label="ID_CRIS_1331" minSize="7" maxSize="65535"/>
-        <packet appid="1332" label="ID_CRIS_1332" minSize="7" maxSize="65535"/>
-        <packet appid="1333" label="ID_CRIS_1333" minSize="7" maxSize="65535"/>
-        <packet appid="1334" label="ID_CRIS_1334" minSize="7" maxSize="65535"/>
-        <packet appid="1335" label="ID_CRIS_1335" minSize="7" maxSize="65535"/>
-        <packet appid="1336" label="ID_CRIS_1336" minSize="7" maxSize="65535"/>
-        <packet appid="1337" label="ID_CRIS_1337" minSize="7" maxSize="65535"/>
-        <packet appid="1338" label="ID_CRIS_1338" minSize="7" maxSize="65535"/>
-        <packet appid="1339" label="ID_CRIS_1339" minSize="7" maxSize="65535"/>
-        <packet appid="1340" label="ID_CRIS_1340" minSize="7" maxSize="65535"/>
-        <packet appid="1341" label="ID_CRIS_1341" minSize="7" maxSize="65535"/>
-        <packet appid="1342" label="ID_CRIS_1342" minSize="7" maxSize="65535"/>
-        <packet appid="1343" label="ID_CRIS_1343" minSize="7" maxSize="65535"/>
-        <packet appid="1344" label="ID_CRIS_1344" minSize="7" maxSize="65535"/>
-        <packet appid="1345" label="ID_CRIS_1345" minSize="7" maxSize="65535"/>
-        <packet appid="1346" label="ID_CRIS_1346" minSize="7" maxSize="65535"/>
-        <packet appid="1347" label="ID_CRIS_1347" minSize="7" maxSize="65535"/>
-        <packet appid="1348" label="ID_CRIS_1348" minSize="7" maxSize="65535"/>
-        <packet appid="1349" label="ID_CRIS_1349" minSize="7" maxSize="65535"/>
-        <packet appid="1350" label="ID_CRIS_1350" minSize="7" maxSize="65535"/>
-        <packet appid="1351" label="ID_CRIS_1351" minSize="7" maxSize="65535"/>
-        <packet appid="1352" label="ID_CRIS_1352" minSize="7" maxSize="65535"/>
-        <packet appid="1353" label="ID_CRIS_1353" minSize="7" maxSize="65535"/>
-        <packet appid="1354" label="ID_CRIS_1354" minSize="7" maxSize="65535"/>
-        <packet appid="1355" label="ID_CRIS_1355" minSize="7" maxSize="65535"/>
-        <packet appid="1356" label="ID_CRIS_1356" minSize="7" maxSize="65535"/>
-        <packet appid="1357" label="ID_CRIS_1357" minSize="7" maxSize="65535"/>
-        <packet appid="1358" label="ID_CRIS_1358" minSize="7" maxSize="65535"/>
-        <packet appid="1359" label="ID_CRIS_1359" minSize="7" maxSize="65535"/>
-        <packet appid="1360" label="ID_CRIS_1360" minSize="7" maxSize="65535"/>
-        <packet appid="1361" label="ID_CRIS_1361" minSize="7" maxSize="65535"/>
-        <packet appid="1362" label="ID_CRIS_1362" minSize="7" maxSize="65535"/>
-        <packet appid="1363" label="ID_CRIS_1363" minSize="7" maxSize="65535"/>
-        <packet appid="1364" label="ID_CRIS_1364" minSize="7" maxSize="65535"/>
-        <packet appid="1365" label="ID_CRIS_1365" minSize="7" maxSize="65535"/>
-        <packet appid="1366" label="ID_CRIS_1366" minSize="7" maxSize="65535"/>
-        <packet appid="1367" label="ID_CRIS_1367" minSize="7" maxSize="65535"/>
-        <packet appid="1368" label="ID_CRIS_1368" minSize="7" maxSize="65535"/>
-        <packet appid="1369" label="ID_CRIS_1369" minSize="7" maxSize="65535"/>
-        <packet appid="1370" label="ID_CRIS_1370" minSize="7" maxSize="65535"/>
-        <packet appid="1371" label="ID_CRIS_1371" minSize="7" maxSize="65535"/>
-        <packet appid="1372" label="ID_CRIS_1372" minSize="7" maxSize="65535"/>
-        <packet appid="1373" label="ID_CRIS_1373" minSize="7" maxSize="65535"/>
-        <packet appid="1374" label="ID_CRIS_1374" minSize="7" maxSize="65535"/>
-        <packet appid="1375" label="ID_CRIS_1375" minSize="7" maxSize="65535"/>
-        <packet appid="1376" label="ID_CRIS_1376" minSize="7" maxSize="65535"/>
-        <packet appid="1377" label="ID_CRIS_1377" minSize="7" maxSize="65535"/>
-        <packet appid="1378" label="ID_CRIS_1378" minSize="7" maxSize="65535"/>
-        <packet appid="1379" label="ID_CRIS_1379" minSize="7" maxSize="65535"/>
-        <packet appid="1380" label="ID_CRIS_1380" minSize="7" maxSize="65535"/>
-        <packet appid="1381" label="ID_CRIS_1381" minSize="7" maxSize="65535"/>
-        <packet appid="1382" label="ID_CRIS_1382" minSize="7" maxSize="65535"/>
-        <packet appid="1383" label="ID_CRIS_1383" minSize="7" maxSize="65535"/>
-        <packet appid="1384" label="ID_CRIS_1384" minSize="7" maxSize="65535"/>
-        <packet appid="1385" label="ID_CRIS_1385" minSize="7" maxSize="65535"/>
-        <packet appid="1386" label="ID_CRIS_1386" minSize="7" maxSize="65535"/>
-        <packet appid="1387" label="ID_CRIS_1387" minSize="7" maxSize="65535"/>
-        <packet appid="1388" label="ID_CRIS_1388" minSize="7" maxSize="65535"/>
-        <packet appid="1389" label="ID_CRIS_1389" minSize="7" maxSize="65535"/>
-        <packet appid="1390" label="ID_CRIS_1390" minSize="7" maxSize="65535"/>
-        <packet appid="1391" label="ID_CRIS_1391" minSize="7" maxSize="65535"/>
-        <packet appid="1392" label="ID_CRIS_1392" minSize="7" maxSize="65535"/>
-        <packet appid="1393" label="ID_CRIS_1393" minSize="7" maxSize="65535"/>
-        <packet appid="1394" label="ID_CRIS_1394" minSize="7" maxSize="65535"/>
-        <packet appid="1395" label="ID_CRIS_1395" minSize="7" maxSize="65535"/>
-        <packet appid="1396" label="ID_CRIS_1396" minSize="7" maxSize="65535"/>
-        <packet appid="1397" label="ID_CRIS_1397" minSize="7" maxSize="65535"/>
-        <packet appid="1398" label="ID_CRIS_1398" minSize="7" maxSize="65535"/>
-        <packet appid="1399" label="ID_CRIS_1399" minSize="7" maxSize="65535"/>
-        <packet appid="1400" label="ID_CRIS_1400" minSize="7" maxSize="65535"/>
+		<!-- Sorcerer (PDS) for VIIRS Science packets -->
+		<sorcerer label="JPSS1_VIIRS_SCI" path="../data" spid="159" format="SNPP" productID="0826VIIRSSCIENCEA" tsIndicator="S" >		
+			<appid id="800" vcid="16" minLength="180" maxLength="65535" CUCtime="false" />
+			<appid id="801" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="802" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="803" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="804" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="805" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="806" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="807" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="808" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="809" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="810" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="811" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="812" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="813" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="814" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="815" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="816" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="817" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="818" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="819" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="820" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="821" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="822" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="823" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="825" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="826" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="827" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+			<appid id="828" vcid="16" minLength="15" maxLength="65535" CUCtime="false" />
+		</sorcerer>
+	</output_channels>
+	<links>
+		<!-- This is where the data pipeline is defined -->
+		<link from="frame_sync" to="pn"/>
+		<link from="pn" to="reed_solomon"/>
+		<link from="reed_solomon" to="frame_status"/>
+		<link from="frame_status" to="cadu_service"/>
 
-        <!-- OMPS -->
-        <packet appid="560" label="ID_OMPS_560" minSize="7" maxSize="65535"/>
-        <packet appid="561" label="ID_OMPS_561" minSize="7" maxSize="65535"/>
-        <packet appid="562" label="ID_OMPS_562" minSize="7" maxSize="65535"/>
-        <packet appid="563" label="ID_OMPS_563" minSize="7" maxSize="65535"/>
-        <packet appid="564" label="ID_OMPS_564" minSize="7" maxSize="65535"/>
-        <packet appid="565" label="ID_OMPS_565" minSize="7" maxSize="65535"/>
-        <packet appid="566" label="ID_OMPS_566" minSize="7" maxSize="65535"/>
-        <packet appid="567" label="ID_OMPS_567" minSize="7" maxSize="65535"/>
-        <packet appid="568" label="ID_OMPS_568" minSize="7" maxSize="65535"/>
-        <packet appid="569" label="ID_OMPS_569" minSize="7" maxSize="65535"/>
-        <packet appid="570" label="ID_OMPS_570" minSize="7" maxSize="65535"/>
-        <packet appid="571" label="ID_OMPS_571" minSize="7" maxSize="65535"/>
-        <packet appid="572" label="ID_OMPS_572" minSize="7" maxSize="65535"/>
-        <packet appid="573" label="ID_OMPS_573" minSize="7" maxSize="65535"/>
-        <packet appid="574" label="ID_OMPS_574" minSize="7" maxSize="65535"/>
-        <packet appid="575" label="ID_OMPS_575" minSize="7" maxSize="65535"/>
-        <packet appid="576" label="ID_OMPS_576" minSize="7" maxSize="65535"/>
-        <packet appid="577" label="ID_OMPS_577" minSize="7" maxSize="65535"/>
-        <packet appid="578" label="ID_OMPS_578" minSize="7" maxSize="65535"/>
-        <packet appid="579" label="ID_OMPS_579" minSize="7" maxSize="65535"/>
-        <packet appid="580" label="ID_OMPS_580" minSize="7" maxSize="65535"/>
-        <packet appid="581" label="ID_OMPS_581" minSize="7" maxSize="65535"/>
-        <packet appid="582" label="ID_OMPS_582" minSize="7" maxSize="65535"/>
-        <packet appid="583" label="ID_OMPS_583" minSize="7" maxSize="65535"/>
-        <packet appid="584" label="ID_OMPS_584" minSize="7" maxSize="65535"/>
-        <packet appid="585" label="ID_OMPS_585" minSize="7" maxSize="65535"/>
-        <packet appid="586" label="ID_OMPS_586" minSize="7" maxSize="65535"/>
-        <packet appid="587" label="ID_OMPS_587" minSize="7" maxSize="65535"/>
-        <packet appid="588" label="ID_OMPS_588" minSize="7" maxSize="65535"/>
-        <packet appid="589" label="ID_OMPS_589" minSize="7" maxSize="65535"/>
-        <packet appid="590" label="ID_OMPS_590" minSize="7" maxSize="65535"/>
-        <packet appid="591" label="ID_OMPS_591" minSize="7" maxSize="65535"/>
-        <packet appid="592" label="ID_OMPS_592" minSize="7" maxSize="65535"/>
-        <packet appid="593" label="ID_OMPS_593" minSize="7" maxSize="65535"/>
-        <packet appid="594" label="ID_OMPS_594" minSize="7" maxSize="65535"/>
-        <packet appid="595" label="ID_OMPS_595" minSize="7" maxSize="65535"/>
-        <packet appid="596" label="ID_OMPS_596" minSize="7" maxSize="65535"/>
-        <packet appid="597" label="ID_OMPS_597" minSize="7" maxSize="65535"/>
-        <packet appid="598" label="ID_OMPS_598" minSize="7" maxSize="65535"/>
-        <packet appid="599" label="ID_OMPS_599" minSize="7" maxSize="65535"/>
-        <packet appid="600" label="ID_OMPS_600" minSize="7" maxSize="65535"/>
+		<!-- APs to S/C and OMPS PDS outputs -->
+		<link from="SC_0" to="JPSS1_SC_0"/>
+		<link from="SC_8" to="JPSS1_SC_8"/>
+		<link from="SC_11" to="JPSS1_SC_11"/>
 
-        <!-- RNSCA -->
-        <packet appid="0" label="ID_RNSCA_0" minSize="7" maxSize="65535"/>
-        <packet appid="1" label="ID_RNSCA_1" minSize="7" maxSize="65535"/>
-        <packet appid="2" label="ID_RNSCA_2" minSize="7" maxSize="65535"/>
-        <packet appid="3" label="ID_RNSCA_3" minSize="7" maxSize="65535"/>
-        <packet appid="4" label="ID_RNSCA_4" minSize="7" maxSize="65535"/>
-        <packet appid="5" label="ID_RNSCA_5" minSize="7" maxSize="65535"/>
-        <packet appid="6" label="ID_RNSCA_6" minSize="7" maxSize="65535"/>
-        <packet appid="7" label="ID_RNSCA_7" minSize="7" maxSize="65535"/>
-        <packet appid="8" label="ID_RNSCA_8" minSize="7" maxSize="65535"/>
-        <packet appid="9" label="ID_RNSCA_9" minSize="7" maxSize="65535"/>
-        <packet appid="10" label="ID_RNSCA_10" minSize="7" maxSize="65535"/>
-        <packet appid="11" label="ID_RNSCA_11" minSize="7" maxSize="65535"/>
-        <packet appid="12" label="ID_RNSCA_12" minSize="7" maxSize="65535"/>
-        <packet appid="13" label="ID_RNSCA_13" minSize="7" maxSize="65535"/>
-        <packet appid="14" label="ID_RNSCA_14" minSize="7" maxSize="65535"/>
-        <packet appid="15" label="ID_RNSCA_15" minSize="7" maxSize="65535"/>
-        <packet appid="16" label="ID_RNSCA_16" minSize="7" maxSize="65535"/>
-        <packet appid="17" label="ID_RNSCA_17" minSize="7" maxSize="65535"/>
-        <packet appid="18" label="ID_RNSCA_18" minSize="7" maxSize="65535"/>
-        <packet appid="19" label="ID_RNSCA_19" minSize="7" maxSize="65535"/>
-        <packet appid="20" label="ID_RNSCA_20" minSize="7" maxSize="65535"/>
-        <packet appid="21" label="ID_RNSCA_21" minSize="7" maxSize="65535"/>
-        <packet appid="22" label="ID_RNSCA_22" minSize="7" maxSize="65535"/>
-        <packet appid="23" label="ID_RNSCA_23" minSize="7" maxSize="65535"/>
-        <packet appid="24" label="ID_RNSCA_24" minSize="7" maxSize="65535"/>
-        <packet appid="25" label="ID_RNSCA_25" minSize="7" maxSize="65535"/>
-        <packet appid="26" label="ID_RNSCA_26" minSize="7" maxSize="65535"/>
-        <packet appid="27" label="ID_RNSCA_27" minSize="7" maxSize="65535"/>
-        <packet appid="28" label="ID_RNSCA_28" minSize="7" maxSize="65535"/>
-        <packet appid="29" label="ID_RNSCA_29" minSize="7" maxSize="65535"/>
-        <packet appid="30" label="ID_RNSCA_30" minSize="7" maxSize="65535"/>
-        <packet appid="31" label="ID_RNSCA_31" minSize="7" maxSize="65535"/>
-        <packet appid="32" label="ID_RNSCA_32" minSize="7" maxSize="65535"/>
-        <packet appid="33" label="ID_RNSCA_33" minSize="7" maxSize="65535"/>
-        <packet appid="34" label="ID_RNSCA_34" minSize="7" maxSize="65535"/>
-        <packet appid="35" label="ID_RNSCA_35" minSize="7" maxSize="65535"/>
-        <packet appid="36" label="ID_RNSCA_36" minSize="7" maxSize="65535"/>
-        <packet appid="37" label="ID_RNSCA_37" minSize="7" maxSize="65535"/>
-        <packet appid="38" label="ID_RNSCA_38" minSize="7" maxSize="65535"/>
-        <packet appid="39" label="ID_RNSCA_39" minSize="7" maxSize="65535"/>
-        <packet appid="40" label="ID_RNSCA_40" minSize="7" maxSize="65535"/>
-        <packet appid="41" label="ID_RNSCA_41" minSize="7" maxSize="65535"/>
-        <packet appid="42" label="ID_RNSCA_42" minSize="7" maxSize="65535"/>
-        <packet appid="43" label="ID_RNSCA_43" minSize="7" maxSize="65535"/>
-        <packet appid="44" label="ID_RNSCA_44" minSize="7" maxSize="65535"/>
-        <packet appid="45" label="ID_RNSCA_45" minSize="7" maxSize="65535"/>
-        <packet appid="46" label="ID_RNSCA_46" minSize="7" maxSize="65535"/>
-        <packet appid="47" label="ID_RNSCA_47" minSize="7" maxSize="65535"/>
-        <packet appid="48" label="ID_RNSCA_48" minSize="7" maxSize="65535"/>
-        <packet appid="49" label="ID_RNSCA_49" minSize="7" maxSize="65535"/>
-        <packet appid="50" label="ID_RNSCA_50" minSize="7" maxSize="65535"/>
-        <packet appid="51" label="ID_RNSCA_51" minSize="7" maxSize="65535"/>
-        <packet appid="52" label="ID_RNSCA_52" minSize="7" maxSize="65535"/>
-        <packet appid="53" label="ID_RNSCA_53" minSize="7" maxSize="65535"/>
-        <packet appid="54" label="ID_RNSCA_54" minSize="7" maxSize="65535"/>
-        <packet appid="55" label="ID_RNSCA_55" minSize="7" maxSize="65535"/>
-        <packet appid="56" label="ID_RNSCA_56" minSize="7" maxSize="65535"/>
-        <packet appid="57" label="ID_RNSCA_57" minSize="7" maxSize="65535"/>
-        <packet appid="58" label="ID_RNSCA_58" minSize="7" maxSize="65535"/>
-        <packet appid="59" label="ID_RNSCA_59" minSize="7" maxSize="65535"/>
-        <packet appid="60" label="ID_RNSCA_60" minSize="7" maxSize="65535"/>
-        <packet appid="61" label="ID_RNSCA_61" minSize="7" maxSize="65535"/>
-        <packet appid="62" label="ID_RNSCA_62" minSize="7" maxSize="65535"/>
-        <packet appid="63" label="ID_RNSCA_63" minSize="7" maxSize="65535"/>
-        <packet appid="64" label="ID_RNSCA_64" minSize="7" maxSize="65535"/>
-        <packet appid="65" label="ID_RNSCA_65" minSize="7" maxSize="65535"/>
-        <packet appid="66" label="ID_RNSCA_66" minSize="7" maxSize="65535"/>
-        <packet appid="67" label="ID_RNSCA_67" minSize="7" maxSize="65535"/>
-        <packet appid="68" label="ID_RNSCA_68" minSize="7" maxSize="65535"/>
-        <packet appid="69" label="ID_RNSCA_69" minSize="7" maxSize="65535"/>
-        <packet appid="70" label="ID_RNSCA_70" minSize="7" maxSize="65535"/>
-        <packet appid="71" label="ID_RNSCA_71" minSize="7" maxSize="65535"/>
-        <packet appid="72" label="ID_RNSCA_72" minSize="7" maxSize="65535"/>
-        <packet appid="73" label="ID_RNSCA_73" minSize="7" maxSize="65535"/>
-        <packet appid="74" label="ID_RNSCA_74" minSize="7" maxSize="65535"/>
-        <packet appid="75" label="ID_RNSCA_75" minSize="7" maxSize="65535"/>
-        <packet appid="76" label="ID_RNSCA_76" minSize="7" maxSize="65535"/>
-        <packet appid="77" label="ID_RNSCA_77" minSize="7" maxSize="65535"/>
-        <packet appid="78" label="ID_RNSCA_78" minSize="7" maxSize="65535"/>
-        <packet appid="79" label="ID_RNSCA_79" minSize="7" maxSize="65535"/>
-        <packet appid="80" label="ID_RNSCA_80" minSize="7" maxSize="65535"/>
-        <packet appid="81" label="ID_RNSCA_81" minSize="7" maxSize="65535"/>
-        <packet appid="82" label="ID_RNSCA_82" minSize="7" maxSize="65535"/>
-        <packet appid="83" label="ID_RNSCA_83" minSize="7" maxSize="65535"/>
-        <packet appid="84" label="ID_RNSCA_84" minSize="7" maxSize="65535"/>
-        <packet appid="85" label="ID_RNSCA_85" minSize="7" maxSize="65535"/>
-        <packet appid="86" label="ID_RNSCA_86" minSize="7" maxSize="65535"/>
-        <packet appid="87" label="ID_RNSCA_87" minSize="7" maxSize="65535"/>
-        <packet appid="88" label="ID_RNSCA_88" minSize="7" maxSize="65535"/>
-        <packet appid="89" label="ID_RNSCA_89" minSize="7" maxSize="65535"/>
-        <packet appid="90" label="ID_RNSCA_90" minSize="7" maxSize="65535"/>
-        <packet appid="91" label="ID_RNSCA_91" minSize="7" maxSize="65535"/>
-        <packet appid="92" label="ID_RNSCA_92" minSize="7" maxSize="65535"/>
-        <packet appid="93" label="ID_RNSCA_93" minSize="7" maxSize="65535"/>
-        <packet appid="94" label="ID_RNSCA_94" minSize="7" maxSize="65535"/>
-        <packet appid="95" label="ID_RNSCA_95" minSize="7" maxSize="65535"/>
-        <packet appid="96" label="ID_RNSCA_96" minSize="7" maxSize="65535"/>
-        <packet appid="97" label="ID_RNSCA_97" minSize="7" maxSize="65535"/>
-        <packet appid="98" label="ID_RNSCA_98" minSize="7" maxSize="65535"/>
-        <packet appid="99" label="ID_RNSCA_99" minSize="7" maxSize="65535"/>
-        <packet appid="100" label="ID_RNSCA_100" minSize="7" maxSize="65535"/>
-        <packet appid="101" label="ID_RNSCA_101" minSize="7" maxSize="65535"/>
-        <packet appid="102" label="ID_RNSCA_102" minSize="7" maxSize="65535"/>
-        <packet appid="103" label="ID_RNSCA_103" minSize="7" maxSize="65535"/>
-        <packet appid="104" label="ID_RNSCA_104" minSize="7" maxSize="65535"/>
-        <packet appid="105" label="ID_RNSCA_105" minSize="7" maxSize="65535"/>
-        <packet appid="106" label="ID_RNSCA_106" minSize="7" maxSize="65535"/>
-        <packet appid="107" label="ID_RNSCA_107" minSize="7" maxSize="65535"/>
-        <packet appid="108" label="ID_RNSCA_108" minSize="7" maxSize="65535"/>
-        <packet appid="109" label="ID_RNSCA_109" minSize="7" maxSize="65535"/>
-        <packet appid="110" label="ID_RNSCA_110" minSize="7" maxSize="65535"/>
-        <packet appid="111" label="ID_RNSCA_111" minSize="7" maxSize="65535"/>
-        <packet appid="112" label="ID_RNSCA_112" minSize="7" maxSize="65535"/>
-        <packet appid="113" label="ID_RNSCA_113" minSize="7" maxSize="65535"/>
-        <packet appid="114" label="ID_RNSCA_114" minSize="7" maxSize="65535"/>
-        <packet appid="115" label="ID_RNSCA_115" minSize="7" maxSize="65535"/>
-        <packet appid="116" label="ID_RNSCA_116" minSize="7" maxSize="65535"/>
-        <packet appid="117" label="ID_RNSCA_117" minSize="7" maxSize="65535"/>
-        <packet appid="118" label="ID_RNSCA_118" minSize="7" maxSize="65535"/>
-        <packet appid="119" label="ID_RNSCA_119" minSize="7" maxSize="65535"/>
-        <packet appid="120" label="ID_RNSCA_120" minSize="7" maxSize="65535"/>
-        <packet appid="121" label="ID_RNSCA_121" minSize="7" maxSize="65535"/>
-        <packet appid="122" label="ID_RNSCA_122" minSize="7" maxSize="65535"/>
-        <packet appid="123" label="ID_RNSCA_123" minSize="7" maxSize="65535"/>
-        <packet appid="124" label="ID_RNSCA_124" minSize="7" maxSize="65535"/>
-        <packet appid="125" label="ID_RNSCA_125" minSize="7" maxSize="65535"/>
-        <packet appid="126" label="ID_RNSCA_126" minSize="7" maxSize="65535"/>
-        <packet appid="127" label="ID_RNSCA_127" minSize="7" maxSize="65535"/>
-    </packets>
+		<link from="OMPS_560" to="JPSS1_OMPS_560"/>
+		<link from="OMPS_561" to="JPSS1_OMPS_561"/>
+		<link from="OMPS_576" to="JPSS1_OMPS_576"/>
+		<link from="OMPS_577" to="JPSS1_OMPS_577"/>
 
-    <output_channels>
-        <!-- RDR output channels for JPSS-1 -->
-        <RDR label="VIIRS_SCI_AE_RDR" directory="../data" mission="JPSS-1"/>
-        <RDR label="ATMS_SCI_AE_RDR" directory="../data" mission="JPSS-1"/>
-        <RDR label="CRIS_SCI_AE_RDR" directory="../data" mission="JPSS-1"/>
-        <RDR label="OMPS_NPSCI_AE_RDR" directory="../data" mission="JPSS-1"/>
-        <RDR label="RNSCA_AE_RDR" directory="../data" mission="JPSS-1"/>
+		<!-- 6.0 Patch 2: Additional APs to OMPS Science outputs -->
+		<link from="OMPS_592" to="JPSS1_OMPS_592"/>
+		<link from="OMPS_593" to="JPSS1_OMPS_593"/>
+		<link from="OMPS_608" to="JPSS1_OMPS_608"/>
+		<link from="OMPS_609" to="JPSS1_OMPS_609"/>
+		<link from="OMPS_616" to="JPSS1_OMPS_616"/>
+		<link from="OMPS_617" to="JPSS1_OMPS_617"/>
 
-        <!-- Null Output Channel -->
-        <null label="NULL_OUTPUT_CHANNEL"/>
+		<!-- APs to VIIRS Science PDS output -->
+		<link from="VIIRS_800" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_801" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_802" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_803" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_804" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_805" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_806" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_807" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_808" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_809" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_810" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_811" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_812" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_813" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_814" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_815" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_816" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_817" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_818" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_819" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_820" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_821" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_822" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_823" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_825" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_826" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_827" to="JPSS1_VIIRS_SCI"/>
+		<link from="VIIRS_828" to="JPSS1_VIIRS_SCI"/>
 
-    </output_channels>
-    <links>
+		<!-- APs to VIIRS-SCIENCE-RDR output -->
+		<link from="SC_0" to="VIIRS_SCI_AE_RDR"/>
+		<link from="SC_8" to="VIIRS_SCI_AE_RDR"/>
+		<link from="SC_11" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_800" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_801" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_802" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_803" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_804" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_805" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_806" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_807" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_808" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_809" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_810" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_811" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_812" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_813" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_814" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_815" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_816" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_817" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_818" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_819" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_820" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_821" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_822" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_823" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_825" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_826" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_827" to="VIIRS_SCI_AE_RDR"/>
+		<link from="VIIRS_828" to="VIIRS_SCI_AE_RDR"/>
 
-        
-        <link from="ID_VIIRS_800" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_801" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_802" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_803" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_804" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_805" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_806" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_807" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_808" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_809" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_810" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_811" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_812" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_813" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_814" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_815" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_816" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_817" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_818" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_819" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_820" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_821" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_822" to="VIIRS_SCI_AE_RDR"/>
-        <link from="ID_VIIRS_823" to="VIIRS_SCI_AE_RDR"/>
+		<!-- APs to VIIRS Simulcast socket output -->
+		<link from="VIIRS_800" to="VIIRS_SIMULCAST"/>
+		<link from="VIIRS_801" to="VIIRS_SIMULCAST"/>
+		<link from="VIIRS_802" to="VIIRS_SIMULCAST"/>
+		<link from="VIIRS_812" to="VIIRS_SIMULCAST"/>
 
-        
-        <link from="ID_ATMS_515" to="ATMS_SCI_AE_RDR"/>
-        <link from="ID_ATMS_528" to="ATMS_SCI_AE_RDR"/>
-        <link from="ID_ATMS_530" to="ATMS_SCI_AE_RDR"/>
-        <link from="ID_ATMS_531" to="ATMS_SCI_AE_RDR"/>
+		<!-- APs to ATMS-SCIENCE-RDR output -->
+		<link from="SC_0" to="ATMS_SCI_AE_RDR"/>
+		<link from="SC_8" to="ATMS_SCI_AE_RDR"/>
+		<link from="SC_11" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_515" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_528" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_530" to="ATMS_SCI_AE_RDR"/>
+		<link from="ATMS_531" to="ATMS_SCI_AE_RDR"/>
 
-        
-        <link from="ID_CRIS_1280" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1281" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1282" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1283" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1284" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1285" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1286" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1287" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1288" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1289" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1290" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1291" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1292" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1293" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1294" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1295" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1296" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1297" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1298" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1299" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1300" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1301" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1302" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1303" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1304" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1305" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1306" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1307" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1308" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1309" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1310" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1311" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1312" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1313" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1314" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1315" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1316" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1317" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1318" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1319" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1320" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1321" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1322" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1323" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1324" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1325" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1326" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1327" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1328" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1329" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1330" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1331" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1332" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1333" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1334" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1335" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1336" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1337" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1338" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1339" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1340" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1341" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1342" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1343" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1344" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1345" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1346" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1347" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1348" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1349" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1350" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1351" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1352" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1353" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1354" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1355" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1356" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1357" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1358" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1359" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1360" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1361" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1362" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1363" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1364" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1365" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1366" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1367" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1368" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1369" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1370" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1371" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1372" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1373" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1374" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1375" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1376" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1377" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1378" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1379" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1380" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1381" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1382" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1383" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1384" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1385" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1386" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1387" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1388" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1389" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1390" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1391" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1392" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1393" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1394" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1395" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1396" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1397" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1398" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1399" to="CRIS_SCI_AE_RDR"/>
-        <link from="ID_CRIS_1400" to="CRIS_SCI_AE_RDR"/>
+		<!-- APs to CERES-SCIENCE-RDR output -->
+		<link from="SC_0" to="CERES_SCI_AE_RDR"/>
+		<link from="SC_8" to="CERES_SCI_AE_RDR"/>
+		<link from="SC_11" to="CERES_SCI_AE_RDR"/>
+		<link from="CERES_147" to="CERES_SCI_AE_RDR"/>
+		<link from="CERES_149" to="CERES_SCI_AE_RDR"/>
 
-        
-        <link from="ID_OMPS_560" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_561" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_562" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_563" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_564" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_565" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_566" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_567" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_568" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_569" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_570" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_571" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_572" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_573" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_574" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_575" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_576" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_577" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_578" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_579" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_580" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_581" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_582" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_583" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_584" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_585" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_586" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_587" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_588" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_589" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_590" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_591" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_592" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_593" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_594" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_595" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_596" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_597" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_598" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_599" to="OMPS_NPSCI_AE_RDR"/>
-        <link from="ID_OMPS_600" to="OMPS_NPSCI_AE_RDR"/>
+		<!-- APs to OMPS-NPSCIENCE-RDR output -->
+		<link from="SC_0" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="SC_8" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="SC_11" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_561" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_593" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_609" to="OMPS_NPSCI_AE_RDR"/>
+		<link from="OMPS_617" to="OMPS_NPSCI_AE_RDR"/>
 
-        
-        <link from="ID_RNSCA_0" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_1" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_2" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_3" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_4" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_5" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_6" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_7" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_8" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_9" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_10" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_11" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_12" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_13" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_14" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_15" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_16" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_17" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_18" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_19" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_20" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_21" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_22" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_23" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_24" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_25" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_26" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_27" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_28" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_29" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_30" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_31" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_32" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_33" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_34" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_35" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_36" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_37" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_38" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_39" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_40" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_41" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_42" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_43" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_44" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_45" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_46" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_47" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_48" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_49" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_50" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_51" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_52" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_53" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_54" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_55" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_56" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_57" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_58" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_59" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_60" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_61" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_62" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_63" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_64" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_65" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_66" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_67" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_68" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_69" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_70" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_71" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_72" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_73" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_74" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_75" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_76" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_77" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_78" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_79" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_80" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_81" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_82" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_83" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_84" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_85" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_86" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_87" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_88" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_89" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_90" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_91" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_92" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_93" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_94" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_95" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_96" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_97" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_98" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_99" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_100" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_101" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_102" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_103" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_104" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_105" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_106" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_107" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_108" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_109" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_110" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_111" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_112" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_113" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_114" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_115" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_116" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_117" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_118" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_119" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_120" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_121" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_122" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_123" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_124" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_125" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_126" to="RNSCA_AE_RDR"/>
-        <link from="ID_RNSCA_127" to="RNSCA_AE_RDR"/>
-    </links>
+		<!-- APs to OMPS-TCSCIENCE-RDR output -->
+		<link from="SC_0" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="SC_8" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="SC_11" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_560" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_592" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_608" to="OMPS_TCSCI_AE_RDR"/>
+		<link from="OMPS_616" to="OMPS_TCSCI_AE_RDR"/>
+
+		<!-- APs to CRIS-SCIENCE-RDR output -->
+		<link from="SC_0" to="CRIS_SCI_AE_RDR"/>
+		<link from="SC_8" to="CRIS_SCI_AE_RDR"/>
+		<link from="SC_11" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1289" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1290" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1315" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1316" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1317" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1318" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1319" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1320" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1321" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1322" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1323" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1324" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1325" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1326" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1327" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1328" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1329" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1330" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1331" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1332" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1333" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1334" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1335" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1336" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1337" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1338" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1339" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1340" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1341" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1342" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1343" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1344" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1345" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1346" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1347" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1348" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1349" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1350" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1351" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1352" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1353" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1354" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1355" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1356" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1357" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1358" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1359" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1360" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1361" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1362" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1363" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1364" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1365" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1366" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1367" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1368" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1369" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1370" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1371" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1372" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1373" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1374" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1375" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1376" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1377" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1378" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1379" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1380" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1381" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1382" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1383" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1384" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1385" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1386" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1387" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1388" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1389" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1390" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1391" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1392" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1393" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1394" to="CRIS_SCI_AE_RDR"/>
+		<link from="CRIS_1395" to="CRIS_SCI_AE_RDR"/>
+	</links>
 </rt_stps>
