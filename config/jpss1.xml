@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE rt_stps SYSTEM "rt-stps.dtd">
 <rt_stps id="JPSS-1">
-
+    
     <frame_sync frameLength="1024" PnEncoded="true">
         <timestamp epoch="19580101000000"/>
     </frame_sync>
@@ -22,7 +22,7 @@
     </cadu_service>
 
     <ccsds_services>
-        <path label="PATH_VC6" channel_link="VCID6">
+        <path label="PATH_VC6" channel_link="VCID6" spacecraft="spid1">
             <pklink appid="800" label="RVIIRS_800"/>
             <pklink appid="801" label="RVIIRS_801"/>
             <pklink appid="802" label="RVIIRS_802"/>
@@ -48,14 +48,14 @@
             <pklink appid="822" label="RVIIRS_822"/>
             <pklink appid="823" label="RVIIRS_823"/>
         </path>
-        <path label="PATH_VC11" channel_link="VCID11">
+        <path label="PATH_VC11" channel_link="VCID11" spacecraft="spid1">
             <pklink appid="515" label="RATMS_515"/>
             <pklink appid="528" label="RATMS_528"/>
             <pklink appid="529" label="RATMS_529"/>
             <pklink appid="530" label="RATMS_530"/>
             <pklink appid="531" label="RATMS_531"/>
         </path>
-        <path label="PATH_VC13" channel_link="VCID13">
+        <path label="PATH_VC13" channel_link="VCID13" spacecraft="spid1">
             <pklink appid="1280" label="RCRIS_1280"/>
             <pklink appid="1281" label="RCRIS_1281"/>
             <pklink appid="1282" label="RCRIS_1282"/>
@@ -178,7 +178,7 @@
             <pklink appid="1399" label="RCRIS_1399"/>
             <pklink appid="1400" label="RCRIS_1400"/>
         </path>
-        <path label="PATH_VC16" channel_link="VCID16">
+        <path label="PATH_VC16" channel_link="VCID16" spacecraft="spid1">
             <pklink appid="560" label="ROMPS_560"/>
             <pklink appid="561" label="ROMPS_561"/>
             <pklink appid="562" label="ROMPS_562"/>
@@ -221,7 +221,7 @@
             <pklink appid="599" label="ROMPS_599"/>
             <pklink appid="600" label="ROMPS_600"/>
         </path>
-        <path label="PATH_VC0" channel_link="VCID0">
+        <path label="PATH_VC0" channel_link="VCID0" spacecraft="spid1">
             <pklink appid="0" label="RNSCA_0"/>
             <pklink appid="1" label="RNSCA_1"/>
             <pklink appid="2" label="RNSCA_2"/>
@@ -351,7 +351,7 @@
             <pklink appid="126" label="RNSCA_126"/>
             <pklink appid="127" label="RNSCA_127"/>
         </path>
-        <path label="PATH_VC1" channel_link="VCID1">
+        <path label="PATH_VC1" channel_link="VCID1" spacecraft="spid1">
             <pklink appid="0" label="RNSCA_0"/>
             <pklink appid="1" label="RNSCA_1"/>
             <pklink appid="2" label="RNSCA_2"/>
@@ -481,7 +481,7 @@
             <pklink appid="126" label="RNSCA_126"/>
             <pklink appid="127" label="RNSCA_127"/>
         </path>
-        <path label="PATH_VC24" channel_link="VCID24">
+        <path label="PATH_VC24" channel_link="VCID24" spacecraft="spid1">
             <pklink appid="0" label="RNSCA_0"/>
             <pklink appid="1" label="RNSCA_1"/>
             <pklink appid="2" label="RNSCA_2"/>
@@ -612,6 +612,12 @@
             <pklink appid="127" label="RNSCA_127"/>
         </path>
     </ccsds_services>
+
+        <rdr label="RVIIRS"/>
+    <rdr label="RATMS"/>
+    <rdr label="RCRIS"/>
+    <rdr label="ROMPS"/>
+    <rdr label="RNSCA"/>
 
     
     
