@@ -3,58 +3,57 @@ From: rockylinux:8
 
 %labels
     Author LANOT - UNAM
-    Description CSPP SDR v4.1 
-    Version 4.1-LANOT-LIGHT
+    Description CSPP SDR v4.1 (Corregido path de instalación)
+    Version 4.1-LANOT-FINAL
 
 %files
-    # Solo necesitamos el tarball del código
     CSPP_SDR_V4.1.tar.gz /opt/
 
 %post
-    # 1. Dependencias Mínimas
+    # 1. Dependencias
     dnf install -y epel-release
     dnf update -y
     dnf install -y wget tar gzip libgfortran which python3
     dnf clean all
 
-    # 2. Instalación del Motor
+    # 2. Instalación
     cd /opt
-    echo "Instalando Motor CSPP SDR..."
+    echo "--- Descomprimiendo ---"
     tar -zxf CSPP_SDR_V4.1.tar.gz
     rm -f CSPP_SDR_V4.1.tar.gz
     
-    # 3. Crear el enlace simbólico (Esto sigue igual)
-    ln -s CSPP_SDR_V4.1 cspp_sdr
-
-    # 4. PREPARAR PUNTOS DE MONTAJE (CORREGIDO)
-    # === CORRECCIÓN ===
-    # Usamos el nombre REAL del directorio para crear las carpetas, 
-    # evitando el error con el enlace simbólico.
+    # 3. CORRECCIÓN DEL ENLACE SIMBÓLICO
+    # El tarball crea la estructura: /opt/CSPP/SDR_4_1
+    # Nosotros queremos que /opt/cspp_sdr apunte ahí.
     
-    REAL_BASE=/opt/CSPP_SDR_V4.1
+    echo "--- Creando enlace simbólico ---"
+    ln -s CSPP/SDR_4_1 cspp_sdr
     
-    echo "Creando estructura de carpetas en $REAL_BASE..."
-
-    # VIIRS
+    # 4. PREPARAR PUNTOS DE MONTAJE
+    # Usamos la ruta canónica (la real) para evitar problemas
+    REAL_BASE=/opt/CSPP/SDR_4_1
+    
+    echo "--- Creando carpetas de datos en $REAL_BASE ---"
     mkdir -p $REAL_BASE/viirs/luts
     mkdir -p $REAL_BASE/viirs/tiles
-    
-    # Sensores de Sondeo
     mkdir -p $REAL_BASE/atms/luts
     mkdir -p $REAL_BASE/cris/luts
     mkdir -p $REAL_BASE/omps/luts
-    
-    # Datos Auxiliares
     mkdir -p $REAL_BASE/anc
+    
+    # 5. VERIFICACIÓN VISUAL (Para que estés tranquilo)
+    echo "--- VERIFICACIÓN DE INSTALACIÓN ---"
+    ls -l /opt/cspp_sdr
+    echo "Buscando scripts clave..."
+    find /opt/cspp_sdr -name "atms_sdr.sh"
 
 %environment
     export CSPP_SDR_HOME=/opt/cspp_sdr
-    # Agregamos al PATH las rutas de scripts de TODOS los sensores
+    # Rutas corregidas para todos los sensores
     export PATH=$CSPP_SDR_HOME/common:$PATH
     export PATH=$CSPP_SDR_HOME/viirs/sdr/scripts:$PATH
     export PATH=$CSPP_SDR_HOME/atms/sdr/scripts:$PATH
     export PATH=$CSPP_SDR_HOME/cris/sdr/scripts:$PATH
     export PATH=$CSPP_SDR_HOME/omps/sdr/scripts:$PATH
-    
     export LC_ALL=C
 
