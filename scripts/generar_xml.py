@@ -1,38 +1,18 @@
 import os
 
-# --- CONFIGURACIÓN DE RUTAS ---
-# Mapeo de Sensores a sus "Application Entities" (AE) nativos de RT-STPS.
-# Si no enviamos los paquetes de navegación (RNSCA) al VIIRS, el archivo saldrá PURO.
-config = {
-    "VIIRS": {
-        "apids": range(800, 824),
-        "target": "VIIRS_SCI_AE_RDR",
-        "vcid": 6
-    },
-    "ATMS": {
-        "apids": [515] + list(range(528, 532)),
-        "target": "ATMS_SCI_AE_RDR",
-        "vcid": 11
-    },
-    "CRIS": {
-        "apids": range(1280, 1401),
-        "target": "CRIS_SCI_AE_RDR",
-        "vcid": 13
-    },
-    "OMPS": {
-        "apids": range(560, 601),
-        "target": "OMPS_NPSCI_AE_RDR",
-        "vcid": 16
-    }
-    # NOTA: Omitimos RNSCA (VCID 0) explícitamente para evitar que ensucie los archivos de ciencia.
-    # Si RT-STPS genera un RNSCA por defecto, bien. Si no, al menos VIIRS funcionará.
+# Mapeo de APIDs según la lógica de JPSS-1 (NOAA-20)
+# Separamos los APIDs por el sensor al que pertenecen
+config_sensores = {
+    "VIIRS": {"vcid": 6,  "apids": range(800, 824)},
+    "ATMS":  {"vcid": 11, "apids": [515, 528, 530, 531]},
+    "CRIS":  {"vcid": 13, "apids": range(1280, 1401)},
+    "OMPS":  {"vcid": 16, "apids": range(560, 601)},
+    "RNSCA": {"vcid": 0,  "apids": range(0, 128)} # Incluimos navegación por separado
 }
 
-# --- GENERACIÓN DEL XML ---
 xml = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE rt_stps SYSTEM "rt-stps.dtd">
 <rt_stps id="JPSS-1">
-    
     <frame_sync frameLength="1024" PnEncoded="true">
         <timestamp epoch="19580101000000"/>
     </frame_sync>
@@ -55,44 +35,41 @@ xml = """<?xml version="1.0" encoding="UTF-8"?>
     <ccsds_services>
 """
 
-# Generamos los Paths con los atributos OBLIGATORIOS: label, channel_link, spacecraft
-for sensor, data in config.items():
+# Generamos los <path> usando la sintaxis exacta de tu jpss2.xml
+for sensor, data in config_sensores.items():
     vcid = data['vcid']
-    # Aquí estaba el error anterior: faltaba channel_link
-    xml += f'        <path label="PATH_{sensor}" channel_link="VCID{vcid}" spacecraft="spid1">\n'
-    
+    # Usamos los atributos que vimos en tu sed: label, spacecraft, etc.
+    xml += f'        <path label="VCID{vcid}" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">\n'
     for apid in data['apids']:
-        pk_label = f"{sensor}_{apid}"
-        xml += f'            <pklink appid="{apid}" label="{pk_label}"/>\n'
-    
+        xml += f'            <pklink appid="{apid}" label="{sensor}_{apid}"/>\n'
     xml += '        </path>\n'
-
-# Agregamos path para RNSCA (VCID 0) aunque no lo linkeemos, para que no dé error de estructura
-xml += '        <path label="PATH_RNSCA" channel_link="VCID0" spacecraft="spid1">\n'
-xml += '            <pklink appid="0" label="RNSCA_0"/>\n'
-xml += '        </path>\n'
 
 xml += """    </ccsds_services>
 
     <links>
 """
 
-# Conectamos cada paquete a su RDR destino
-for sensor, data in config.items():
-    target_rdr = data['target']
+# Definimos los targets RDR nativos (los que vimos en tus logs anteriores)
+targets = {
+    "VIIRS": "VIIRS_SCI_AE_RDR",
+    "ATMS":  "ATMS_SCI_AE_RDR",
+    "CRIS":  "CRIS_SCI_AE_RDR",
+    "OMPS":  "OMPS_NPSCI_AE_RDR",
+    "RNSCA": "RNSCA_AE_RDR"
+}
+
+for sensor, target in targets.items():
     xml += f'\n        \n'
-    for apid in data['apids']:
-        pk_label = f"{sensor}_{apid}"
-        xml += f'        <link from="{pk_label}" to="{target_rdr}"/>\n'
+    for apid in config_sensores[sensor]['apids']:
+        xml += f'        <link from="{sensor}_{apid}" to="{target}"/>\n'
 
 xml += """    </links>
 </rt_stps>
 """
 
-# Guardar
 output_path = "config/jpss1.xml"
 with open(output_path, "w") as f:
     f.write(xml)
 
-print(f"✅ XML V4 (Definitivo) generado en: {output_path}")
+print(f"✅ XML V5 Generado exitosamente.")
 
