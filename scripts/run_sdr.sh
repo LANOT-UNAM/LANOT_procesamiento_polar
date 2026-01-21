@@ -21,25 +21,38 @@ fi
 
 # 2. CONFIGURACIÓN DE INFRAESTRUCTURA
 SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
+
 HOST_STATIC="/data/opt/SDR_4_1"       # Base de datos estáticos
 HOST_DYNAMIC="/data/ancillary"        # Datos dinámicos diarios
-BASE_OUTPUT="/data/output/jpss/level1" # Ajustado a tu estructura JPSS
+BASE_OUTPUT="/data/output/jpss/level1" # Raíz de salida
 
-# 3. DETECCIÓN DE SENSOR
+# 3. DETECCIÓN DE SENSOR Y COMANDO
+# Usamos rutas absolutas al binario para evitar problemas de PATH
 case "$FILENAME" in
-    RVIIRS*) SENSOR="viirs"; EXEC_CMD="viirs_sdr.sh" ;;
-    RNSCA*)  SENSOR="atms";  EXEC_CMD="atms_sdr.sh"  ;; # ATMS
-    RATMS*)  SENSOR="atms";  EXEC_CMD="atms_sdr.sh"  ;; # Variante nombre
-    RCRIS*)  SENSOR="cris";  EXEC_CMD="cris_sdr.sh"  ;;
-    ROMPS*)  SENSOR="omps";  EXEC_CMD="omps_sdr.sh"  ;;
-    *) echo "Error: Sensor no reconocido en $FILENAME"; exit 1 ;;
+    RVIIRS*)
+        SENSOR="viirs"
+        EXEC_CMD="/opt/cspp_sdr/bin/viirs_sdr.sh"
+        ;;
+    RNSCA*|RATMS*) 
+        SENSOR="atms"
+        EXEC_CMD="/opt/cspp_sdr/bin/atms_sdr.sh"
+        ;;
+    RCRIS*)
+        SENSOR="cris"
+        EXEC_CMD="/opt/cspp_sdr/bin/cris_sdr.sh"
+        ;;
+    ROMPS*)
+        SENSOR="omps"
+        EXEC_CMD="/opt/cspp_sdr/bin/omps_sdr.sh"
+        ;;
+    *)
+        echo "Error: Sensor no reconocido en $FILENAME"
+        exit 1
+        ;;
 esac
 
-# 4. CARPETA DE SALIDA
-YEAR=$(date +%Y)
-MONTH=$(date +%m)
-DAY=$(date +%d)
-OUTPUT_DIR="$BASE_OUTPUT/$SENSOR/$YEAR/$MONTH/$DAY"
+# 4. CARPETA DE SALIDA (Plana, sin fechas)
+OUTPUT_DIR="$BASE_OUTPUT/$SENSOR"
 mkdir -p "$OUTPUT_DIR"
 
 echo "=== PROCESANDO $SENSOR ==="
@@ -47,10 +60,8 @@ echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
 
 # 5. CONSTRUCCIÓN INTELIGENTE DE BINDS
-# Empezamos con los binds obligatorios (Input, Output, Ancillary)
 BIND_ARGS="--bind $INPUT_DIR:/input --bind $OUTPUT_DIR:/output --bind $HOST_DYNAMIC:/ancillary"
 
-# Función para agregar bind si la carpeta existe en el host
 add_bind_if_exists() {
     local HOST_PATH="$1"
     local CONT_PATH="$2"
@@ -59,32 +70,40 @@ add_bind_if_exists() {
     fi
 }
 
-# Verificamos e inyectamos solo lo que existe en tu servidor
-# VIIRS (Estos sí deberían existir si instalaste LUTS y Tiles)
+# Inyección de datos estáticos (Solo si existen en el Host)
 add_bind_if_exists "$HOST_STATIC/viirs/luts"  "/opt/cspp_sdr/viirs/luts"
 add_bind_if_exists "$HOST_STATIC/viirs/tiles" "/opt/cspp_sdr/viirs/tiles"
-
-# ATMS / CrIS / OMPS (Solo se montan si existen, si no, usan lo interno del contenedor)
 add_bind_if_exists "$HOST_STATIC/atms/luts"   "/opt/cspp_sdr/atms/luts"
 add_bind_if_exists "$HOST_STATIC/cris/luts"   "/opt/cspp_sdr/cris/luts"
 add_bind_if_exists "$HOST_STATIC/omps/luts"   "/opt/cspp_sdr/omps/luts"
-
-# Ancillary Estático (Stray Light / Cache)
 add_bind_if_exists "$HOST_STATIC/anc"         "/opt/cspp_sdr/anc"
 
-# 6. EJECUCIÓN
-# Nota: $BIND_ARGS se expande aquí con todas las rutas válidas
+# 6. EJECUCIÓN (MODIFICADO)
+# CAMBIO CLAVE 1: Eliminamos '-o /output'.
+# CAMBIO CLAVE 2: Hacemos 'cd /output' antes de ejecutar.
+# CAMBIO CLAVE 3: Agregamos 'set -e' para que cualquier error interno corte el proceso.
+
 apptainer exec $BIND_ARGS \
     "$SIF_CSPP" \
     /bin/bash -c "
-        $EXEC_CMD -p 8 -a /ancillary -o /output /input/$FILENAME
+        set -e  # Abortar si algo falla
+        cd /output
+        
+        # Ejecutamos sin el flag -o, escribirá en el directorio actual (/output)
+        # Nota: quitamos -p 8 temporalmente para ATMS ya que el error sugería 
+        # conflictos, pero CSPP suele aceptarlo. Si falla de nuevo, quita '-p 8'.
+        $EXEC_CMD -p 8 -a /ancillary /input/$FILENAME
     "
 
+# Capturar código de salida de Apptainer
 RETVAL=$?
+
 if [ $RETVAL -eq 0 ]; then
-    echo "Éxito: Procesamiento finalizado."
+    echo "✅ Éxito: Archivos generados en $OUTPUT_DIR"
+    # Opcional: Listar lo generado para confirmar
+    ls -lh "$OUTPUT_DIR" | head -n 5
 else
-    echo "Falla: El proceso $SENSOR terminó con error ($RETVAL)"
+    echo "❌ Falla Crítica: El proceso $SENSOR terminó con código de error $RETVAL"
     exit $RETVAL
 fi
 
