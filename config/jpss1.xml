@@ -681,6 +681,18 @@
         <packet appid="127" label="ID_RNSCA_127" minSize="7" maxSize="65535"/>
     </packets>
 
+    <output_channels>
+        <!-- RDR output channels for JPSS-1 -->
+        <RDR label="VIIRS_SCI_AE_RDR" directory="../data" mission="JPSS-1"/>
+        <RDR label="ATMS_SCI_AE_RDR" directory="../data" mission="JPSS-1"/>
+        <RDR label="CRIS_SCI_AE_RDR" directory="../data" mission="JPSS-1"/>
+        <RDR label="OMPS_NPSCI_AE_RDR" directory="../data" mission="JPSS-1"/>
+        <RDR label="RNSCA_AE_RDR" directory="../data" mission="JPSS-1"/>
+
+        <!-- Null Output Channel -->
+        <null label="NULL_OUTPUT_CHANNEL"/>
+
+    </output_channels>
     <links>
 
         
