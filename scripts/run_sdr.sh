@@ -1,6 +1,7 @@
 #!/bin/bash
 # ==============================================================================
 # SCRIPT MODULAR: Procesamiento CSPP SDR (Level 0 -> Level 1)
+# Autor: LANOT - UNAM
 # ==============================================================================
 
 # 1. VALIDACIÓN DE ENTRADA
@@ -18,34 +19,40 @@ if [ ! -f "$INPUT_FILE" ]; then
     exit 1
 fi
 
-# 2. CONFIGURACIÓN
+# 2. CONFIGURACIÓN DE INFRAESTRUCTURA
 SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
 HOST_STATIC="/data/opt/SDR_4_1"
 HOST_DYNAMIC="/data/ancillary"
 BASE_OUTPUT="/data/output/jpss/level1"
 
-# 3. DETECCIÓN DE SENSOR Y FLAGS
+# Configuración de Logs
+LOG_DIR="/var/log/lanot/polares/cspp-sdr"
+mkdir -p "$LOG_DIR"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# 3. DETECCIÓN DE SENSOR Y COMANDO (MEJORADA CON WILDCARDS)
+# El orden importa: Buscamos patrones específicos primero.
 case "$FILENAME" in
-    RVIIRS*)
+    *RVIIRS*|*RVIRS*)
         SENSOR="viirs"
         EXEC_CMD="/opt/cspp_sdr/bin/viirs_sdr.sh"
         # VIIRS usa flag explícito -a
         CMD_ARGS="-p 8 -a /ancillary /input/$FILENAME"
         ;;
-    RNSCA*|RATMS*) 
-        SENSOR="atms"
-        EXEC_CMD="/opt/cspp_sdr/bin/atms_sdr.sh"
-        # ATMS NO usa flag -a con ruta, usa variable de entorno
-        CMD_ARGS="-p 8 /input/$FILENAME"
-        ;;
-    RCRIS*)
+    *RCRIS*)
         SENSOR="cris"
         EXEC_CMD="/opt/cspp_sdr/bin/cris_sdr.sh"
         CMD_ARGS="-p 8 /input/$FILENAME"
         ;;
-    ROMPS*)
+    *ROMPS*|*RONPS*)
         SENSOR="omps"
         EXEC_CMD="/opt/cspp_sdr/bin/omps_sdr.sh"
+        CMD_ARGS="-p 8 /input/$FILENAME"
+        ;;
+    *RATMS*|*RNSCA*) 
+        # ATMS al final para evitar falsos positivos con archivos híbridos RNSCA-RVIRS
+        SENSOR="atms"
+        EXEC_CMD="/opt/cspp_sdr/bin/atms_sdr.sh"
         CMD_ARGS="-p 8 /input/$FILENAME"
         ;;
     *)
@@ -54,6 +61,9 @@ case "$FILENAME" in
         ;;
 esac
 
+# Definir nombre del archivo Log específico
+LOG_FILE="${LOG_DIR}/${TIMESTAMP}_${SENSOR}_$(basename "$FILENAME" .h5).log"
+
 # 4. PREPARAR SALIDA
 OUTPUT_DIR="$BASE_OUTPUT/$SENSOR"
 mkdir -p "$OUTPUT_DIR"
@@ -61,8 +71,9 @@ mkdir -p "$OUTPUT_DIR"
 echo "=== PROCESANDO $SENSOR ==="
 echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
+echo "Log:     $LOG_FILE"
 
-# 5. BINDS (Igual que antes)
+# 5. BINDS
 BIND_ARGS="--bind $INPUT_DIR:/input --bind $OUTPUT_DIR:/output --bind $HOST_DYNAMIC:/ancillary"
 
 add_bind_if_exists() {
@@ -76,36 +87,39 @@ add_bind_if_exists "$HOST_STATIC/cris/luts"   "/opt/cspp_sdr/cris/luts"
 add_bind_if_exists "$HOST_STATIC/omps/luts"   "/opt/cspp_sdr/omps/luts"
 add_bind_if_exists "$HOST_STATIC/anc"         "/opt/cspp_sdr/anc"
 
-# 6. EJECUCIÓN (CON LÓGICA DIFERENCIADA)
-# Usamos un archivo temporal para capturar la salida y buscar errores reales
-LOG_TEMP=$(mktemp)
+# 6. EJECUCIÓN CON REDIRECCIÓN A LOG
+# Usamos 'tee' si quieres verlo en pantalla Y guardar, 
+# o solo redirección '>' para guardar en silencio (recomendado para producción).
+# Aquí guardamos en silencio para mantener la terminal limpia.
 
 apptainer exec $BIND_ARGS "$SIF_CSPP" /bin/bash -c "
     set -e
     cd /output
     
-    # Definimos la variable de entorno para TODOS (no hace daño a VIIRS y salva a ATMS)
+    # Variable necesaria para ATMS/CrIS (no afecta a VIIRS)
     export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
     
-    echo 'Iniciando procesamiento...'
+    echo '--- Inicio de Procesamiento: $(date) ---'
+    echo 'Comando: $EXEC_CMD $CMD_ARGS'
+    
     $EXEC_CMD $CMD_ARGS
-" > "$LOG_TEMP" 2>&1
+    
+    echo '--- Fin de Procesamiento: $(date) ---'
+" > "$LOG_FILE" 2>&1
+
+EXIT_CODE=$?
 
 # 7. ANÁLISIS DE RESULTADOS
-EXIT_CODE=$?
-cat "$LOG_TEMP" # Mostramos el log al usuario
-
-# Búsqueda de errores fatales comunes en el log
-if grep -q "Traceback" "$LOG_TEMP" || grep -q "did not complete without errors" "$LOG_TEMP"; then
-    echo "❌ FALLA DETECTADA (Log Analysis)"
-    rm -f "$LOG_TEMP"
+# Buscamos errores fatales en el log generado
+if grep -q "Traceback" "$LOG_FILE" || grep -q "did not complete without errors" "$LOG_FILE"; then
+    echo "❌ FALLA CRÍTICA: Se detectaron errores en el log."
+    echo "Revisa los detalles: tail -n 20 $LOG_FILE"
     exit 1
 elif [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ Éxito: Archivos generados en $OUTPUT_DIR"
-    rm -f "$LOG_TEMP"
+    echo "✅ Éxito: Procesamiento finalizado correctamente."
     exit 0
 else
-    echo "❌ Falla: Código de salida $EXIT_CODE"
-    rm -f "$LOG_TEMP"
+    echo "❌ Falla: El contenedor terminó con código de error $EXIT_CODE"
+    echo "Revisa: $LOG_FILE"
     exit $EXIT_CODE
 fi
