@@ -24,11 +24,21 @@ LOG_DIR="/var/log/lanot/polares/cspp-sdr"
 mkdir -p "$LOG_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-# 3. DETECCIÓN DE SENSOR
+# 3. DETECCIÓN DE SENSOR Y COMANDO
 case "$FILENAME" in
-    *RVIIRS*|*RVIRS*) SENSOR="viirs" ; EXEC_CMD="/opt/cspp_sdr/bin/viirs_sdr.sh" ;;
-    *RNSCA*|*RATMS*)  SENSOR="atms"  ; EXEC_CMD="/opt/cspp_sdr/bin/atms_sdr.sh"  ;;
-    *RCRIS*)          SENSOR="cris"  ; EXEC_CMD="/opt/cspp_sdr/bin/cris_sdr.sh"  ;;
+    *RVIIRS*|*RVIRS*) 
+        SENSOR="viirs" 
+        # Ajustamos a la ruta real que vimos en tu lista de archivos
+        EXEC_CMD="/opt/cspp_sdr/viirs_sdr.sh" 
+        ;;
+    *RNSCA*|*RATMS*)  
+        SENSOR="atms"  
+        EXEC_CMD="/opt/cspp_sdr/atms_sdr.sh"  
+        ;;
+    *RCRIS*)          
+        SENSOR="cris"  
+        EXEC_CMD="/opt/cspp_sdr/cris_sdr.sh"  
+        ;;
     *) echo "Error: Sensor no identificado"; exit 1 ;;
 esac
 
@@ -42,8 +52,6 @@ echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
 
 # 4. EJECUCIÓN CON MONTAJE INTEGRAL
-# Montamos toda la carpeta de datos estáticos sobre /opt/cspp_sdr 
-# para que el software encuentre su DB y archivos 'shipped_luts'.
 apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR":/output \
@@ -52,8 +60,19 @@ apptainer exec \
     "$SIF_CSPP" /bin/bash -c "
         export CSPP_SDR_HOME=/opt/cspp_sdr
         export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
-        # Ejecutamos usando la ruta interna montada
-        $EXEC_CMD -p 8 -a /ancillary -o /output /input/$FILENAME
+        
+        # Agregamos la ruta al PATH por si los scripts llaman a otros binarios
+        export PATH=\$CSPP_SDR_HOME:\$PATH
+        
+        echo '--- Verificando ubicación del script ---'
+        if [ -f \"$EXEC_CMD\" ]; then
+            $EXEC_CMD -p 8 -a /ancillary -o /output /input/$FILENAME
+        else
+            echo 'ERROR: No se encontró el script en $EXEC_CMD'
+            echo 'Contenido de /opt/cspp_sdr:'
+            ls /opt/cspp_sdr
+            exit 1
+        fi
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
