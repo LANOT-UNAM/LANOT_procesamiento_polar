@@ -1,7 +1,6 @@
 import os
 
-# Definición exacta de APIDs por sensor para JPSS-1 (NOAA-20)
-# Solo incluimos los APIDs que sabemos que existen para evitar el error de "Identifier must appear"
+# Configuración de APIDs por sensor para NOAA-20 (JPSS-1)
 config_sensores = {
     "VIIRS": {"vcid": 6,  "apids": range(800, 824)},
     "ATMS":  {"vcid": 11, "apids": [515, 528, 530, 531]},
@@ -35,13 +34,11 @@ xml = """<?xml version="1.0" encoding="UTF-8"?>
     <ccsds_services>
 """
 
-# Definimos los <path>. La clave aquí es que el label del pklink 
-# sea el MISMO que usaremos después en el link 'from'.
+# Definimos los <path> con la sintaxis exacta de RT-STPS 7.0
 for sensor, data in config_sensores.items():
     vcid = data['vcid']
     xml += f'        <path label="VCID{vcid}" spacecraft="spid1" maxRationalPacketSize="65535" OCFpresent="true">\n'
     for apid in data['apids']:
-        # El label debe ser único y coincidir exactamente abajo
         xml += f'            <pklink appid="{apid}" label="ID_{sensor}_{apid}"/>\n'
     xml += '        </path>\n'
 
@@ -50,7 +47,7 @@ xml += """    </ccsds_services>
     <links>
 """
 
-# Targets nativos de RT-STPS
+# Mapeo a los Application Entities (AE) nativos
 targets = {
     "VIIRS": "VIIRS_SCI_AE_RDR",
     "ATMS":  "ATMS_SCI_AE_RDR",
@@ -62,16 +59,20 @@ targets = {
 for sensor, target in targets.items():
     xml += f'\n        \n'
     for apid in config_sensores[sensor]['apids']:
-        # El 'from' debe coincidir con el 'label' del pklink de arriba
         xml += f'        <link from="ID_{sensor}_{apid}" to="{target}"/>\n'
 
 xml += """    </links>
 </rt_stps>
 """
 
+# --- CAMBIO DE RUTA ---
 output_path = "config/jpss1.xml"
+# Aseguramos que la carpeta config exista en el repo antes de escribir
+os.makedirs("config", exist_ok=True)
+
 with open(output_path, "w") as f:
     f.write(xml)
 
-print(f"✅ XML V6 Generado exitosamente.")
+print(f"✅ XML generado en tu repositorio: {output_path}")
+print("   Ahora puedes hacer 'git status' y 'git diff' para revisarlo.")
 
