@@ -618,4 +618,45 @@
 		<link from="CRIS_1394" to="CRIS_SCI_AE_RDR"/>
 		<link from="CRIS_1395" to="CRIS_SCI_AE_RDR"/>
 	</links>
+	<config>
+        <packetMap label="RNSCA-Map">
+            <apid range="0-127"/>
+        </packetMap>
+
+        <packetMap label="VIIRS-Map">
+            <apid range="800-823"/>
+        </packetMap>
+
+        <packetMap label="ATMS-Map">
+            <apid range="528-531"/>
+            <apid value="515"/> </packetMap>
+
+        <packetMap label="CRIS-Map">
+            <apid range="1280-1400"/> </packetMap>
+
+        <packetMap label="OMPS-Map">
+            <apid range="560-600"/> </packetMap>
+    </config>
+    <dest>
+        <file>/output</file> </dest>
+    
+    <rdr label="RVIIRS">
+        <packetMap ref="VIIRS-Map"/>
+    </rdr>
+
+    <rdr label="RATMS">
+        <packetMap ref="ATMS-Map"/>
+    </rdr>
+
+    <rdr label="RCRIS">
+        <packetMap ref="CRIS-Map"/>
+    </rdr>
+
+    <rdr label="RNSCA">
+        <packetMap ref="RNSCA-Map"/>
+    </rdr>
+    
+    <rdr label="ROMPS">
+        <packetMap ref="OMPS-Map"/>
+    </rdr>
 </rt_stps>
