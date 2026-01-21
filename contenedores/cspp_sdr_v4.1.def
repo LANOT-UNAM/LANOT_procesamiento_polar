@@ -3,7 +3,7 @@ From: rockylinux:8
 
 %labels
     Author LANOT - UNAM
-    Description CSPP SDR v4.1 (Motor Ligero - Sin Java - Datos montados externamente)
+    Description CSPP SDR v4.1 
     Version 4.1-LANOT-LIGHT
 
 %files
@@ -48,8 +48,13 @@ From: rockylinux:8
     mkdir -p $REAL_BASE/anc
 
 %environment
-    # Aquí sí usamos el enlace simbólico, porque al ejecutar ya no hay problema
     export CSPP_SDR_HOME=/opt/cspp_sdr
-    export PATH=$CSPP_SDR_HOME/common:$CSPP_SDR_HOME/viirs/sdr/scripts:$PATH
+    # Agregamos al PATH las rutas de scripts de TODOS los sensores
+    export PATH=$CSPP_SDR_HOME/common:$PATH
+    export PATH=$CSPP_SDR_HOME/viirs/sdr/scripts:$PATH
+    export PATH=$CSPP_SDR_HOME/atms/sdr/scripts:$PATH
+    export PATH=$CSPP_SDR_HOME/cris/sdr/scripts:$PATH
+    export PATH=$CSPP_SDR_HOME/omps/sdr/scripts:$PATH
+    
     export LC_ALL=C
 
