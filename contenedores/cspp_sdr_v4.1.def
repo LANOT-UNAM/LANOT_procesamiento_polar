@@ -12,7 +12,12 @@ From: rockylinux:8
 %post
     # 1. Dependencias
     dnf install -y epel-release
+    
+    # En Rocky Linux 8, SZIP está en el repositorio 'powertools'
+    dnf config-manager --set-enabled powertools
+    
     dnf update -y
+    
     # Agregamos findutils y procps-ng por si acaso
     dnf install -y wget tar gzip libgfortran which python3 findutils hdf5
     dnf clean all && \
