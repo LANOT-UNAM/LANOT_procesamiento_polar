@@ -5,12 +5,7 @@
     <frame_sync frameLength="1024" PnEncoded="true">
         <timestamp epoch="19580101000000"/>
     </frame_sync>
-    
     <reed_solomon useStandardCCSDS="true" doBlockCorrection="true" discardUncorrectables="true" interleave="4"/>
-
-    <dest>
-        <file>/output</file>
-    </dest>
 
     <rdr label="RVIIRS">
         <packetMap>
