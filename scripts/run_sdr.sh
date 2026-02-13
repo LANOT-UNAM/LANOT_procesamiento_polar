@@ -58,7 +58,10 @@ apptainer exec \
     --bind "$HOST_DYNAMIC":/ancillary \
     --bind "$HOST_STATIC":/opt/cspp_sdr/anc \
     "$SIF_CSPP" /bin/bash -c "
+        export HDF5_USE_FILE_LOCKING=FALSE
         export CSPP_SDR_HOME=/opt/cspp_sdr
+        # Forzamos la carga del entorno si existe, silenciando errores si no
+        [ -f /opt/cspp_sdr/cspp_sdr_env.sh ] && source /opt/cspp_sdr/cspp_sdr_env.sh        
         export PATH=\$CSPP_SDR_HOME/bin:\$PATH
         export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
         
@@ -76,7 +79,7 @@ EXIT_CODE=$?
 
 # 5. VERIFICACIÓN
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ Éxito: Procesamiento finalizado."
+    echo "✅ Éxito: Procesamiento finalizado. Revisa el log en $LOG_FILE"
 else
     echo "❌ FALLA CRÍTICA: Revisa el log en $LOG_FILE"
     tail -n 15 "$LOG_FILE"
