@@ -67,7 +67,9 @@ apptainer exec \
         
         echo '--- Iniciando CSPP SDR ---'
         # Eliminamos el '-o /output' ya que el resultado cae en el dir actual
-        viirs_sdr.sh -p 8 -a /ancillary /input/$FILENAME
+        #viirs_sdr.sh -p 30 -a -g -m /ancillary /input/$FILENAME
+	source $CSPP_SDR_HOME/cspp_sdr_env.sh
+	viirs_sdr.sh -p 20 -a -g /input/$FILENAME
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
