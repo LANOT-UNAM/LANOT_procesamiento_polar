@@ -14,6 +14,8 @@ INPUT_DIR="/opt/contenedores/cspp_flood_v2_0_test/input"
 OUTPUT_DIR="/opt/contenedores/cspp_flood_v2_0_test/work"
 LOG_FILE="out.log"
 
+cd $OUTPUT_DIR
+
 # 4. EJECUCIÓN CON MONTAJE SELECTIVO
 apptainer exec \
     --bind "$INPUT_DIR":/input \
