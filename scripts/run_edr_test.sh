@@ -29,7 +29,7 @@ apptainer exec \
         
         # 3. Ejecutar usando la variable de entorno para el PATH si es necesario
         cd /output
-        \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood.sh -n 20 /input    
+        cspp_viirs_flood.sh -n 20 /input    
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
