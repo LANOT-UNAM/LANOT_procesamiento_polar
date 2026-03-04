@@ -29,11 +29,6 @@ From: rockylinux:9
     tar -zxf cspp-viirs-flood_2.0.tar.gz
     rm -f cspp-viirs-flood_2.0.tar.gz
     
-    export CSPP_VIIRS_FLOOD_HOME=$PWD/cspp_viirs_flood_detection_2.0
-    REAL_BASE=$CSPP_VIIRS_FLOOD_HOME
-    
-    ls -l $REAL_BASE/cspp_viirs_flood.sh
-    
 %environment
 	export CSPP_VIIRS_FLOOD_HOME=$PWD/cspp_viirs_flood_detection_2.0
 	source $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
