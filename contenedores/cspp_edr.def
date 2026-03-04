@@ -1,0 +1,39 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Author LANOT - UNAM
+    Description CSPP EDR
+    Version 1.0-LANOT
+
+%files
+    cspp-viirs-flood_2.0.tar.gz /opt/
+    
+%post
+    # 1. Dependencias
+    dnf install -y epel-release
+    
+    # En Rocky Linux 9, SZIP está en el repositorio 'powertools'
+    dnf config-manager --set-enabled powertools
+    
+    dnf update -y
+    
+    # Agregamos findutils y procps-ng por si acaso
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+    
+    # 2. Instalación
+    cd /opt
+    echo "--- Descomprimiendo ---"
+    tar -zxf cspp-viirs-flood_2.0.tar.gz
+    rm -f cspp-viirs-flood_2.0.tar.gz
+    
+    export CSPP_VIIRS_FLOOD_HOME=$PWD/cspp_viirs_flood_detection_2.0
+    REAL_BASE=$CSPP_VIIRS_FLOOD_HOME
+    
+    ls -l $REAL_BASE/cspp_viirs_flood.sh
+    
+%environment
+	export CSPP_VIIRS_FLOOD_HOME=$PWD/cspp_viirs_flood_detection_2.0
+	source $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
