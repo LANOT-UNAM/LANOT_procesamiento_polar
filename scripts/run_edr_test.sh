@@ -21,14 +21,15 @@ apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR":/output \
     "$SIF_CSPP" /bin/bash -c "
+		# 1. Definir la ruta CORRECTA donde se instaló en el %post del .def
         export CSPP_VIIRS_FLOOD_HOME=/opt/cspp_viirs_flood_detection_2.0
-        # Forzamos la carga del entorno si existe, silenciando errores si no
-        [ -f $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh ] && source $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh                
         
-        # CRÍTICO: Entrar a la carpeta de salida porque ahí se guardarán los SDR
+        # 2. Cargar el entorno (asegúrate de que el archivo existe en esa ruta)
+        source \$CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh                
+        
+        # 3. Ejecutar usando la variable de entorno para el PATH si es necesario
         cd /output
-                
-	cspp_viirs_flood.sh -n 20 $INPUT_DIR
+        \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood.sh -n 20 /input    
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
