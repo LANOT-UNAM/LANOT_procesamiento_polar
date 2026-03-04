@@ -4,13 +4,13 @@
 # ==============================================================================
 
 # 1. VALIDACIÓN DE ENTRADA
-if [ -z "$1" ]; then
-    echo "Error: Debes indicar el archivo RDR de entrada."
-    exit 1
-fi
+#if [ -z "$1" ]; then
+#    echo "Error: Debes indicar el archivo RDR de entrada."
+#    exit 1
+#fi
 
 SIF_CSPP="/opt/containers/cspp_edr.sif"
-
+INPUT_DIR="/data/output/jpss/level1/viirs/"
 BASE_OUTPUT="/data/output/jpss/level2"
 OUTPUT_DIR="$BASE_OUTPUT/flood"
 SENSOR="viirs"
@@ -28,7 +28,7 @@ apptainer exec \
         # CRÍTICO: Entrar a la carpeta de salida porque ahí se guardarán los SDR
         cd /output
                 
-	cspp_viirs_flood.sh -n 20 $OUTPUT_DIR
+	cspp_viirs_flood.sh -n 20 $INPUT_DIR
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
