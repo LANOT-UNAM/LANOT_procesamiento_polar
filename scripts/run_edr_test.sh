@@ -10,7 +10,7 @@
 #fi
 
 SIF_CSPP="/opt/containers/cspp_edr.sif"
-INPUT_DIR="../input"
+INPUT_DIR="/opt/contenedores/cspp_flood_v2_0_test/input"
 OUTPUT_DIR="/opt/contenedores/cspp_flood_v2_0_test/work"
 LOG_FILE="out.log"
 
