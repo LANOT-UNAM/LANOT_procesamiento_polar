@@ -11,7 +11,7 @@
 
 SIF_CSPP="/opt/containers/cspp_edr.sif"
 INPUT_DIR="/data/output/jpss/level1/viirs"
-BASE_OUTPUT="/data/output/jpss/level2"
+BASE_OUTPUT="/data/output/jpss/level2/viirs"
 OUTPUT_DIR="$BASE_OUTPUT/flood"
 SENSOR="viirs"
 
