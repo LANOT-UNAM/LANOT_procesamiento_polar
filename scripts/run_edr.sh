@@ -13,19 +13,15 @@ SIF_CSPP="/opt/containers/cspp_edr.sif"
 INPUT_DIR="/data/output/jpss/level1/viirs"
 BASE_OUTPUT="/data/output/jpss/level2/viirs"
 OUTPUT_DIR="$BASE_OUTPUT/flood"
-SENSOR="viirs"
+LOG_FILE="out.log"
 
 # 4. EJECUCIÓN CON MONTAJE SELECTIVO
 apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR":/output \
     "$SIF_CSPP" /bin/bash -c "
-        export HDF5_USE_FILE_LOCKING=FALSE
         export CSPP_VIIRS_FLOOD_HOME=/opt/cspp_viirs_flood_detection_2.0
-        # Forzamos la carga del entorno si existe, silenciando errores si no
-        [ -f $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh ] && source $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh                
-        
-        # CRÍTICO: Entrar a la carpeta de salida porque ahí se guardarán los SDR
+        source \$CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh                      
         cd /output
         cspp_viirs_flood.sh -n 20 /input
     " > "$LOG_FILE" 2>&1
