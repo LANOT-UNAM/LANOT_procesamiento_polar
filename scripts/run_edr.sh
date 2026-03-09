@@ -27,8 +27,7 @@ apptainer exec \
         
         # CRÍTICO: Entrar a la carpeta de salida porque ahí se guardarán los SDR
         cd /output
-                
-	cspp_viirs_flood.sh -n 20 $INPUT_DIR
+        cspp_viirs_flood.sh -n 20 /input
     " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
