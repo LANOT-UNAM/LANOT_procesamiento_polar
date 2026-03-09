@@ -10,8 +10,8 @@
 #fi
 
 SIF_CSPP="/opt/containers/cspp_edr.sif"
-INPUT_DIR="/opt/contenedores/cspp_flood_v2_0_test/input"
-OUTPUT_DIR="/opt/contenedores/cspp_flood_v2_0_test/work"
+INPUT_DIR="/data/output/jpss/level1/viirs"
+OUTPUT_DIR="/data/output/jpss/level2/viirs/flood"
 LOG_FILE="out.log"
 
 cd $OUTPUT_DIR
