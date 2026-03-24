@@ -34,6 +34,7 @@ HOST_TMP_DIR="/data/tmp/clavrx_work_${timestamp}"
 
 # Crear directorio de salida dinámico si no existe
 mkdir -p "$OUTPUT_DIR_CLAVRX"
+mkdir -p "$HOST_TMP_DIR"
 
 # 3. EJECUCIÓN CON MONTAJE SELECTIVO
 echo "Iniciando procesamiento CLAVRx para la fecha: $timestamp" > "$LOG_FILE"
