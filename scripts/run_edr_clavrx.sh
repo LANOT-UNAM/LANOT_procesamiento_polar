@@ -53,6 +53,8 @@ apptainer exec \
         export WORKDIR=/opt/proc
         export CSPP_CLAVRX_HOME=/opt/CLAVRx_3_0
         source \$CSPP_CLAVRX_HOME/env/set_clavrx_env.sh
+        # ELIMINAR EL LÍMITE DE LA PILA DE MEMORIA PARA FORTRAN
+        ulimit -s unlimited
         cd \$WORKDIR
         # La bandera -x indica que no se debe des-agregar (aplica solo para VIIRS)
         run_clavrx.sh -x 3 /input \$WORKDIR /output
