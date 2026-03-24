@@ -23,6 +23,7 @@ INPUT_DIR="/data/output/jpss/level1/viirs"
 # Contenedor y recursos estáticos
 SIF_CSPP="/opt/containers/cspp_edr_clavrx.sif" 
 STATIC_DIR="/opt/contenedores/CSPP/CLAVRx_3_0/static"
+DYNAMIC_DIR="/opt/contenedores/CSPP/CLAVRx_3_0/dynamic" 
 
 # Directorios de salida
 BASE_OUTPUT="/data/output/jpss/level2/viirs"
@@ -35,6 +36,7 @@ HOST_TMP_DIR="/data/tmp/clavrx_work_${timestamp}"
 # Crear directorio de salida dinámico si no existe
 mkdir -p "$OUTPUT_DIR_CLAVRX"
 mkdir -p "$HOST_TMP_DIR"
+mkdir -p "$DYNAMIC_DIR"
 
 # 3. EJECUCIÓN CON MONTAJE SELECTIVO
 echo "Iniciando procesamiento CLAVRx para la fecha: $timestamp" > "$LOG_FILE"
@@ -45,6 +47,7 @@ apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR_CLAVRX":/output \
     --bind "$STATIC_DIR":/opt/CLAVRx_3_0/static \
+    --bind "$DYNAMIC_DIR":/opt/CLAVRx_3_0/dynamic \
     --bind "$HOST_TMP_DIR":/opt/proc \
     "$SIF_CSPP" /bin/bash -c "
         export WORKDIR=/opt/proc
