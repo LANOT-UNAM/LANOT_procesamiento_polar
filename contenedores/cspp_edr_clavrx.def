@@ -1,0 +1,45 @@
+Bootstrap: docker
+From: centos:7.2009
+
+%labels
+    Author LANOT - UNAM
+    Description CSPP EDR CLAVRx
+    Version 1.0-LANOT
+
+%files
+    # Ambos archivos requeridos por el manual oficial deben estar en tu directorio
+    CSPP_CLAVRX_V3.0.tar.xz /opt/
+    CSPP_CLAVRX_V3.0_STATIC.tar.xz /opt/
+
+%post
+    # 0. Ajuste de repositorios para CentOS 7 (Vault) dado que llegó a su fin de vida
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*.repo
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*.repo
+
+    # 1. Dependencias
+    # En CentOS 7 se utiliza yum, no dnf
+    yum install -y epel-release
+    yum update -y
+    
+    # Instalación de herramientas base y librerías
+    yum install -y wget tar gzip libgfortran which python3 findutils hdf5 procps-ng bash
+    yum clean all && rm -rf /var/cache/yum
+    
+    # 2. Instalación de CSPP (Según Sección 2.3 del manual)
+    cd /opt 
+    tar xf CSPP_CLAVRX_V3.0.tar.xz
+    tar xf CSPP_CLAVRX_V3.0_STATIC.tar.xz
+    rm -f CSPP_CLAVRX_V3.0.tar.xz CSPP_CLAVRX_V3.0_STATIC.tar.xz
+    
+    # 3. Preparar puntos de montaje requeridos
+    mkdir -p /opt/CLAVRx_3_0/static
+    mkdir -p /opt/proc
+    
+%environment
+    # Definir la ruta base requerida por CSPP CLAVRx
+    export CSPP_CLAVRX_HOME=/opt/CLAVRx_3_0
+    
+%runscript
+    # Cargar las variables de entorno de CLAVRx antes de ejecutar los comandos
+    source /opt/CLAVRx_3_0/env/set_clavrx_env.sh
+    exec "$@"
