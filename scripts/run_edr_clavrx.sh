@@ -29,6 +29,9 @@ BASE_OUTPUT="/data/output/jpss/level2/viirs"
 OUTPUT_DIR_CLAVRX="$BASE_OUTPUT/clouds"
 LOG_FILE="clavrx_out_${timestamp}.log"
 
+# NUEVO: Directorio temporal de trabajo en el host (con permisos de escritura)
+HOST_TMP_DIR="/data/tmp/clavrx_work_${timestamp}"
+
 # Crear directorio de salida dinámico si no existe
 mkdir -p "$OUTPUT_DIR_CLAVRX"
 
@@ -41,6 +44,7 @@ apptainer exec \
     --bind "$INPUT_DIR":/input \
     --bind "$OUTPUT_DIR_CLAVRX":/output \
     --bind "$STATIC_DIR":/opt/CLAVRx_3_0/static \
+    --bind "$HOST_TMP_DIR":/opt/proc \
     "$SIF_CSPP" /bin/bash -c "
         export WORKDIR=/opt/proc
         export CSPP_CLAVRX_HOME=/opt/CLAVRx_3_0
