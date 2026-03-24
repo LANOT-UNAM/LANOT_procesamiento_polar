@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: centos:7.2009
+From: centos:7
 
 %labels
     Author LANOT - UNAM
