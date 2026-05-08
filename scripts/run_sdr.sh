@@ -61,11 +61,6 @@ BIND_OPTS=(
     --bind "$HOST_STATIC_BASE/$SENSOR/luts:/opt/SDR_4_1/$SENSOR/luts"
 )
 
-# VIIRS requiere además la carpeta de tiles
-if [ "$SENSOR" == "viirs" ]; then
-    BIND_OPTS+=(--bind "$HOST_STATIC_BASE/viirs/tiles:/opt/SDR_4_1/viirs/tiles")
-fi
-
 # 5. EJECUCIÓN DEL CONTENEDOR
 apptainer exec "${BIND_OPTS[@]}" "$SIF_CSPP" /bin/bash -c "
     export HDF5_USE_FILE_LOCKING=FALSE
