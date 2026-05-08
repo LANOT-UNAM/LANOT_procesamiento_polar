@@ -47,7 +47,7 @@ apptainer exec \
         # SINTAXIS SEGÚN HELP: viirs_atmos.sh [opciones] <directorio_entrada>
         # -W: Directorio de trabajo
         # -p: Número de procesadores (ajustar según capacidad del servidor)
-        viirs_atmos.sh -W /work -p 20 /input_sdr
+        viirs_atmos.sh -v -l -W /work -p 20 /input_sdr
     " >> "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
