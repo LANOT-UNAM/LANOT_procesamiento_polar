@@ -75,7 +75,7 @@ apptainer exec "${BIND_OPTS[@]}" "$SIF_CSPP" /bin/bash -c "
     
     echo '--- Iniciando CSPP SDR para $SENSOR ---'
     # Usamos la variable \$EXEC_CMD para invocar el script correcto dinámicamente
-    \$EXEC_CMD -p 20 -a -g /input/$FILENAME
+    $EXEC_CMD -p 20 -a -g /input/$FILENAME
 " > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
