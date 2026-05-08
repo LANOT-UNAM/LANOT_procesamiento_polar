@@ -1,0 +1,52 @@
+cspp_atmos_edr_v1.0.def
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP Enterprise Atmosphere EDR v1.0 (Rocky 9)
+    Version 1.0-LANOT
+
+%files
+    # Software base (binarios)
+    CSPP_VIIRS_ATMOS_V1.0.tar.gz /opt/
+
+%post
+    # 1. Repositorios y Dependencias en Rocky 9
+    dnf install -y epel-release
+    # En Rocky 9, PowerTools se habilita a través del repositorio CRB
+    dnf config-manager --set-enabled crb
+    dnf update -y
+    
+    # Instalación de dependencias
+    # Agregamos libgfortran y dependencias de procesamiento de datos
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de los Binarios
+    cd /opt
+    echo "--- Descomprimiendo Binarios Atmos EDR v1.0 ---"
+    tar -zxf CSPP_VIIRS_ATMOS_V1.0.tar.gz
+    rm -f CSPP_VIIRS_ATMOS_V1.0.tar.gz
+    
+    # 3. Enlace Simbólico Dinámico
+    # El tarball suele crear una carpeta como 'Atmos_EDR_1_0'
+    FOLDER_NAME=$(ls -d */ | grep -i "Atmos" | sed 's/\///')
+    if [ -n "$FOLDER_NAME" ]; then
+        ln -s "$FOLDER_NAME" cspp_atmos_edr
+    else
+        echo "ERROR: No se pudo localizar la carpeta de instalación."
+        exit 1
+    fi
+
+    # 4. Preparación de Puntos de Montaje para Lustre
+    # Creamos las carpetas donde vincularemos los datos estáticos y ancilares
+    mkdir -p /opt/cspp_atmos_edr/static
+    mkdir -p /opt/cspp_atmos_edr/ancillary
+
+%environment
+    export CSPP_VIIRS_ATMOS_HOME=/opt/cspp_atmos_edr
+    # Carga automática del entorno oficial al entrar al contenedor
+    if [ -f /opt/cspp_atmos_edr/cspp_atmos_env.sh ]; then
+        source /opt/cspp_atmos_edr/cspp_atmos_env.sh
+    fi
