@@ -28,24 +28,24 @@ From: rockylinux:9
     tar -zxf CSPP_VIIRS_ATMOS_V1.0.tar.gz
     rm -f CSPP_VIIRS_ATMOS_V1.0.tar.gz
     
-    # 3. Enlace Simbólico Dinámico
-    # El tarball suele crear una carpeta como 'Atmos_EDR_1_0'
-    FOLDER_NAME=$(ls -d */ | grep -i "Atmos" | sed 's/\///')
-    if [ -n "$FOLDER_NAME" ]; then
-        ln -s "$FOLDER_NAME" cspp_atmos_edr
+    # 3. Enlace Simbólico CORRECTO
+    # El manual indica que la carpeta se llama 'noaa_edr'
+    if [ -d "noaa_edr" ]; then
+        ln -s noaa_edr cspp_atmos_edr
     else
-        echo "ERROR: No se pudo localizar la carpeta de instalación."
+        echo "ERROR: No se encontró la carpeta noaa_edr"
         exit 1
     fi
 
-    # 4. Preparación de Puntos de Montaje para Lustre
-    # Creamos las carpetas donde vincularemos los datos estáticos y ancilares
-    mkdir -p /opt/cspp_atmos_edr/static
-    mkdir -p /opt/cspp_atmos_edr/ancillary
+    # 4. Preparación de Puntos de Montaje
+    # IMPORTANTE: No usar mkdir -p aquí para no crear carpetas reales
+    # sobre el enlace simbólico.
+    mkdir -p /opt/noaa_edr/static
+    mkdir -p /opt/noaa_edr/ancillary
 
 %environment
     export CSPP_VIIRS_ATMOS_HOME=/opt/cspp_atmos_edr
-    # Carga automática del entorno oficial al entrar al contenedor
+    # El archivo de entorno se llama cspp_atmos_env.sh
     if [ -f /opt/cspp_atmos_edr/cspp_atmos_env.sh ]; then
         source /opt/cspp_atmos_edr/cspp_atmos_env.sh
     fi
