@@ -42,16 +42,16 @@ apptainer exec \
         export CSPP_VIIRS_ATMOS_HOME=/opt/cspp_atmos_edr
         export HDF5_USE_FILE_LOCKING=FALSE
         
+        # Nombre correcto según manual: cspp_atmos_env.sh
         source \$CSPP_VIIRS_ATMOS_HOME/cspp_atmos_env.sh
         
-        # Entramos a trabajar al directorio temporal
         cd /work
+        echo '--- Iniciando algoritmos Atmos Enterprise ---'
         
-        echo '--- Iniciando algoritmos Enterprise ---'
-        # -s: Directorio SDR | -a: Directorio Ancilares | -w: Directorio Trabajo
+        # Ejecutamos el wrapper que procesa todo
         viirs_atmos_all.bash -s /input_sdr -a /opt/cspp_atmos_edr/ancillary -w /work
         
-        # Los productos finales se mueven a la salida permanente
+        # Los archivos generados en /work se mueven a la salida de Lustre
         mv *.h5 /output_edr/
     " >> "$LOG_FILE" 2>&1
 

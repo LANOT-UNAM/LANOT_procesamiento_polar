@@ -11,37 +11,38 @@ From: rockylinux:9
     CSPP_VIIRS_ATMOS_V1.0.tar.gz /opt/
 
 %post
-    # 1. Repositorios y Dependencias en Rocky 9
+    # 1. Repositorios y Dependencias
     dnf install -y epel-release
-    # En Rocky 9, PowerTools se habilita a través del repositorio CRB
     dnf config-manager --set-enabled crb
     dnf update -y
-    
-    # Instalación de dependencias
-    # Agregamos libgfortran y dependencias de procesamiento de datos
     dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
     dnf clean all && rm -rf /var/cache/dnf
 
     # 2. Instalación de los Binarios
     cd /opt
-    echo "--- Descomprimiendo Binarios Atmos EDR v1.0 ---"
+    echo "--- Descomprimiendo Binarios ---"
     tar -zxf CSPP_VIIRS_ATMOS_V1.0.tar.gz
-    rm -f CSPP_VIIRS_ATMOS_V1.0.tar.gz
     
-    # 3. Enlace Simbólico CORRECTO
-    # El manual indica que la carpeta se llama 'noaa_edr'
-    if [ -d "noaa_edr" ]; then
-        ln -s noaa_edr cspp_atmos_edr
+    # Buscamos la carpeta recién creada (excluyendo archivos y el propio tar)
+    # Esto detectará si se llama 'noaa_edr', 'CSPP_ATMOS_1_0' o cualquier variante.
+    REAL_FOLDER=$(find . -maxdepth 1 -type d -not -path "." -not -path "./cspp_atmos_edr" | head -n 1 | sed 's|./||')
+    
+    if [ -n "$REAL_FOLDER" ]; then
+        echo "Carpeta detectada: $REAL_FOLDER"
+        ln -s "$REAL_FOLDER" cspp_atmos_edr
     else
-        echo "ERROR: No se encontró la carpeta noaa_edr"
+        echo "ERROR: No se pudo detectar la carpeta de instalación tras el tar."
+        ls -la
         exit 1
     fi
 
-    # 4. Preparación de Puntos de Montaje
-    # IMPORTANTE: No usar mkdir -p aquí para no crear carpetas reales
-    # sobre el enlace simbólico.
-    mkdir -p /opt/noaa_edr/static
-    mkdir -p /opt/noaa_edr/ancillary
+    # Limpieza del tar
+    rm -f CSPP_VIIRS_ATMOS_V1.0.tar.gz
+
+    # 3. Preparación de Puntos de Montaje
+    # Los creamos dentro de la carpeta real para que persistan a través del link
+    mkdir -p "/opt/$REAL_FOLDER/static"
+    mkdir -p "/opt/$REAL_FOLDER/ancillary"
 
 %environment
     export CSPP_VIIRS_ATMOS_HOME=/opt/cspp_atmos_edr
