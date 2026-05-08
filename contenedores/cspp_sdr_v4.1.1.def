@@ -1,0 +1,56 @@
+Bootstrap: docker
+From: rockylinux:8
+
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP SDR v4.1.1 (Solo Binarios)
+    Version 4.1.1-LANOT
+
+%files
+    # Solo requerimos el software base y el parche
+    CSPP_SDR_V4.1.tar.gz /opt/
+    CSPP_SDR_V4.1.1_patch.tar.gz /opt/
+
+%post
+    # 1. Dependencias del OS
+    dnf install -y epel-release
+    dnf config-manager --set-enabled powertools
+    dnf update -y
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de Código Base
+    cd /opt
+    echo "--- Descomprimiendo Base v4.1 ---"
+    tar -zxf CSPP_SDR_V4.1.tar.gz
+    rm -f CSPP_SDR_V4.1.tar.gz
+    
+    # 3. Aplicación del Parche v4.1.1
+    echo "--- Aplicando Parche v4.1.1 ---"
+    # El manual indica que el parche se extrae un nivel arriba de SDR_4_1
+    tar -zxf CSPP_SDR_V4.1.1_patch.tar.gz
+    rm -f CSPP_SDR_V4.1.1_patch.tar.gz
+    
+    # 4. Enlace Simbólico
+    if [ -d "SDR_4_1" ]; then
+        echo "Directorio SDR_4_1 actualizado con parche 4.1.1."
+        ln -s SDR_4_1 cspp_sdr
+    else
+        echo "ERROR CRÍTICO: No se encontró la carpeta SDR_4_1."
+        exit 1
+    fi
+    
+    # 5. Preparar Puntos de Montaje Externos
+    # Creamos las carpetas vacías para montar los volúmenes externos de Lustre
+    REAL_BASE=/opt/SDR_4_1
+    mkdir -p $REAL_BASE/anc
+    
+    for inst in viirs atms cris omps; do
+        mkdir -p $REAL_BASE/$inst/luts
+        mkdir -p $REAL_BASE/$inst/tiles
+    done
+
+%environment
+    export CSPP_SDR_HOME=/opt/cspp_sdr
+    # Inicializa las variables oficiales de CSPP al usar el contenedor
+    source /opt/cspp_sdr/cspp_sdr_env.sh

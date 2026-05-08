@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# SCRIPT MODULAR: Procesamiento CSPP SDR (Instalación Completa vía Bind)
+# SCRIPT MODULAR: Procesamiento CSPP SDR v4.1.1 (LUTs Externos)
 # ==============================================================================
 
 # 1. VALIDACIÓN DE ENTRADA
@@ -14,8 +14,9 @@ INPUT_DIR=$(dirname "$INPUT_FILE")
 FILENAME=$(basename "$INPUT_FILE")
 
 # 2. CONFIGURACIÓN DE RUTAS
-SIF_CSPP="/opt/containers/cspp_sdr_v4.1.sif"
-HOST_STATIC="/data/opt/SDR_4_1/anc" 
+# Ajusta "HOST_STATIC_BASE" a la ruta real de tu Lustre donde descomprimiste los datos estáticos
+SIF_CSPP="/opt/containers/cspp_sdr_v4.1.1.sif"
+HOST_STATIC_BASE="/data/opt/SDR_4_1"  
 HOST_DYNAMIC="/data/ancillary"        # Datos TLE/GFS diarios
 BASE_OUTPUT="/data/output/jpss/level1"
 
@@ -28,18 +29,17 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 case "$FILENAME" in
     *RVIIRS*|*RVIRS*) 
         SENSOR="viirs" 
-        # Ajustamos a la ruta real que vimos en tu lista de archivos
-        EXEC_CMD="/opt/cspp_sdr/viirs_sdr.sh" 
+        EXEC_CMD="viirs_sdr.sh" 
         ;;
     *RNSCA*|*RATMS*)  
         SENSOR="atms"  
-        EXEC_CMD="/opt/cspp_sdr/atms_sdr.sh"  
+        EXEC_CMD="atms_sdr.sh"  
         ;;
     *RCRIS*)          
         SENSOR="cris"  
-        EXEC_CMD="/opt/cspp_sdr/cris_sdr.sh"  
+        EXEC_CMD="cris_sdr.sh"  
         ;;
-    *) echo "Error: Sensor no identificado"; exit 1 ;;
+    *) echo "Error: Sensor no identificado en el nombre del archivo"; exit 1 ;;
 esac
 
 OUTPUT_DIR="$BASE_OUTPUT/$SENSOR"
@@ -51,33 +51,41 @@ echo "=== PROCESANDO $SENSOR ==="
 echo "Entrada: $FILENAME"
 echo "Salida:  $OUTPUT_DIR"
 
-# 4. EJECUCIÓN CON MONTAJE SELECTIVO
-apptainer exec \
-    --bind "$INPUT_DIR":/input \
-    --bind "$OUTPUT_DIR":/output \
-    --bind "$HOST_DYNAMIC":/ancillary \
-    --bind "$HOST_STATIC":/opt/cspp_sdr/anc \
-    "$SIF_CSPP" /bin/bash -c "
-        export HDF5_USE_FILE_LOCKING=FALSE
-        export CSPP_SDR_HOME=/opt/cspp_sdr
-        # Forzamos la carga del entorno si existe, silenciando errores si no
-        [ -f /opt/cspp_sdr/cspp_sdr_env.sh ] && source /opt/cspp_sdr/cspp_sdr_env.sh        
-        export PATH=\$CSPP_SDR_HOME/bin:\$PATH
-        export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
-        
-        # CRÍTICO: Entrar a la carpeta de salida porque ahí se guardarán los SDR
-        cd /output
-        
-        echo '--- Iniciando CSPP SDR ---'
-        # Eliminamos el '-o /output' ya que el resultado cae en el dir actual
-        #viirs_sdr.sh -p 30 -a -g -m /ancillary /input/$FILENAME
-	source $CSPP_SDR_HOME/cspp_sdr_env.sh
-	viirs_sdr.sh -p 20 -a -g /input/$FILENAME
-    " > "$LOG_FILE" 2>&1
+# 4. PREPARACIÓN DE MONTAJES (BINDS) DINÁMICOS
+# Usamos un arreglo de Bash para añadir binds específicos dependiendo del sensor
+BIND_OPTS=(
+    --bind "$INPUT_DIR:/input"
+    --bind "$OUTPUT_DIR:/output"
+    --bind "$HOST_DYNAMIC:/ancillary"
+    --bind "$HOST_STATIC_BASE/anc:/opt/SDR_4_1/anc"
+    --bind "$HOST_STATIC_BASE/$SENSOR/luts:/opt/SDR_4_1/$SENSOR/luts"
+)
+
+# VIIRS requiere además la carpeta de tiles
+if [ "$SENSOR" == "viirs" ]; then
+    BIND_OPTS+=(--bind "$HOST_STATIC_BASE/viirs/tiles:/opt/SDR_4_1/viirs/tiles")
+fi
+
+# 5. EJECUCIÓN DEL CONTENEDOR
+apptainer exec "${BIND_OPTS[@]}" "$SIF_CSPP" /bin/bash -c "
+    export HDF5_USE_FILE_LOCKING=FALSE
+    export CSPP_SDR_HOME=/opt/cspp_sdr
+    export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
+    
+    # Carga el entorno oficial de CSPP
+    source \$CSPP_SDR_HOME/cspp_sdr_env.sh        
+    
+    # CRÍTICO: Entrar a la carpeta de salida
+    cd /output
+    
+    echo '--- Iniciando CSPP SDR para $SENSOR ---'
+    # Usamos la variable \$EXEC_CMD para invocar el script correcto dinámicamente
+    \$EXEC_CMD -p 20 -a -g /input/$FILENAME
+" > "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
 
-# 5. VERIFICACIÓN
+# 6. VERIFICACIÓN
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ Éxito: Procesamiento finalizado. Revisa el log en $LOG_FILE"
 else
@@ -85,4 +93,3 @@ else
     tail -n 15 "$LOG_FILE"
     exit $EXIT_CODE
 fi
-
