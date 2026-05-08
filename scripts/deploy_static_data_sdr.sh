@@ -5,6 +5,7 @@
 
 TAR_DIR="/opt/contenedores/tarfiles"
 TARGET_DIR="/data/opt"
+OWNER="lanotadm:lanotadm"
 
 # Lista exclusiva de los archivos estáticos (Omitimos el binario base y los test data)
 FILES=(
@@ -21,6 +22,7 @@ echo "=== INICIANDO DESPLIEGUE DE DATOS ESTÁTICOS ==="
 mkdir -p "$TARGET_DIR"
 cd "$TARGET_DIR"
 
+# 1. EXTRACCIÓN DE DATOS ESTÁTICOS
 for FILE in "${FILES[@]}"; do
     FILE_PATH="$TAR_DIR/$FILE"
     SHA1_PATH="$FILE_PATH.sha1"
@@ -61,6 +63,22 @@ for FILE in "${FILES[@]}"; do
         echo "❌ ERROR: No se encontró el archivo $FILE_PATH"
     fi
 done
+
+echo "--------------------------------------------------"
+echo "=== PREPARANDO ESTRUCTURA DE DIRECTORIOS ==="
+# 2. CREACIÓN DE CARPETAS FALTANTES PARA ATMS, CRIS, OMPS
+mkdir -p "$TARGET_DIR/SDR_4_1/viirs/luts"
+mkdir -p "$TARGET_DIR/SDR_4_1/atms/luts"
+mkdir -p "$TARGET_DIR/SDR_4_1/cris/luts"
+mkdir -p "$TARGET_DIR/SDR_4_1/omps/luts"
+mkdir -p "$TARGET_DIR/SDR_4_1/anc"
+echo "✅ Directorios creados."
+
+echo "=== APLICANDO PERMISOS Y PROPIEDAD ==="
+# 3. HOMOLOGACIÓN DE PERMISOS
+chown -R "$OWNER" "$TARGET_DIR/SDR_4_1"
+chmod -R 775 "$TARGET_DIR/SDR_4_1"
+echo "✅ Permisos ajustados para $OWNER."
 
 echo "--------------------------------------------------"
 echo "=== DESPLIEGUE COMPLETADO ==="
