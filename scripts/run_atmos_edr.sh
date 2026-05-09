@@ -33,26 +33,27 @@ apptainer exec \
         export PATH=\$CSPP_VIIRS_ATMOS_HOME/bin:\$PATH
         export HDF5_USE_FILE_LOCKING=FALSE
         
-        # SEGURO DE MONTAJE: Verificar que Lustre conectó bien
+        # Verificación del montaje de Config
         if [ ! -d \"/opt/CSPP_ATMOS_1_0/anc/static/Config\" ]; then
-            echo '❌ FATAL: El contenedor no ve la carpeta Config de Lustre.'
-            echo 'Ruta esperada montada:'
-            ls -la /opt/CSPP_ATMOS_1_0/anc/static/
+            echo '❌ FATAL: El contenedor no ve la carpeta Config.'
             exit 1
         fi
         
-        cd /output_edr
-        echo '--- Ejecutando viirs_atmos.sh ---'
-        
-        # Ejecución forzando cache local (-l)
+        echo '--- Ejecutando algoritmos Enterprise ---'
+        # Procesamiento en la carpeta de trabajo
         viirs_atmos.sh -v -l -W /work -p 20 /input_sdr
+        
+        echo '--- Trasladando resultados (NetCDF) a Lustre ---'
+        # Movemos todos los productos generados al directorio final
+        mv /work/*.nc /output_edr/ 2>/dev/null
     " >> "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ ÉXITO: Productos generados en $HOST_EDR_OUT" | tee -a "$LOG_FILE"
-    # rm -rf "$HOST_WORK"
+    # Ahora sí podemos activar la limpieza segura del temporal
+    rm -rf "$HOST_WORK"
 else
     echo "❌ ERROR: Revisa el log en $LOG_FILE" | tee -a "$LOG_FILE"
     exit $EXIT_CODE
