@@ -1,0 +1,36 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%files
+    # El archivo debe estar en la misma carpeta que este .def
+    CSPP_POLAR2GRID_V3.2.tar.gz /opt/
+
+%post
+    # 1. Dependencias Base
+    dnf update -y
+    # fontconfig y freetype son necesarios internamente por Satpy/matplotlib 
+    # para poder dibujar contornos de costas y textos en los GeoTIFF.
+    dnf install -y tar gzip bash fontconfig freetype
+    dnf clean all
+
+    # 2. Descomprimir e Instalar
+    cd /opt
+    echo "--- Descomprimiendo Polar2Grid v3.2 ---"
+    tar -zxf CSPP_POLAR2GRID_V3.2.tar.gz
+    rm -f CSPP_POLAR2GRID_V3.2.tar.gz
+
+    # Enlace simbólico para agnósticismo de versión
+    ln -s polar2grid_v_3_2 polar2grid
+
+    # 3. Inicialización Obligatoria (El truco del manual)
+    # Ejecutamos el helper (-h) para que el runtime de Python descomprima 
+    # sus librerías dinámicas antes de que el SIF se vuelva de solo lectura.
+    export POLAR2GRID_HOME=/opt/polar2grid
+    export PATH=$PATH:$POLAR2GRID_HOME/bin
+    
+    echo "--- Inicializando entorno inmutable ---"
+    $POLAR2GRID_HOME/bin/polar2grid.sh -h
+
+%environment
+    export POLAR2GRID_HOME=/opt/polar2grid
+    export PATH=$POLAR2GRID_HOME/bin:$PATH
