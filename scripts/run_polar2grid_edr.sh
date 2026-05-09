@@ -31,32 +31,31 @@ apptainer exec \
         mkdir -p /work/sdr_links
         for f in /input_sdr/GMTCO*.h5; do
             if [ -f \"\$f\" ]; then
-                # Extraemos el nombre base y le podamos el sufijo de desarrollo
                 base=\$(basename \"\$f\" | sed 's/_cspp_dev//')
                 ln -s \"\$f\" \"/work/sdr_links/\$base\"
             fi
         done
         
-        # Nos movemos a la salida definitiva
         cd /output_img
         echo '--- Generando GeoTIFFs de Productos Atmosféricos ---'
         
-        # 2. ALIMENTACIÓN DOBLE CON ENLACES LIMPIOS:
+        # 2. ALIMENTACIÓN DOBLE SIN FILTRO DE PRODUCTOS (-p):
+        # Al omitir -p, Polar2Grid leerá todos los productos disponibles 
+        # que reconozca nativamente en la suite Enterprise.
         polar2grid.sh -v -r viirs_edr \
             -w geotiff \
-            -p cloud_mask cloud_top_height cloud_top_phase aod_550 \
             -f /input_edr/JRR-*.nc /work/sdr_links/GMTCO*.h5
             
     " >> "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
 
-# Validación estricta contando los archivos resultantes
+# Validación contando los archivos resultantes
 TIF_COUNT=$(ls -1 "$HOST_IMG_OUT"/*.tif 2>/dev/null | wc -l)
 
 if [ "$TIF_COUNT" -gt 0 ]; then
     echo "✅ ÉXITO: $TIF_COUNT mapas GeoTIFF generados en $HOST_IMG_OUT" | tee -a "$LOG_FILE"
-    # Limpiamos el directorio temporal de enlaces
+    # Limpieza del directorio temporal de enlaces
     rm -rf "$HOST_WORK"
 else
     echo "❌ ERROR: No se generaron imágenes TIFF. Revisa el log en:" | tee -a "$LOG_FILE"
