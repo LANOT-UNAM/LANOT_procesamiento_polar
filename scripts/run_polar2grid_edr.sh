@@ -9,7 +9,8 @@ SIF_P2G="/opt/containers/polar2grid_v3.2.sif"
 
 # Rutas en Lustre
 HOST_EDR_IN="/data/output/jpss/level2/atmosphere"
-HOST_IMG_OUT="/data/output/jpss/images/level2_edr"
+# NUEVA RUTA DE SALIDA ACTUALIZADA
+HOST_IMG_OUT="/data/output/jpss/vistas/atmosphere" 
 
 # Logs
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -26,23 +27,19 @@ apptainer exec \
     --bind "$HOST_IMG_OUT:/output_img" \
     "$SIF_P2G" /bin/bash -c "
         
-        # Nos movemos a la carpeta de salida montada
+        # Nos movemos a la carpeta de vistas para depositar las imágenes
         cd /output_img
         
         echo '--- Generando GeoTIFFs de Productos Atmosféricos ---'
         
-        # polar2grid.sh ya está en el PATH gracias al archivo .def
-        # Lector: viirs_l2 (para NetCDF de Enterprise)
-        # Productos: Máscara, Altura, Fase y Aerosoles (AOD)
-        polar2grid.sh -r viirs_l2 \
+        # CAMBIO 1: Lector corregido a 'viirs_edr' (oficial para NOAA Enterprise)
+        # CAMBIO 2: Solo enviamos archivos JRR-*.nc para ignorar las grillas GFS
+        polar2grid.sh -v -r viirs_edr \
             -w geotiff \
             -p cloud_mask cloud_top_height cloud_top_phase aod_550 \
-            -f /input_edr/*.nc
+            -f /input_edr/JRR-*.nc
             
         echo '--- Proceso de renderizado finalizado ---'
-        
-        # Descomenta la siguiente línea si deseas superponer contornos de costas y fronteras
-        # add_coastlines.sh --add-borders --add-coastlines *.tif
     " >> "$LOG_FILE" 2>&1
 
 EXIT_CODE=$?
