@@ -12,18 +12,18 @@
 # Configuración de Rutas (Host / Sistema de Archivos Lustre)
 # ==============================================================================
 # Define aquí tus rutas reales en el clúster
-BASE_DIR="/tu/ruta/base/lustre"
+BASE_DIR="/data/opt"
 
 # Rutas a los datos estáticos y auxiliares de LSR (descargados previamente)
 LSR_STATIC_DIR="${BASE_DIR}/cspp_lsr_static"
 LSR_ANCILLARY_DIR="${BASE_DIR}/cspp_lsr_ancillary"
 
 # Rutas de entrada (archivos SDR de Nivel 1) y salida
-INPUT_SDR_DIR="${BASE_DIR}/viirs_sdr_input"
-OUTPUT_LSR_DIR="${BASE_DIR}/viirs_lsr_output"
+INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
+OUTPUT_LSR_DIR="/data/output/jpss/level2/lsr"
 
 # Ruta a la imagen del contenedor de Apptainer que construimos
-SIF_IMAGE="${BASE_DIR}/containers/cspp_lsr_v2.0.sif"
+SIF_IMAGE="/opt/containers/cspp_lsr_edr_v2.0.sif"
 
 # ==============================================================================
 # Preparación del entorno
