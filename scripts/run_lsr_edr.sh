@@ -15,10 +15,13 @@
 BASE_DIR="/data/opt"
 
 # Rutas a los datos estáticos y auxiliares de LSR (descargados previamente)
+# Nota: LSR v2.0 ya no requiere ancillary data dinámico, pero mantenemos la ruta
+# por si el contenedor fue construido esperándola.
 LSR_STATIC_DIR="${BASE_DIR}/cspp_lsr_static"
 LSR_ANCILLARY_DIR="${BASE_DIR}/cspp_lsr_ancillary"
 
-# Rutas de entrada (archivos SDR de Nivel 1) y salida
+# Rutas de entrada y salida
+# IMPORTANTE: Para la v2.0, los SDRs y los EDRs (ATMOS) deben estar en esta misma carpeta
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_LSR_DIR="/data/output/jpss/level2/lsr"
 
@@ -35,16 +38,17 @@ mkdir -p logs
 echo "================================================================="
 echo " Iniciando procesamiento de CSPP LSR v2.0 con Apptainer"
 echo " Fecha y Hora: $(date)"
-echo " Directorio de Entrada (SDR): ${INPUT_SDR_DIR}"
+echo " Directorio de Entrada (SDR + ATMOS EDR): ${INPUT_SDR_DIR}"
 echo " Directorio de Salida (LSR): ${OUTPUT_LSR_DIR}"
+echo " Cores asignados: ${SLURM_CPUS_PER_TASK}"
 echo "================================================================="
 
 # ==============================================================================
 # Ejecución con Apptainer
 # ==============================================================================
 # Usamos -B (bind) para inyectar los directorios del host al contenedor.
-# Las rutas del lado derecho (después de los dos puntos) deben coincidir
-# EXACTAMENTE con las que configuramos en la sección %post del archivo .def.
+# Se actualizó el comando a run_cspp_lsr_v2.sh, usando -o para salida, -p para cores,
+# y pasando el directorio de entrada como argumento posicional.
 
 apptainer exec \
     -B "${LSR_STATIC_DIR}":/opt/cspp_lsr/static \
@@ -52,10 +56,7 @@ apptainer exec \
     -B "${INPUT_SDR_DIR}":/input_data \
     -B "${OUTPUT_LSR_DIR}":/output_data \
     "${SIF_IMAGE}" \
-    viirs_lsr.sh -i /input_data -o /output_data
-
-# Nota: El comando interno 'viirs_lsr.sh' ya está en el PATH del contenedor
-# gracias al cspp_lsr_env.sh que cargamos en el %environment del .def.
+    run_cspp_lsr_v2.sh -o /output_data -p ${SLURM_CPUS_PER_TASK} /input_data
 
 EXIT_CODE=$?
 
