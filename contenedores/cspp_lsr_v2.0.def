@@ -1,0 +1,53 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP Land Surface Reflectance (LSR) EDR v2.0 (Rocky 9)
+    Version 2.0-LANOT
+
+%files
+    # Asegúrate de tener el binario descargado en el mismo directorio del .def
+    CSPP_LSR_V2.0.tar.gz /opt/
+
+%post
+    # 1. Repositorios y Dependencias
+    dnf install -y epel-release
+    dnf config-manager --set-enabled crb
+    dnf update -y
+    # Agregamos paquetes típicos de compilación y librerías científicas base
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de los Binarios
+    cd /opt
+    echo "--- Descomprimiendo Binarios de LSR ---"
+    tar -zxf CSPP_LSR_V2.0.tar.gz
+    
+    # Buscamos la carpeta recién creada 
+    REAL_FOLDER=$(find . -maxdepth 1 -type d -not -path "." -not -path "./cspp_lsr" | head -n 1 | sed 's|./||')
+    
+    if [ -n "$REAL_FOLDER" ]; then
+        echo "Carpeta detectada: $REAL_FOLDER"
+        ln -s "$REAL_FOLDER" cspp_lsr
+    else
+        echo "ERROR: No se pudo detectar la carpeta de instalación tras el tar."
+        ls -la
+        exit 1
+    fi
+
+    # Limpieza del tar para reducir el tamaño del contenedor
+    rm -f CSPP_LSR_V2.0.tar.gz
+
+    # 3. Preparación de Puntos de Montaje (Static y Ancillary)
+    # Los creamos dentro de la carpeta real para inyectar datos en tiempo de ejecución
+    mkdir -p "/opt/$REAL_FOLDER/static"
+    mkdir -p "/opt/$REAL_FOLDER/ancillary"
+
+%environment
+    export CSPP_LSR_HOME=/opt/cspp_lsr
+    
+    # Cargar el entorno de CSPP LSR
+    if [ -f /opt/cspp_lsr/cspp_lsr_env.sh ]; then
+        source /opt/cspp_lsr/cspp_lsr_env.sh
+    fi
