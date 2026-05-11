@@ -8,7 +8,7 @@ From: rockylinux:9
 
 %files
     # Asegúrate de tener el binario descargado en el mismo directorio del .def
-    CSPP_LSR_V2.0.tar.gz /opt/
+    CSPP_VIIRS_SURFACE_REFLECTANCE_V2.0.tar.gz /opt/
 
 %post
     # 1. Repositorios y Dependencias
@@ -22,7 +22,7 @@ From: rockylinux:9
     # 2. Instalación de los Binarios
     cd /opt
     echo "--- Descomprimiendo Binarios de LSR ---"
-    tar -zxf CSPP_LSR_V2.0.tar.gz
+    tar -zxf CSPP_VIIRS_SURFACE_REFLECTANCE_V2.0.tar.gz
     
     # Buscamos la carpeta recién creada 
     REAL_FOLDER=$(find . -maxdepth 1 -type d -not -path "." -not -path "./cspp_lsr" | head -n 1 | sed 's|./||')
