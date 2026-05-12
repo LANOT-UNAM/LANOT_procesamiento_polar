@@ -16,7 +16,7 @@ From: rockylinux:9
     dnf config-manager --set-enabled crb
     dnf update -y
     # Agregamos paquetes típicos de compilación y librerías científicas base
-    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng perl
     dnf clean all && rm -rf /var/cache/dnf
 
     # 2. Instalación de los Binarios
