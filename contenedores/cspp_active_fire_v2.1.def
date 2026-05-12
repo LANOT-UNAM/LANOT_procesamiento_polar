@@ -17,10 +17,8 @@ INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_DIR="/data/output/jpss/level2/fires"
 SIF_IMAGE="/opt/containers/cspp_active_fire_edr.sif"
 
-# --- Configuración de Rutas Internas (Basado en tu find) ---
-# El HOME debe ser la raíz de la aplicación (un nivel arriba de bin)
+# --- Configuración de Rutas Internas ---
 CONTAINER_APP_HOME="/opt/cspp-active-fire-noaa_2.1"
-# El ejecutable real que encontramos con find
 CONTAINER_EXECUTABLE="${CONTAINER_APP_HOME}/bin/cspp_active_fire_noaa.sh"
 
 # --- Directorio Temporal (Staging) ---
@@ -36,14 +34,29 @@ echo "================================================================="
 echo " Iniciando CSPP Active Fire v2.1 a las $(date)"
 echo " Preparando staging en: ${STAGING_DIR}"
 
-# Creamos enlaces simbólicos para los SDRs
-ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/
+# Enlazamos los archivos de nivel 1
+ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/ 2>/dev/null
 
+# Verificamos si se crearon enlaces
+FILE_COUNT=$(ls -1 "${STAGING_DIR}" | wc -l)
+echo " Archivos en staging: ${FILE_COUNT}"
+
+if [ "$FILE_COUNT" -eq 0 ]; then
+    echo " ERROR: No hay archivos para procesar en ${INPUT_SDR_DIR}"
+    rm -rf "${STAGING_DIR}"
+    exit 1
+fi
+
+# Definimos el satélite (por defecto j02 si no se pasa como primer argumento)
+SAT_PLATFORM=${1:-"j02"}
+
+echo " Procesando plataforma: ${SAT_PLATFORM}"
 echo "================================================================="
 
 # ==============================================================================
 # Ejecución con Apptainer
 # ==============================================================================
+# Agregamos -v para ver el log detallado del software
 apptainer exec \
     --env LC_ALL=C \
     --env CSPP_ACTIVE_FIRE_HOME="${CONTAINER_APP_HOME}" \
@@ -54,7 +67,9 @@ apptainer exec \
     "${CONTAINER_EXECUTABLE}" \
     -i /input_data \
     -o /output_data \
-    "$@"
+    -p "${SAT_PLATFORM}" \
+    -v \
+    "${@:2}" 
 
 EXIT_CODE=$?
 
