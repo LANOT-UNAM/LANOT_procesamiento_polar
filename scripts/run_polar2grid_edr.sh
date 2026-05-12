@@ -53,10 +53,12 @@ apptainer exec \
         # 3. Renderizado de Productos de Superficie (LSR)
         echo '--- Generando GeoTIFFs de Productos LSR (NDVI, EVI, Reflectancia) ---'
         cd /output_lsr_img
-        # Se utiliza el lector 'viirs_lsr' exclusivo para los NetCDF de superficie
+        
+        # Se omite el enlace a los GMTCO porque los archivos SurfRefl 
+        # ya contienen su propia geolocalización (Lat/Lon internamente).
         polar2grid.sh -v -r viirs_lsr \
             -w geotiff \
-            -f /input_lsr/SurfRefl_*.nc /work/sdr_links/GMTCO*.h5
+            -f /input_lsr/SurfRefl_*.nc
             
     " >> "$LOG_FILE" 2>&1
 
