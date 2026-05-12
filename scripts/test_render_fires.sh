@@ -36,7 +36,10 @@ ln -sf ${INPUT_EDR_DIR}/AFIMG_j01* ${STAGING_DIR}/  # Tus resultados de Active F
 # El flag --overlay permite que los puntos de fuego se marquen sobre la imagen
 
 apptainer exec \
+    --env LC_ALL=C \
     -B "${STAGING_DIR}":/input_data \
+    -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
+    -B "${INPUT_EDR_DIR}":"${INPUT_EDR_DIR}" \
     -B "${OUTPUT_IMG_DIR}":/output_data \
     "${SIF_P2G}" \
     polar2grid.sh \
@@ -45,7 +48,8 @@ apptainer exec \
     -p fire_mask i05 \
     --grid-configs /opt/polar2grid/grids.conf \
     -g mx_1000 \
-    -f /input_data
+    -f /input_data \
+    -vv
 
 EXIT_CODE=$?
 
