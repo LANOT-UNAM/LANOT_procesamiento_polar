@@ -54,9 +54,13 @@ if [ $? -ne 0 ]; then echo "ERROR en ACSPO"; exit 1; fi
 # --- 3. RENDERIZADO CON POLAR2GRID ---
 echo ">>> Iniciando Renderizado con Polar2Grid..."
 
-# Identificamos el archivo recién creado (el más reciente en la carpeta de salida)
-# Los archivos de ACSPO suelen empezar con la fecha, e.g., 20260511...
+# Identificamos el archivo NetCDF generado por ACSPO
 LATEST_NC=$(ls -t "${OUTPUT_ACSPO_DIR}"/*.nc | head -1)
+
+if [ -z "$LATEST_NC" ]; then
+    echo "ERROR: No se encontró el archivo NetCDF en ${OUTPUT_ACSPO_DIR}"
+    exit 1
+fi
 
 apptainer exec \
     -B "${OUTPUT_ACSPO_DIR}":/input_nc \
@@ -65,11 +69,11 @@ apptainer exec \
     "${SIF_P2G}" \
     bash -c "
         cd /output_img
-        # -r viirs_acspo: Lector específico para SST de ACSPO
-        # -p sea_surface_temperature: Producto principal
-        polar2grid.sh -v -r viirs_acspo \
+        # Usando el lector 'acspo' y el producto 'sst' según los ejemplos
+        polar2grid.sh -v -r acspo \
             -w geotiff \
-            -p sea_surface_temperature \
+            -p sst \
+            --grid-coverage=0.0 \
             -f /input_nc/$(basename ${LATEST_NC})
     "
 
