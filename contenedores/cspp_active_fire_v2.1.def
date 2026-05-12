@@ -12,79 +12,48 @@
 # LANOT - UNAM | CSPP Active Fire v2.1 (Apptainer)
 # ==============================================================================
 
-# --- Rutas de Datos y Software ---
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_DIR="/data/output/jpss/level2/fires"
 SIF_IMAGE="/opt/containers/cspp_active_fire_edr.sif"
 
-# --- Configuración de Rutas Internas ---
-CONTAINER_APP_HOME="/opt/cspp-active-fire-noaa_2.1"
-CONTAINER_EXECUTABLE="${CONTAINER_APP_HOME}/bin/cspp_active_fire_noaa.sh"
+# Rutas internas basadas en tu contenedor
+CONTAINER_HOME="/opt/cspp-active-fire-noaa_2.1"
+ENV_SCRIPT="${CONTAINER_HOME}/cspp_active_fire_noaa_env.sh"
+EXEC_SCRIPT="${CONTAINER_HOME}/bin/cspp_active_fire_noaa.sh"
 
-# --- Directorio Temporal (Staging) ---
 JOB_ID=${SLURM_JOB_ID:-$$}
 STAGING_DIR="/data/output/jpss/tmp/fire_staging_${JOB_ID}"
 
-# --- Preparación del Entorno ---
-mkdir -p "${OUTPUT_DIR}"
-mkdir -p "${STAGING_DIR}"
-mkdir -p logs
+mkdir -p "${OUTPUT_DIR}" "${STAGING_DIR}" logs
 
 echo "================================================================="
-echo " Iniciando CSPP Active Fire v2.1 a las $(date)"
-echo " Preparando staging en: ${STAGING_DIR}"
+echo " Iniciando CSPP Active Fire v2.1 | Satélite: ${1:-j01}"
+echo " Staging: ${STAGING_DIR}"
 
-# Enlazamos los archivos de nivel 1
+# Creamos enlaces simbólicos
 ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/ 2>/dev/null
 
-# Verificamos si se crearon enlaces
-FILE_COUNT=$(ls -1 "${STAGING_DIR}" | wc -l)
-echo " Archivos en staging: ${FILE_COUNT}"
+# DEBUG: Verificar si los archivos son visibles desde el contenedor
+echo " --- Verificando archivos SDR en /input_data ---"
+apptainer exec -B "${STAGING_DIR}":/input_data "${SIF_IMAGE}" ls /input_data | head -n 5
 
-if [ "$FILE_COUNT" -eq 0 ]; then
-    echo " ERROR: No hay archivos para procesar en ${INPUT_SDR_DIR}"
-    rm -rf "${STAGING_DIR}"
-    exit 1
-fi
-
-# Definimos el satélite (por defecto j02 si no se pasa como primer argumento)
-SAT_PLATFORM=${1:-"j02"}
-
-echo " Procesando plataforma: ${SAT_PLATFORM}"
-echo "================================================================="
+SAT_PLATFORM=${1:-"j01"}
 
 # ==============================================================================
-# Ejecución con Apptainer
+# Ejecución con Apptainer + Sourcing de Entorno
 # ==============================================================================
-# Agregamos -v para ver el log detallado del software
+# Usamos bash -c para cargar las variables del software antes de ejecutarlo
 apptainer exec \
     --env LC_ALL=C \
-    --env CSPP_ACTIVE_FIRE_HOME="${CONTAINER_APP_HOME}" \
     -B "${STAGING_DIR}":/input_data \
     -B "${OUTPUT_DIR}":/output_data \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
-    "${CONTAINER_EXECUTABLE}" \
-    -i /input_data \
-    -o /output_data \
-    -p "${SAT_PLATFORM}" \
-    -v \
-    "${@:2}" 
+    /bin/bash -c "source ${ENV_SCRIPT} && ${EXEC_SCRIPT} -i /input_data -o /output_data -p ${SAT_PLATFORM} -v"
 
 EXIT_CODE=$?
 
-# ==============================================================================
-# Limpieza
-# ==============================================================================
 echo "================================================================="
-echo " Limpiando directorio de staging..."
 rm -rf "${STAGING_DIR}"
-
-if [ $EXIT_CODE -eq 0 ]; then
-    echo " Procesamiento completado exitosamente: $(date)"
-else
-    echo " ERROR: El proceso falló con código ${EXIT_CODE}"
-fi
+echo " Fin del proceso. Código: ${EXIT_CODE}"
 echo "================================================================="
-
-exit $EXIT_CODE
