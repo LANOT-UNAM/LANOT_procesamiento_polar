@@ -56,7 +56,7 @@ apptainer exec \
         
         # Se omite el enlace a los GMTCO porque los archivos SurfRefl 
         # ya contienen su propia geolocalización (Lat/Lon internamente).
-        polar2grid.sh -v -r viirs_lsr \
+        polar2grid.sh -v -r viirs_edr \
             -w geotiff \
             -f /input_lsr/SurfRefl_*.nc
             
