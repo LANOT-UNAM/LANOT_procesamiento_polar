@@ -1,9 +1,8 @@
 #!/bin/bash
 # ==============================================================================
-# LANOT - UNAM | Renderizado de Confidence Category (Active Fire)
+# LANOT - UNAM | Renderizado de Confidence Category (Active Fire) - FIX TOTAL
 # ==============================================================================
 
-# --- Configuración de Rutas ---
 SIF_P2G="/opt/containers/polar2grid_v3.2.sif"
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 INPUT_EDR_DIR="/data/output/jpss/level2/fires"
@@ -15,25 +14,26 @@ STAGING_DIR="/data/output/jpss/tmp/p2g_fire_staging_${JOB_ID}"
 mkdir -p "${OUTPUT_IMG_DIR}" "${STAGING_DIR}"
 
 echo "================================================================="
-echo " INFO: Preparando archivos para confidence_cat..."
+echo " INFO: Preparando staging con limpieza de nombres..."
 
-# 1. Crear enlaces simbólicos
-ln -sf ${INPUT_SDR_DIR}/GMTCO_j01* ${STAGING_DIR}/
-ln -sf ${INPUT_SDR_DIR}/GITCO_j01* ${STAGING_DIR}/
-ln -sf ${INPUT_EDR_DIR}/AFIMG_j01* ${STAGING_DIR}/
+# 1. Enlazamos TODO (SDR y EDR)
+ln -sf ${INPUT_SDR_DIR}/* ${STAGING_DIR}/
+ln -sf ${INPUT_EDR_DIR}/AFIMG_j01*.nc ${STAGING_DIR}/
 
-# 2. CRÍTICO: Renombrar para que el lector reconozca los archivos
-# Quitamos el sufijo '_cspp_dev' de los enlaces simbólicos en staging
-echo " INFO: Renombrando archivos en staging..."
-for f in ${STAGING_DIR}/AFIMG_j01*.nc; do 
+# 2. LIMPIEZA CRÍTICA: Quitar '_cspp_dev' de TODOS los archivos (h5 y nc)
+# Esto es vital para que viirs_sdr vea las bandas y viirs_edr_active_fires vea los fuegos
+echo " INFO: Eliminando sufijos _cspp_dev en el staging..."
+cd "${STAGING_DIR}"
+for f in *_cspp_dev*; do
     mv "$f" "${f//_cspp_dev/}" 2>/dev/null
 done
+cd - > /dev/null
 
 # ==============================================================================
 # 3. Ejecución de Polar2Grid
 # ==============================================================================
-# Usamos el producto 'confidence_cat' como indica el manual.
-# Nota: Si 'viirs_edr_active_fires' falla, se puede probar 'viirs_active_fire'
+# Probaremos con el lector 'viirs_edr_active_fires'
+# Si falla, intenta cambiarlo por 'viirs_active_fire' (sin el 'edr_')
 
 apptainer exec \
     --env LC_ALL=C \
@@ -59,5 +59,9 @@ EXIT_CODE=$?
 rm -rf "${STAGING_DIR}"
 
 echo "================================================================="
-echo " INFO: Proceso finalizado. Código: ${EXIT_CODE}"
+if [ $EXIT_CODE -eq 0 ]; then
+    echo " INFO: Renderizado exitoso."
+else
+    echo " ERROR: El renderizado volvió a fallar."
+fi
 echo "================================================================="
