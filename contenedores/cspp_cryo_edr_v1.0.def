@@ -1,0 +1,49 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP VIIRS Cryosphere EDR Software Version 1.0
+    Version 1.0
+
+%files
+    # Se requiere que el tarball de software esté en el mismo directorio de construcción 
+    CSPP_VIIRS_CRYO_V1.0.tar.gz /opt/
+
+%post
+    # 1. Repositorios y Dependencias
+    dnf install -y epel-release
+    dnf config-manager --set-enabled crb
+    dnf update -y
+    
+    # Instalación de dependencias comunes para el procesamiento de datos satelitales
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de los Binarios
+    cd /opt
+    echo "--- Descomprimiendo Binarios de VIIRS Cryosphere ---"
+    # Al descomprimir se crea automáticamente la carpeta CSPP_CRYO_1_0 [cite: 285, 289]
+    tar -zxf CSPP_VIIRS_CRYO_V1.0.tar.gz
+    
+    REAL_FOLDER="CSPP_CRYO_1_0"
+    
+    if [ -d "$REAL_FOLDER" ]; then
+        echo "Carpeta detectada: $REAL_FOLDER"
+        # Creamos un enlace simbólico para simplificar la gestión de rutas
+        ln -s "$REAL_FOLDER" cspp_cryo
+    else
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción[cite: 285]."
+        ls -la
+        exit 1
+    fi
+
+    # Limpieza del archivo comprimido
+    rm -f CSPP_VIIRS_CRYO_V1.0.tar.gz
+
+%environment
+    # 3. Configuración de Variables de Entorno
+    # Se define la variable HOME obligatoria para el funcionamiento del paquete 
+    export CSPP_VIIRS_CRYO_HOME="/opt/cspp_cryo"
+    # Se añade el directorio /bin al PATH para ejecutar viirs_cryo.sh directamente
+    export PATH="$CSPP_VIIRS_CRYO_HOME/bin:$PATH"

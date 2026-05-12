@@ -7,7 +7,6 @@ From: rockylinux:9
     Version 2.1-LANOT
 
 %files
-    # Software base (binarios) - Asegúrate de tener el tarball en el mismo directorio
     cspp-active-fire-noaa_2.1.tar.gz /opt/
 
 %post
