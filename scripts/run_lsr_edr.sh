@@ -44,11 +44,12 @@ echo "================================================================="
 # ==============================================================================
 # Ejecución con Apptainer
 # ==============================================================================
+# Invocamos la ruta absoluta del script encontrada dentro del contenedor
 apptainer exec \
     -B "${STAGING_DIR}":/input_data \
     -B "${OUTPUT_LSR_DIR}":/output_data \
     "${SIF_IMAGE}" \
-    run_cspp_lsr_v2.sh -o /output_data -p ${CORES} /input_data
+    /opt/cspp-surf_refl/run_cspp_lsr_v2.sh -o /output_data -p ${CORES} /input_data
 
 EXIT_CODE=$?
 
