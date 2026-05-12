@@ -1,65 +1,43 @@
 #!/bin/bash
-#SBATCH --job-name=cspp_acspo_edr
-#SBATCH --output=logs/acspo_%j.out
-#SBATCH --error=logs/acspo_%j.err
+#SBATCH --job-name=acspo_p2g
+#SBATCH --output=logs/acspo_p2g_%j.out
+#SBATCH --error=logs/acspo_p2g_%j.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --time=01:30:00
 #SBATCH --partition=normal
 
 # ==============================================================================
-# LANOT - UNAM | Generación Nivel 2 ACSPO SST v3.0
+# LANOT - UNAM | ACSPO SST v3.0 + Renderizado Polar2Grid
 # ==============================================================================
 
-# Configuración de Rutas (Ajustadas a tu jerarquía de Lustre)
+# Rutas de Software e Imágenes SIF
+SIF_ACSPO="/opt/containers/cspp_acspo_v3.0.sif"
+SIF_P2G="/opt/containers/polar2grid_v3.2.sif"
+
+# Rutas de Datos
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_ACSPO_DIR="/data/output/jpss/level2/acspo"
+OUTPUT_IMG_DIR="/data/output/jpss/vistas/acspo"
 HOST_ANC="/data/ancillary"
 
-SIF_IMAGE="/opt/containers/cspp_acspo_edr_v3.0.sif"
-
-# Directorio temporal de staging y trabajo
+# Directorios Temporales
 JOB_ID=${SLURM_JOB_ID:-$$}
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-STAGING_DIR="/data/output/jpss/tmp/acspo_staging_${JOB_ID}_${TIMESTAMP}"
-WORK_DIR="/data/output/jpss/tmp/acspo_work_${JOB_ID}_${TIMESTAMP}"
+STAGING_DIR="/data/output/jpss/tmp/acspo_staging_${JOB_ID}"
+WORK_DIR="/data/output/jpss/tmp/acspo_work_${JOB_ID}"
 CORES=${SLURM_CPUS_PER_TASK:-16}
 
-# ==============================================================================
-# Preparación del entorno y Staging
-# ==============================================================================
-mkdir -p "${OUTPUT_ACSPO_DIR}"
-mkdir -p "${STAGING_DIR}"
-mkdir -p "${WORK_DIR}"
-mkdir -p "${WORK_DIR}/dynamic"
-mkdir -p logs
+mkdir -p "${OUTPUT_ACSPO_DIR}" "${OUTPUT_IMG_DIR}" "${STAGING_DIR}" "${WORK_DIR}" "${WORK_DIR}/dynamic" logs
 
-echo "================================================================="
-echo " Iniciando CSPP ACSPO v3.0 (SST)"
-echo " Preparando enlaces simbólicos en directorio de staging temporal..."
-
-# Enlazamos los SDR de la prueba actual
-# NOTA: ACSPO v3 requiere los archivos M-bands (SVM*) y el de terreno GMTCO*
+# --- 1. PREPARACIÓN (STAGING) ---
 ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/
 
-echo " Staging completado en: ${STAGING_DIR}"
-echo " Cores asignados: ${CORES}"
-echo "================================================================="
-
-# ==============================================================================
-# Ejecución con Apptainer
-# ==============================================================================
-# Opciones de ACSPO utilizadas:
-# -p: Número de hilos de CPU (Por defecto 4, máximo 24)
-# -w: Directorio de trabajo temporal
-# -o: Directorio de salida final
-# -d: Directorio caché dinámico (GRIBs y CMC)
-# -m: Modo de salida (usamos 'gds' para no generar el formato legacy interno de NOAA)
-
+# --- 2. EJECUCIÓN ACSPO (Generación de NetCDF) ---
+echo ">>> Iniciando ACSPO v3.0..."
 apptainer exec \
-    --env LC_ALL=C \
-    --env CSPP_ACSPO_HOME=/opt/acspo_sst_v3 \
+    --env LC_ALL=C --env CSPP_ACSPO_HOME=/opt/acspo_sst_v3 \
     -B "${STAGING_DIR}":/input_sdr \
     -B "${OUTPUT_ACSPO_DIR}":/output_data \
     -B "${WORK_DIR}":/work_data \
@@ -68,28 +46,34 @@ apptainer exec \
     -B "/data/ancillary/acspo_histogram":"/opt/acspo_sst_v3/viirs/input/sst_histogram" \
     -B "${WORK_DIR}/dynamic":"/opt/acspo_sst_v3/viirs/input/anc/dynamic" \
     -B "/data/output/jpss":"/data/output/jpss" \
-    "${SIF_IMAGE}" \
-    /opt/acspo_sst_v3/run_acspo_viirs_v3.sh \
-        -p ${CORES} \
-        -w /work_data \
-        -o /output_data \
-        -d /opt/acspo_sst_v3/viirs/input/anc/ancil_download \
-        -m gds \
-        /input_sdr
+    "${SIF_ACSPO}" \
+    /opt/acspo_sst_v3/run_acspo_viirs_v3.sh -p ${CORES} -w /work_data -o /output_data -d /opt/acspo_sst_v3/viirs/input/anc/ancil_download -m gds /input_sdr
 
-EXIT_CODE=$?
+if [ $? -ne 0 ]; then echo "ERROR en ACSPO"; exit 1; fi
 
-# ==============================================================================
-# Limpieza del entorno
-# ==============================================================================
-echo " Limpiando directorios temporales..."
-rm -rf "${STAGING_DIR}"
-rm -rf "${WORK_DIR}"
+# --- 3. RENDERIZADO CON POLAR2GRID ---
+echo ">>> Iniciando Renderizado con Polar2Grid..."
 
+# Identificamos el archivo recién creado (el más reciente en la carpeta de salida)
+# Los archivos de ACSPO suelen empezar con la fecha, e.g., 20260511...
+LATEST_NC=$(ls -t "${OUTPUT_ACSPO_DIR}"/*.nc | head -1)
+
+apptainer exec \
+    -B "${OUTPUT_ACSPO_DIR}":/input_nc \
+    -B "${OUTPUT_IMG_DIR}":/output_img \
+    -B "${WORK_DIR}":/work_p2g \
+    "${SIF_P2G}" \
+    bash -c "
+        cd /output_img
+        # -r viirs_acspo: Lector específico para SST de ACSPO
+        # -p sea_surface_temperature: Producto principal
+        polar2grid.sh -v -r viirs_acspo \
+            -w geotiff \
+            -p sea_surface_temperature \
+            -f /input_nc/$(basename ${LATEST_NC})
+    "
+
+# --- 4. LIMPIEZA ---
+rm -rf "${STAGING_DIR}" "${WORK_DIR}"
 echo "================================================================="
-if [ $EXIT_CODE -eq 0 ]; then
-    echo " Procesamiento completado exitosamente a las $(date)"
-else
-    echo " ERROR: El procesamiento falló con el código de salida $EXIT_CODE a las $(date)"
-fi
-exit $EXIT_CODE
+echo " Procesamiento y Renderizado completado: $(date)"
