@@ -46,6 +46,8 @@ echo "================================================================="
 # ==============================================================================
 # Invocamos la ruta absoluta del script encontrada dentro del contenedor
 apptainer exec \
+    --env LC_ALL=C \
+    --env CSPP_VIIRS_LSR_V2_HOME=/opt/cspp-surf_refl \
     -B "${STAGING_DIR}":/input_data \
     -B "${OUTPUT_LSR_DIR}":/output_data \
     "${SIF_IMAGE}" \
