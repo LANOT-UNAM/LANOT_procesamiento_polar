@@ -44,16 +44,18 @@ echo "================================================================="
 # ==============================================================================
 # -B "${STAGING_DIR}":/input_data  -> Donde están los SDRs
 # -B "${OUTPUT_DIR}":/output_data  -> Donde caerán los NetCDF/ASCII
-# --env CSPP_ACTIVE_FIRE_HOME      -> Ruta base interna definida en el .def
+
+# Definimos la ruta base usando el enlace simbólico que ya existe en el contenedor
+CONTAINER_HOME="/opt/cspp_active_fire"
 
 apptainer exec \
     --env LC_ALL=C \
-    --env CSPP_ACTIVE_FIRE_HOME=/opt/cspp_active_fire \
+    --env CSPP_ACTIVE_FIRE_HOME="${CONTAINER_HOME}" \
     -B "${STAGING_DIR}":/input_data \
     -B "${OUTPUT_DIR}":/output_data \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
-    /opt/cspp_active_fire/cspp_active_fire_noaa.sh \
+    "${CONTAINER_HOME}/cspp_active_fire_noaa_runtime.sh" \
     -i /input_data \
     -o /output_data \
     "$@"
