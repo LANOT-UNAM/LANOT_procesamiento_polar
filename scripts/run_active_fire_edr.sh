@@ -9,56 +9,49 @@
 #SBATCH --partition=normal
 
 # ==============================================================================
-# LANOT - UNAM | CSPP Active Fire v2.1 (Apptainer)
+# LANOT - UNAM | CSPP Active Fire v2.1 (Ajustado a Manual)
 # ==============================================================================
 
-# --- Rutas de Datos y Software ---
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_DIR="/data/output/jpss/level2/fires"
 SIF_IMAGE="/opt/containers/cspp_active_fire_edr.sif"
 
-# --- Directorio Temporal (Staging) ---
-# Siguiendo tu lógica de usar el JOB_ID de SLURM o el PID del proceso
+# Rutas internas según lo verificado
+CONTAINER_HOME="/opt/cspp-active-fire-noaa_2.1"
+ENV_SCRIPT="${CONTAINER_HOME}/cspp_active_fire_noaa_env.sh"
+EXEC_SCRIPT="${CONTAINER_HOME}/bin/cspp_active_fire_noaa.sh"
+
 JOB_ID=${SLURM_JOB_ID:-$$}
 STAGING_DIR="/data/output/jpss/tmp/fire_staging_${JOB_ID}"
-CORES=${SLURM_CPUS_PER_TASK:-8}
 
-# --- Preparación del Entorno ---
-mkdir -p "${OUTPUT_DIR}"
-mkdir -p "${STAGING_DIR}"
-mkdir -p logs
+# Crear carpetas necesarias
+mkdir -p "${OUTPUT_DIR}" "${STAGING_DIR}" logs
 
 echo "================================================================="
-echo " Iniciando CSPP Active Fire v2.1 a las $(date)"
-echo " Preparando staging en: ${STAGING_DIR}"
+echo " INFO: Iniciando CSPP Active Fire v2.1 a las $(date)"
+echo " INFO: Plataforma: ${1:-j01}"
 
-# Enlazamos los SDR necesarios (M-Bands, I-Bands y Geometrías GMTCO/GITCO)
-# Usamos enlaces simbólicos para no duplicar datos
-ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/
+# 1. Preparar staging (enlaces simbólicos)
+ln -sf ${INPUT_SDR_DIR}/* ${STAGING_DIR}/ 2>/dev/null
 
-echo " Cores asignados: ${CORES}"
-echo "================================================================="
+# 2. Definir plataforma
+SAT_PLATFORM=${1:-"j01"}
 
 # ==============================================================================
 # Ejecución con Apptainer
 # ==============================================================================
-# -B "${STAGING_DIR}":/input_data  -> Donde están los SDRs
-# -B "${OUTPUT_DIR}":/output_data  -> Donde caerán los NetCDF/ASCII
-
-# Definimos la ruta base usando el enlace simbólico que ya existe en el contenedor
-CONTAINER_HOME="/opt/cspp_active_fire"
+# --pwd /output_data : Obliga al software a ver /output_data como el "directorio actual"
+# /input_data        : Se pasa como último argumento posicional (sin -i)
 
 apptainer exec \
     --env LC_ALL=C \
-    --env CSPP_ACTIVE_FIRE_HOME="${CONTAINER_HOME}" \
     -B "${STAGING_DIR}":/input_data \
+    -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
     -B "${OUTPUT_DIR}":/output_data \
     -B "/data/output/jpss":"/data/output/jpss" \
+    --pwd /output_data \
     "${SIF_IMAGE}" \
-    "${CONTAINER_HOME}/bin/cspp_active_fire_noaa.sh" \
-    -i /input_data \
-    -o /output_data \
-    "$@"
+    /bin/bash -c "source ${ENV_SCRIPT} && ${EXEC_SCRIPT} -p ${SAT_PLATFORM} -v /input_data"
 
 EXIT_CODE=$?
 
@@ -66,14 +59,7 @@ EXIT_CODE=$?
 # Limpieza
 # ==============================================================================
 echo "================================================================="
-echo " Limpiando directorio de staging..."
+echo " INFO: Limpiando staging..."
 rm -rf "${STAGING_DIR}"
-
-if [ $EXIT_CODE -eq 0 ]; then
-    echo " Procesamiento completado exitosamente: $(date)"
-else
-    echo " ERROR: El proceso falló con código ${EXIT_CODE}"
-fi
+echo " INFO: Fin del proceso. Código de salida: ${EXIT_CODE}"
 echo "================================================================="
-
-exit $EXIT_CODE
