@@ -17,7 +17,7 @@ INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_ACSPO_DIR="/data/output/jpss/level2/acspo"
 HOST_ANC="/data/ancillary"
 
-SIF_IMAGE="/opt/containers/cspp_acspo_v3.0.sif"
+SIF_IMAGE="/opt/containers/cspp_acspo_edr_v3.0.sif"
 
 # Directorio temporal de staging y trabajo
 JOB_ID=${SLURM_JOB_ID:-$$}
