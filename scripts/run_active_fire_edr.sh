@@ -15,7 +15,7 @@
 # --- Configuración de Rutas ---
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_DIR="/data/output/jpss/level2/fires"
-SIF_IMAGE="/opt/containers/cspp_active_fire_edr.sif"
+SIF_IMAGE="/opt/containers/cspp_active_fire_edr_v2.1.sif"
 
 # Rutas internas del contenedor
 CONTAINER_HOME="/opt/cspp-active-fire-noaa_2.1"
