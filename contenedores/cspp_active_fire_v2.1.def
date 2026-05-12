@@ -1,51 +1,75 @@
-Bootstrap: docker
-From: rockylinux:9
+#!/bin/bash
+#SBATCH --job-name=cspp_active_fire
+#SBATCH --output=logs/fire_%j.out
+#SBATCH --error=logs/fire_%j.err
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=01:00:00
+#SBATCH --partition=normal
 
-%labels
-    Author Alejandro Aguilar Sierra - LANOT UNAM
-    Description CSPP VIIRS Active Fire Software Version 2.1 (Rocky 9)
-    Version 2.1-LANOT
+# ==============================================================================
+# LANOT - UNAM | CSPP Active Fire v2.1 (Apptainer)
+# ==============================================================================
 
-%files
-    # Software base (binarios) - Asegúrate de tener el tarball en el mismo directorio
-    cspp-active-fire-noaa_2.1.tar.gz /opt/
+# --- Rutas de Datos y Software ---
+INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
+OUTPUT_DIR="/data/output/jpss/level2/fires"
+SIF_IMAGE="/opt/containers/cspp_active_fire_edr.sif"
 
-%post
-    # 1. Repositorios y Dependencias
-    dnf install -y epel-release
-    dnf config-manager --set-enabled crb
-    dnf update -y
-    
-    # Dependencias comunes para binarios de CSPP (HDF5, libgfortran, etc.)
-    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
-    dnf clean all && rm -rf /var/cache/dnf
+# --- Configuración de Rutas Internas (Basado en tu find) ---
+# El HOME debe ser la raíz de la aplicación (un nivel arriba de bin)
+CONTAINER_APP_HOME="/opt/cspp-active-fire-noaa_2.1"
+# El ejecutable real que encontramos con find
+CONTAINER_EXECUTABLE="${CONTAINER_APP_HOME}/bin/cspp_active_fire_noaa.sh"
 
-    # 2. Instalación de los Binarios
-    cd /opt
-    echo "--- Descomprimiendo Binarios de Active Fire ---"
-    tar -zxf cspp-active-fire-noaa_2.1.tar.gz
-    
-    # Según el manual, se crea la carpeta cspp-active-fire-noaa_2.1 [cite: 74]
-    REAL_FOLDER="cspp-active-fire-noaa_2.1"
-    
-    if [ -d "$REAL_FOLDER" ]; then
-        echo "Carpeta detectada: $REAL_FOLDER"
-        # Enlace simbólico genérico para facilitar las rutas en scripts
-        ln -s "$REAL_FOLDER" cspp_active_fire
-    else
-        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
-        ls -la
-        exit 1
-    fi
+# --- Directorio Temporal (Staging) ---
+JOB_ID=${SLURM_JOB_ID:-$$}
+STAGING_DIR="/data/output/jpss/tmp/fire_staging_${JOB_ID}"
 
-    # Limpieza del tarball para reducir el tamaño de la imagen
-    rm -f cspp-active-fire-noaa_2.1.tar.gz
+# --- Preparación del Entorno ---
+mkdir -p "${OUTPUT_DIR}"
+mkdir -p "${STAGING_DIR}"
+mkdir -p logs
 
-%environment
-    # 3. Configuración de Variables de Entorno [cite: 74, 75]
-    export CSPP_ACTIVE_FIRE_HOME="/opt/cspp_active_fire"
-    export PATH="$CSPP_ACTIVE_FIRE_HOME:$PATH"
-    
-    # Nota: El manual sugiere hacer "source cspp_active_fire_noaa_env.sh"[cite: 75].
-    # En un contenedor, es preferible definir las variables fijas aquí.
-    # Si el script .sh define más variables complejas, puedes agregarlas manualmente.
+echo "================================================================="
+echo " Iniciando CSPP Active Fire v2.1 a las $(date)"
+echo " Preparando staging en: ${STAGING_DIR}"
+
+# Creamos enlaces simbólicos para los SDRs
+ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/
+
+echo "================================================================="
+
+# ==============================================================================
+# Ejecución con Apptainer
+# ==============================================================================
+apptainer exec \
+    --env LC_ALL=C \
+    --env CSPP_ACTIVE_FIRE_HOME="${CONTAINER_APP_HOME}" \
+    -B "${STAGING_DIR}":/input_data \
+    -B "${OUTPUT_DIR}":/output_data \
+    -B "/data/output/jpss":"/data/output/jpss" \
+    "${SIF_IMAGE}" \
+    "${CONTAINER_EXECUTABLE}" \
+    -i /input_data \
+    -o /output_data \
+    "$@"
+
+EXIT_CODE=$?
+
+# ==============================================================================
+# Limpieza
+# ==============================================================================
+echo "================================================================="
+echo " Limpiando directorio de staging..."
+rm -rf "${STAGING_DIR}"
+
+if [ $EXIT_CODE -eq 0 ]; then
+    echo " Procesamiento completado exitosamente: $(date)"
+else
+    echo " ERROR: El proceso falló con código ${EXIT_CODE}"
+fi
+echo "================================================================="
+
+exit $EXIT_CODE
