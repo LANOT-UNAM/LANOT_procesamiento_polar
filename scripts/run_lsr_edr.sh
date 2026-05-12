@@ -50,6 +50,7 @@ apptainer exec \
     --env CSPP_VIIRS_LSR_V2_HOME=/opt/cspp-surf_refl \
     -B "${STAGING_DIR}":/input_data \
     -B "${OUTPUT_LSR_DIR}":/output_data \
+    -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
     /opt/cspp-surf_refl/run_cspp_lsr_v2.sh -o /output_data -p ${CORES} /input_data
 
