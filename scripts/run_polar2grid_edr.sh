@@ -20,7 +20,7 @@ HOST_WORK="/data/tmp/p2g_work_$TIMESTAMP"
 LOG_DIR="/var/log/lanot/polares/polar2grid"
 
 # Creamos todos los directorios necesarios
-mkdir -p "$LOG_DIR" "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_WORK"
+mkdir -p "$LOG_DIR" "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "HOST_DNB_IMG_OUT" "$HOST_WORK"
 LOG_FILE="$LOG_DIR/p2g_edr_lsr_$TIMESTAMP.log"
 
 echo "=== INICIANDO RENDERIZADO CON POLAR2GRID v3.2 ===" | tee -a "$LOG_FILE"
