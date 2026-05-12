@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# LANOT - UNAM | Test Render Active Fire (Polar2Grid)
+# LANOT - UNAM | Renderizado de Confidence Category (Active Fire)
 # ==============================================================================
 
 # --- Configuración de Rutas ---
@@ -9,30 +9,32 @@ INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 INPUT_EDR_DIR="/data/output/jpss/level2/fires"
 OUTPUT_IMG_DIR="/data/output/jpss/vistas/active_fire_test"
 
-# Directorio temporal para agrupar solo lo necesario para este render
 JOB_ID=${SLURM_JOB_ID:-$$}
 STAGING_DIR="/data/output/jpss/tmp/p2g_fire_staging_${JOB_ID}"
 
 mkdir -p "${OUTPUT_IMG_DIR}" "${STAGING_DIR}"
 
 echo "================================================================="
-echo " INFO: Iniciando Renderizado de Prueba (Active Fire)"
-echo " INFO: Preparando staging..."
+echo " INFO: Preparando archivos para confidence_cat..."
 
-# 1. Enlazamos los SDR (necesarios para el fondo y la geolocalización)
-# y los EDR (los archivos AFIMG que acabas de generar)
+# 1. Crear enlaces simbólicos
 ln -sf ${INPUT_SDR_DIR}/GMTCO_j01* ${STAGING_DIR}/
 ln -sf ${INPUT_SDR_DIR}/GITCO_j01* ${STAGING_DIR}/
-ln -sf ${INPUT_SDR_DIR}/SVM07_j01* ${STAGING_DIR}/  # Banda M para contexto
-ln -sf ${INPUT_SDR_DIR}/SVI05_j01* ${STAGING_DIR}/  # Banda I térmica (fondo ideal)
-ln -sf ${INPUT_EDR_DIR}/AFIMG_j01* ${STAGING_DIR}/  # Tus resultados de Active Fire
+ln -sf ${INPUT_EDR_DIR}/AFIMG_j01* ${STAGING_DIR}/
 
-# 2. NUEVO: "Limpiar" los nombres en el staging para que Polar2Grid los reconozca
-# Esto quita el sufijo '_cspp_dev' de los enlaces simbólicos
-echo " INFO: Ajustando nombres de archivos EDR para Polar2Grid..."
-rename '_cspp_dev' '' ${STAGING_DIR}/AFIMG_j01*.nc
+# 2. CRÍTICO: Renombrar para que el lector reconozca los archivos
+# Quitamos el sufijo '_cspp_dev' de los enlaces simbólicos en staging
+echo " INFO: Renombrando archivos en staging..."
+for f in ${STAGING_DIR}/AFIMG_j01*.nc; do 
+    mv "$f" "${f//_cspp_dev/}" 2>/dev/null
+done
 
-# 3. Ejecución de Polar2Grid con los montajes corregidos
+# ==============================================================================
+# 3. Ejecución de Polar2Grid
+# ==============================================================================
+# Usamos el producto 'confidence_cat' como indica el manual.
+# Nota: Si 'viirs_edr_active_fires' falla, se puede probar 'viirs_active_fire'
+
 apptainer exec \
     --env LC_ALL=C \
     -B "${STAGING_DIR}":/input_data \
@@ -43,7 +45,7 @@ apptainer exec \
     polar2grid.sh \
     -r viirs_sdr viirs_edr_active_fires \
     -w geotiff \
-    -p fire_mask i05 \
+    -p confidence_cat \
     --grid-configs /opt/polar2grid/grids.conf \
     -g mx_1000 \
     -f /input_data \
@@ -52,11 +54,10 @@ apptainer exec \
 EXIT_CODE=$?
 
 # ==============================================================================
-# 3. Limpieza
+# 4. Limpieza
 # ==============================================================================
 rm -rf "${STAGING_DIR}"
 
 echo "================================================================="
 echo " INFO: Proceso finalizado. Código: ${EXIT_CODE}"
-echo " INFO: Imágenes generadas en: ${OUTPUT_IMG_DIR}"
 echo "================================================================="
