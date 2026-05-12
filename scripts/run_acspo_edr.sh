@@ -63,6 +63,7 @@ apptainer exec \
     -B "${OUTPUT_ACSPO_DIR}":/output_data \
     -B "${WORK_DIR}":/work_data \
     -B "${HOST_ANC}":"/opt/acspo_sst_v3/viirs/input/anc/ancil_download" \
+    -B "/data/ancillary/acspo_wisdom":"/opt/acspo_sst_v3/viirs/input/sst_wisdom" \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
     /opt/acspo_sst_v3/run_acspo_viirs_v3.sh \
