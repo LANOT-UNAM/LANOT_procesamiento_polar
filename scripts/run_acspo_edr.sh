@@ -32,6 +32,7 @@ CORES=${SLURM_CPUS_PER_TASK:-16}
 mkdir -p "${OUTPUT_ACSPO_DIR}"
 mkdir -p "${STAGING_DIR}"
 mkdir -p "${WORK_DIR}"
+mkdir -p "${WORK_DIR}/dynamic"
 mkdir -p logs
 
 echo "================================================================="
@@ -64,6 +65,7 @@ apptainer exec \
     -B "${WORK_DIR}":/work_data \
     -B "${HOST_ANC}":"/opt/acspo_sst_v3/viirs/input/anc/ancil_download" \
     -B "/data/ancillary/acspo_wisdom":"/opt/acspo_sst_v3/viirs/input/sst_wisdom" \
+    -B "${WORK_DIR}/dynamic":"/opt/acspo_sst_v3/viirs/input/anc/dynamic" \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
     /opt/acspo_sst_v3/run_acspo_viirs_v3.sh \
