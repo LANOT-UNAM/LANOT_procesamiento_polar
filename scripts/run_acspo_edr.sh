@@ -65,6 +65,7 @@ apptainer exec \
     -B "${WORK_DIR}":/work_data \
     -B "${HOST_ANC}":"/opt/acspo_sst_v3/viirs/input/anc/ancil_download" \
     -B "/data/ancillary/acspo_wisdom":"/opt/acspo_sst_v3/viirs/input/sst_wisdom" \
+    -B "/data/ancillary/acspo_histogram":"/opt/acspo_sst_v3/viirs/input/sst_histogram" \
     -B "${WORK_DIR}/dynamic":"/opt/acspo_sst_v3/viirs/input/anc/dynamic" \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
