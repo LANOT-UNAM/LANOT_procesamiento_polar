@@ -1,9 +1,8 @@
 #!/bin/bash
 # ==============================================================================
-# LANOT - UNAM | Renderizado de confidence_cat (Active Fire) - FIX FINAL
+# LANOT - UNAM | Fix Final: Renderizado de confidence_cat
 # ==============================================================================
 
-# --- Configuración de Rutas ---
 SIF_P2G="/opt/containers/polar2grid_v3.2.sif"
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 INPUT_EDR_DIR="/data/output/jpss/level2/fires"
@@ -15,39 +14,37 @@ STAGING_DIR="/data/output/jpss/tmp/p2g_fire_staging_${JOB_ID}"
 mkdir -p "${OUTPUT_IMG_DIR}" "${STAGING_DIR}"
 
 echo "================================================================="
-echo " INFO: Limpiando y preparando staging..."
+echo " INFO: Preparando staging con corrección de mayúsculas (j01 -> J01)"
 
-# 1. Enlaces simbólicos de TODO lo necesario
-# SDR: Geolocalización y Bandas (I05 y M07 son las que usa Active Fire)
+# 1. Enlaces simbólicos de los archivos necesarios
 ln -sf ${INPUT_SDR_DIR}/GMTCO_j01*.h5 ${STAGING_DIR}/
 ln -sf ${INPUT_SDR_DIR}/GITCO_j01*.h5 ${STAGING_DIR}/
 ln -sf ${INPUT_SDR_DIR}/SVI05_j01*.h5 ${STAGING_DIR}/
-ln -sf ${INPUT_SDR_DIR}/SVM07_j01*.h5 ${STAGING_DIR}/
-ln -sf ${INPUT_SDR_DIR}/SVM13_j01*.h5 ${STAGING_DIR}/
-
-# EDR: Tus resultados de Active Fire
 ln -sf ${INPUT_EDR_DIR}/AFIMG_j01*.nc ${STAGING_DIR}/
 
-# 2. RENOMBRADO AGRESIVO:
-# Satpy NO acepta '_cspp_dev' en los archivos EDR ni en las bandas de datos.
-echo " INFO: Eliminando sufijos que bloquean a Polar2Grid..."
+# 2. RENOMBRADO AGRESIVO Y CAMBIO DE CASE
+# Satpy es muy sensible: 'j01' (minúscula) a menudo no hace match con el regex.
+echo " INFO: Normalizando nombres para Satpy..."
 cd "${STAGING_DIR}"
 for f in *; do
-    if [[ "$f" == *"_cspp_dev"* ]]; then
-        new_name=$(echo "$f" | sed 's/_cspp_dev//')
+    # 1. Quitar el sufijo _cspp_dev
+    new_name=$(echo "$f" | sed 's/_cspp_dev//')
+    # 2. Cambiar j01 por J01 (Mayúscula)
+    new_name=$(echo "$new_name" | sed 's/j01/J01/')
+    
+    if [ "$f" != "$new_name" ]; then
         mv "$f" "$new_name"
     fi
 done
 cd - > /dev/null
 
-# Verificación rápida en el terminal antes de lanzar P2G
-echo " INFO: Archivos listos en staging: $(ls ${STAGING_DIR} | head -n 3)"
+echo " INFO: Archivos normalizados (ejemplo): $(ls ${STAGING_DIR} | grep GMTCO | head -n 1)"
 
 # ==============================================================================
 # 3. Ejecución de Polar2Grid
 # ==============================================================================
-# Usamos -p confidence_cat y forzamos ambos lectores.
-# Importante: Incluimos los binds de las rutas originales para los enlaces simbólicos.
+# Intentaremos con el lector 'viirs_active_fire' que es el alias común en P2G v3
+# Si falla, el log nos dirá si el problema es el lector o el producto.
 
 apptainer exec \
     --env LC_ALL=C \
@@ -57,7 +54,7 @@ apptainer exec \
     -B "${OUTPUT_IMG_DIR}":/output_data \
     "${SIF_P2G}" \
     polar2grid.sh \
-    -r viirs_sdr viirs_edr_active_fires \
+    -r viirs_sdr viirs_active_fire \
     -w geotiff \
     -p confidence_cat \
     --grid-configs /opt/polar2grid/grids.conf \
@@ -67,11 +64,6 @@ apptainer exec \
 
 EXIT_CODE=$?
 
-# ==============================================================================
-# 4. Limpieza
-# ==============================================================================
-# rm -rf "${STAGING_DIR}"  # Descomenta esto cuando confirmes que funciona
-
 echo "================================================================="
-echo " INFO: Proceso finalizado. Código: ${EXIT_CODE}"
+echo " INFO: Proceso finalizado con código: ${EXIT_CODE}"
 echo "================================================================="
