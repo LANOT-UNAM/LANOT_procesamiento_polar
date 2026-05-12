@@ -13,7 +13,7 @@
 # ==============================================================================
 
 # Rutas de Software e Imágenes SIF
-SIF_ACSPO="/opt/containers/cspp_acspo_v3.0.sif"
+SIF_ACSPO="/opt/containers/cspp_acspo_edr_v3.0.sif"
 SIF_P2G="/opt/containers/polar2grid_v3.2.sif"
 
 # Rutas de Datos
