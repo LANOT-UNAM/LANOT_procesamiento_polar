@@ -27,14 +27,12 @@ ln -sf ${INPUT_SDR_DIR}/SVM07_j01* ${STAGING_DIR}/  # Banda M para contexto
 ln -sf ${INPUT_SDR_DIR}/SVI05_j01* ${STAGING_DIR}/  # Banda I térmica (fondo ideal)
 ln -sf ${INPUT_EDR_DIR}/AFIMG_j01* ${STAGING_DIR}/  # Tus resultados de Active Fire
 
-# ==============================================================================
-# 2. Ejecución de Polar2Grid
-# ==============================================================================
-# Generaremos dos vistas:
-# a) La máscara de fuego pura (fire_mask)
-# b) La banda I05 (térmica) para comparar visualmente
-# El flag --overlay permite que los puntos de fuego se marquen sobre la imagen
+# 2. NUEVO: "Limpiar" los nombres en el staging para que Polar2Grid los reconozca
+# Esto quita el sufijo '_cspp_dev' de los enlaces simbólicos
+echo " INFO: Ajustando nombres de archivos EDR para Polar2Grid..."
+rename '_cspp_dev' '' ${STAGING_DIR}/AFIMG_j01*.nc
 
+# 3. Ejecución de Polar2Grid con los montajes corregidos
 apptainer exec \
     --env LC_ALL=C \
     -B "${STAGING_DIR}":/input_data \
