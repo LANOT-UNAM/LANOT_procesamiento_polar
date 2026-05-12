@@ -66,11 +66,10 @@ apptainer exec \
         echo '--- Generando GeoTIFFs de DNB ---'
         cd /output_dnb_img
         
-        # Se omite el enlace a los GMTCO porque los archivos SurfRefl 
-        # ya contienen su propia geolocalización (Lat/Lon internamente).
+        # Se utilizan los nombres de producto actualizados para la v3.2
         polar2grid.sh -v -r viirs_sdr \
             -w geotiff \
-            -p dnb ncc \
+            -p dynamic_dnb hncc_dnb \
             -f /input_sdr/SVDNB_*.h5 /input_sdr/GDNBO_*.h5
             
     " >> "$LOG_FILE" 2>&1
