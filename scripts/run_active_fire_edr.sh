@@ -55,7 +55,7 @@ apptainer exec \
     -B "${OUTPUT_DIR}":/output_data \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
-    "${CONTAINER_HOME}/cspp_active_fire_noaa_runtime.sh" \
+    "${CONTAINER_HOME}/bin/cspp_active_fire_noaa.sh" \
     -i /input_data \
     -o /output_data \
     "$@"
