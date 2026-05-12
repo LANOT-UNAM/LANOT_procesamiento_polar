@@ -9,14 +9,14 @@
 #SBATCH --partition=normal
 
 # ==============================================================================
-# LANOT - UNAM | CSPP Active Fire v2.1 (Apptainer)
+# LANOT - UNAM | CSPP Active Fire v2.1 (Apptainer Debug Version)
 # ==============================================================================
 
 INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 OUTPUT_DIR="/data/output/jpss/level2/fires"
 SIF_IMAGE="/opt/containers/cspp_active_fire_edr.sif"
 
-# Rutas internas basadas en tu contenedor
+# Rutas internas del contenedor
 CONTAINER_HOME="/opt/cspp-active-fire-noaa_2.1"
 ENV_SCRIPT="${CONTAINER_HOME}/cspp_active_fire_noaa_env.sh"
 EXEC_SCRIPT="${CONTAINER_HOME}/bin/cspp_active_fire_noaa.sh"
@@ -27,25 +27,26 @@ STAGING_DIR="/data/output/jpss/tmp/fire_staging_${JOB_ID}"
 mkdir -p "${OUTPUT_DIR}" "${STAGING_DIR}" logs
 
 echo "================================================================="
-echo " Iniciando CSPP Active Fire v2.1 | Satélite: ${1:-j01}"
-echo " Staging: ${STAGING_DIR}"
+echo " INFO: Iniciando procesamiento a las $(date)"
+echo " INFO: Satélite objetivo: ${1:-j01}"
 
-# Creamos enlaces simbólicos
-ln -s ${INPUT_SDR_DIR}/* ${STAGING_DIR}/ 2>/dev/null
+# 1. Crear enlaces (usamos -f para asegurar)
+ln -sf ${INPUT_SDR_DIR}/* ${STAGING_DIR}/ 2>/dev/null
 
-# DEBUG: Verificar si los archivos son visibles desde el contenedor
-echo " --- Verificando archivos SDR en /input_data ---"
-apptainer exec -B "${STAGING_DIR}":/input_data "${SIF_IMAGE}" ls /input_data | head -n 5
+# 2. DEBUG: Verificar si los enlaces funcionan DENTRO del contenedor
+echo " --- Verificando archivos SDR desde el contenedor ---"
+apptainer exec -B "${STAGING_DIR}":/input_data -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" "${SIF_IMAGE}" ls -L /input_data | head -n 5
 
 SAT_PLATFORM=${1:-"j01"}
 
 # ==============================================================================
-# Ejecución con Apptainer + Sourcing de Entorno
+# Ejecución con Apptainer + Source de Entorno
 # ==============================================================================
-# Usamos bash -c para cargar las variables del software antes de ejecutarlo
+# IMPORTANTE: Se añade el bind del INPUT_SDR_DIR para que los symlinks no se rompan
 apptainer exec \
     --env LC_ALL=C \
     -B "${STAGING_DIR}":/input_data \
+    -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
     -B "${OUTPUT_DIR}":/output_data \
     -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
@@ -54,6 +55,7 @@ apptainer exec \
 EXIT_CODE=$?
 
 echo "================================================================="
+echo " INFO: Limpiando staging..."
 rm -rf "${STAGING_DIR}"
-echo " Fin del proceso. Código: ${EXIT_CODE}"
+echo " INFO: Fin del proceso. Código de salida: ${EXIT_CODE}"
 echo "================================================================="
