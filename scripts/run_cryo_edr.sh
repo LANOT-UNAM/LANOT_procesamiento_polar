@@ -15,7 +15,7 @@ INPUT_SDR_DIR="/data/output/jpss/level1/viirs"
 INPUT_ATMOS_DIR="/data/output/jpss/level2/atmosphere"
 OUTPUT_CRYO_DIR="/data/output/jpss/level2/cryosphere"
 
-SIF_IMAGE="/opt/containers/cspp_viirs_cryo_v1.0.sif"
+SIF_IMAGE="/opt/containers/cspp_cryo_edr_v1.0.sif"
 
 # Directorio temporal de staging (donde se juntan SDR y ATMOS)
 JOB_ID=${SLURM_JOB_ID:-$$}
