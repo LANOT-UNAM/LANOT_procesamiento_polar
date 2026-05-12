@@ -11,8 +11,9 @@ HOST_EDR_IN="/data/output/jpss/level2/atmosphere"
 HOST_LSR_IN="/data/output/jpss/level2/lsr"           # NUEVO: Entrada LSR
 
 # Rutas en Lustre (Salidas de Imágenes)
-HOST_IMG_OUT="/data/output/jpss/vistas/atmosphere"
+HOST_IMG_OUT="/data/output/jpss/vistas/atmos"
 HOST_LSR_IMG_OUT="/data/output/jpss/vistas/lsr"      # NUEVO: Salida de vistas LSR
+HOST_DNB_IMG_OUT="/data/output/jpss/vistas/dnb"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 HOST_WORK="/data/tmp/p2g_work_$TIMESTAMP"
@@ -30,6 +31,7 @@ apptainer exec \
     --bind "$HOST_LSR_IN:/input_lsr" \
     --bind "$HOST_IMG_OUT:/output_img" \
     --bind "$HOST_LSR_IMG_OUT:/output_lsr_img" \
+    --bind "$HOST_DNB_IMG_OUT:/output_dnb_img" \
     --bind "$HOST_WORK:/work" \
     "$SIF_P2G" /bin/bash -c "
         
@@ -59,6 +61,17 @@ apptainer exec \
         polar2grid.sh -v -r viirs_edr \
             -w geotiff \
             -f /input_lsr/SurfRefl_*.nc
+            
+        # 4. Renderizado de DNB
+        echo '--- Generando GeoTIFFs de DNB ---'
+        cd /output_dnb_img
+        
+        # Se omite el enlace a los GMTCO porque los archivos SurfRefl 
+        # ya contienen su propia geolocalización (Lat/Lon internamente).
+        polar2grid.sh -v -r viirs_sdr \
+            -w geotiff \
+            -p dnb ncc \
+            -f /input_sdr/SVDNB_*.h5 /input_sdr/GDNBO_*.h5
             
     " >> "$LOG_FILE" 2>&1
 
