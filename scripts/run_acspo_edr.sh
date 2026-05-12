@@ -52,7 +52,7 @@ echo "================================================================="
 # Opciones de ACSPO utilizadas:
 # -p: Número de hilos de CPU (Por defecto 4, máximo 24)
 # -w: Directorio de trabajo temporal
-# -O: Directorio de salida final
+# -o: Directorio de salida final
 # -d: Directorio caché dinámico (GRIBs y CMC)
 # -m: Modo de salida (usamos 'gds' para no generar el formato legacy interno de NOAA)
 
@@ -63,11 +63,12 @@ apptainer exec \
     -B "${OUTPUT_ACSPO_DIR}":/output_data \
     -B "${WORK_DIR}":/work_data \
     -B "${HOST_ANC}":"/opt/acspo_sst_v3/viirs/input/anc/ancil_download" \
+    -B "/data/output/jpss":"/data/output/jpss" \
     "${SIF_IMAGE}" \
     /opt/acspo_sst_v3/run_acspo_viirs_v3.sh \
         -p ${CORES} \
         -w /work_data \
-        -O /output_data \
+        -o /output_data \
         -d /opt/acspo_sst_v3/viirs/input/anc/ancil_download \
         -m gds \
         /input_sdr
