@@ -1,0 +1,57 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP ACSPO Version 3.0 (Rocky 9)
+    Version 3.0-LANOT
+
+%files
+    # Software base (binarios)
+    CSPP_ACSPO_V3.0.tar.gz /opt/
+
+%post
+    # 1. Repositorios y Dependencias
+    dnf install -y epel-release
+    dnf config-manager --set-enabled crb
+    dnf update -y
+    
+    # perl es un requerimiento explícito en el manual de ACSPO v3.0
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng perl
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de los Binarios
+    cd /opt
+    echo "--- Descomprimiendo Binarios ---"
+    tar -zxf CSPP_ACSPO_V3.0.tar.gz
+    
+    # El manual indica que la extracción creará la carpeta acspo_sst_v3
+    REAL_FOLDER="acspo_sst_v3"
+    
+    if [ -d "$REAL_FOLDER" ]; then
+        echo "Carpeta detectada: $REAL_FOLDER"
+        # Creamos un enlace simbólico genérico por comodidad
+        ln -s "$REAL_FOLDER" cspp_acspo
+    else
+        echo "ERROR: No se encontró la carpeta acspo_sst_v3 tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Limpieza del tarball
+    rm -f CSPP_ACSPO_V3.0.tar.gz
+
+    # 3. Preparación de Puntos de Montaje y Caché Dinámico
+    # ACSPO requiere un directorio para descargas automáticas de datos ancilares dinámicos (GFS, GHRSST)
+    mkdir -p "/opt/$REAL_FOLDER/viirs/input/anc/ancil_download"
+    
+    # Puntos de montaje estándar para flujos de trabajo en el clúster
+    mkdir -p /data/sdr
+    mkdir -p /data/ancillary
+    mkdir -p /data/work
+    mkdir -p /data/output
+
+%environment
+    # Configuración de variables según el manual de instalación
+    export CSPP_ACSPO_HOME=/opt/acspo_sst_v3
+    export PATH=$PATH:$CSPP_ACSPO_HOME
