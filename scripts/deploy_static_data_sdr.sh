@@ -1,6 +1,8 @@
 #!/bin/bash
 # ==============================================================================
-# SCRIPT: Despliegue de Datos Estáticos CSPP SDR v4.1 en Lustre
+# SCRIPT: Despliegue de Datos Estáticos CSPP SDR v4.1 en /data
+# Se ejecuta solo una vez, en preparación para el contenedor.
+# Provisional: corregir cuando quede en producción.
 # ==============================================================================
 
 TAR_DIR="/opt/contenedores/tarfiles"

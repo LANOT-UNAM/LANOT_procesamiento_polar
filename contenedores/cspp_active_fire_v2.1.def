@@ -1,0 +1,51 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP VIIRS Active Fire Software Version 2.1 (Rocky 9)
+    Version 2.1-LANOT
+
+%files
+    # Software base (binarios) - Asegúrate de tener el tarball en el mismo directorio
+    cspp-active-fire-noaa_2.1.tar.gz /opt/
+
+%post
+    # 1. Repositorios y Dependencias
+    dnf install -y epel-release
+    dnf config-manager --set-enabled crb
+    dnf update -y
+    
+    # Dependencias comunes para binarios de CSPP (HDF5, libgfortran, etc.)
+    dnf install -y wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de los Binarios
+    cd /opt
+    echo "--- Descomprimiendo Binarios de Active Fire ---"
+    tar -zxf cspp-active-fire-noaa_2.1.tar.gz
+    
+    # Según el manual, se crea la carpeta cspp-active-fire-noaa_2.1 [cite: 74]
+    REAL_FOLDER="cspp-active-fire-noaa_2.1"
+    
+    if [ -d "$REAL_FOLDER" ]; then
+        echo "Carpeta detectada: $REAL_FOLDER"
+        # Enlace simbólico genérico para facilitar las rutas en scripts
+        ln -s "$REAL_FOLDER" cspp_active_fire
+    else
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Limpieza del tarball para reducir el tamaño de la imagen
+    rm -f cspp-active-fire-noaa_2.1.tar.gz
+
+%environment
+    # 3. Configuración de Variables de Entorno [cite: 74, 75]
+    export CSPP_ACTIVE_FIRE_HOME="/opt/cspp_active_fire"
+    export PATH="$CSPP_ACTIVE_FIRE_HOME:$PATH"
+    
+    # Nota: El manual sugiere hacer "source cspp_active_fire_noaa_env.sh"[cite: 75].
+    # En un contenedor, es preferible definir las variables fijas aquí.
+    # Si el script .sh define más variables complejas, puedes agregarlas manualmente.
