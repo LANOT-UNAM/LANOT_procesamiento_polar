@@ -10,7 +10,8 @@ From: rockylinux:9
     /usr/local/share/lanot/colortables /usr/local/share/lanot/colortables
     /usr/local/share/lanot/gpkg /usr/local/share/lanot/gpkg
     /usr/local/share/lanot/logos /usr/local/share/lanot/logos
-
+	/usr/local/share/lanot/docs/recortes_coordenadas.csv /usr/local/share/lanot/docs/recortes_coordenadas.csv
+	
 %post
     # 1. Dependencias Base y Repositorios Extra (EPEL y CRB son vitales para GDAL)
     dnf update -y
