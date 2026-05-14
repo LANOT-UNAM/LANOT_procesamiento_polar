@@ -1,0 +1,60 @@
+Bootstrap: docker
+From: rockylinux:9
+
+%files
+    # 1. El archivo fuente de Polar2Grid (debe estar junto a este .def en el host)
+    CSPP_POLAR2GRID_V3.2.tar.gz /opt/
+
+    # 2. Inyectamos los recursos de mapdrawer descartando los pesados
+    # Sintaxis: <ruta_en_el_host> <ruta_en_el_contenedor>
+    /usr/local/share/lanot/colortables /usr/local/share/lanot/colortables
+    /usr/local/share/lanot/gpkg /usr/local/share/lanot/gpkg
+    /usr/local/share/lanot/logos /usr/local/share/lanot/logos
+
+%post
+    # 1. Dependencias Base y Repositorios Extra (EPEL y CRB son vitales para GDAL)
+    dnf update -y
+    dnf install -y epel-release dnf-plugins-core
+    dnf config-manager --set-enabled crb
+    
+    # fontconfig y freetype para Satpy, compiladores para Python, y GDAL
+    dnf install -y tar gzip bash fontconfig freetype git \
+                   gcc gcc-c++ make cmake \
+                   gdal gdal-devel python3 python3-pip python3-devel
+
+    # 2. Descomprimir e Instalar Polar2Grid
+    cd /opt
+    echo "--- Descomprimiendo Polar2Grid v3.2 ---"
+    tar -zxf CSPP_POLAR2GRID_V3.2.tar.gz
+    rm -f CSPP_POLAR2GRID_V3.2.tar.gz
+    ln -s polar2grid_v_3_2 polar2grid
+
+    # 3. Descargar e Instalar LANOT_tools (mapdrawer)
+    echo "--- Clonando e Instalando LANOT_tools ---"
+    cd /opt
+    # Clonamos directamente la rama principal
+    git clone https://github.com/asierra/LANOT_tools.git build_lanot
+    cd build_lanot
+    
+    # install.sh ya tiene validaciones y usa /opt/lanot-tools/venv
+    chmod +x install.sh
+    ./install.sh
+    
+    # Limpieza: Borramos el repositorio clonado (el código útil ya se copió a /opt/lanot-tools/src)
+    cd /opt
+    rm -rf build_lanot
+
+    # Limpiamos la caché de paquetes de Rocky Linux para reducir el tamaño final del SIF
+    dnf clean all
+
+    # 4. Inicialización Obligatoria de Polar2Grid
+    export POLAR2GRID_HOME=/opt/polar2grid
+    export PATH=$PATH:$POLAR2GRID_HOME/bin
+    
+    echo "--- Inicializando entorno inmutable ---"
+    $POLAR2GRID_HOME/bin/polar2grid.sh -h
+
+%environment
+    export POLAR2GRID_HOME=/opt/polar2grid
+    # Agregamos primero /usr/local/bin para asegurar que mapdrawer y geotiff2view tengan prioridad
+    export PATH=/usr/local/bin:$POLAR2GRID_HOME/bin:$PATH
