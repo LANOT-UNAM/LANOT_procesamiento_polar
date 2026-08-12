@@ -285,6 +285,10 @@ LOG_FILE="${LOG_RT_STPS}/${TIMESTAMP_FILE}_${SATELLITE}_${FILENAME}.log"
 # Referencia para contar únicamente los RDR de esta corrida. No sirve el mtime
 # del RAW: si es viejo (o se reprocesa con --force), la cuenta arrastraría los
 # RDR de todas las pasadas posteriores.
+# Nota: 'find -newer' exige mtime estrictamente mayor y el reloj puede dar el
+# mismo sello a dos escrituras inmediatas, así que una corrida instantánea
+# contaría 0. No afecta a RT-STPS (tarda minutos) y falla del lado seguro: en
+# el peor caso se reintenta, nunca se marca por error como procesado.
 REF_FILE="${WORK_DIR}/.inicio"
 touch "$REF_FILE"
 
