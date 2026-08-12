@@ -5,18 +5,31 @@
 #
 # Level 1 (SDR de VIIRS) → Level 2 atmosférico (JRR-*.nc)
 #
-# Requiere TODAS las bandas de la pasada en el mismo directorio (SVM*, SVI*,
-# SVDNB, GDNBO, GITCO, GMTCO), tal como las deja run_sdr.sh.
+# Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
+# si ya fue procesada con éxito, avisa y no hace nada. Una pasada se identifica
+# por satélite, fecha y órbita (p. ej. j01_d20260811_b45236), datos que vienen
+# en el nombre de los propios SDR.
 #
-# Ancillary dinámico: CSPP descarga lo que falte (CMCSST, GFS, mapa de nieve)
-# al caché indicado por CSPP_DYNAMIC_ANCIL_DIR. Ese caché es EXCLUSIVO de
-# ATMOS: guarda ~6 GB por día en la raíz, sin subdirectorios diarios, y se poda
-# con delete_old_anc.sh. No debe compartirse con el caché de CSPP SDR, que sí
-# usa subdirectorios por día (2026_01_02_002/...).
+# Requiere todas las bandas de la pasada (SVM*, SVI*, SVDNB, GDNBO, GITCO,
+# GMTCO), tal como las deja run_sdr.sh. Se enlazan en un directorio de staging
+# para procesar una pasada a la vez, aunque level1 tenga varias acumuladas.
+#
+# Ancillary dinámico: por omisión NO se descarga (bandera -l), porque en
+# operación la descarga la hace update_atmos_ancillary.sh desde cron. Si el
+# caché no tiene lo del día, la corrida falla; usa --download para bajarlo al
+# vuelo. El caché es EXCLUSIVO de ATMOS: ~6 GB diarios sueltos en la raíz, sin
+# subdirectorios, podados por delete_old_anc.sh. No compartirlo con el de CSPP
+# SDR, que sí usa subdirectorios por día (2026_01_02_002/).
+#
+# Uso:
+#   ./run_atmos_edr.sh                 # la pasada más reciente pendiente
+#   ./run_atmos_edr.sh --download      # permite bajar ancillary al vuelo
+#   ./run_atmos_edr.sh --force         # reprocesa aunque ya tenga marcador
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   ATMOS_SDR_IN     Entrada Level 1  (def. /data/output/jpss/level1/viirs)
 #   ATMOS_OUT        Salida Level 2   (def. /data/output/jpss/level2/atmosphere)
+#   ATMOS_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-atmos)
 #   ATMOS_CACHE      Caché dinámico   (def. /data/ancillary/atmos)
 #   ATMOS_STATIC     Ancillary fijo   (def. /data/opt/CSPP_ATMOS_1_0/anc/static)
 #   ATMOS_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_atmos_edr_v1.0.sif)
@@ -29,21 +42,134 @@ set -euo pipefail
 
 SIF_ATMOS="${ATMOS_CONTAINER:-/opt/containers/cspp_atmos_edr_v1.0.sif}"
 
-# Rutas en Lustre
 HOST_STATIC="${ATMOS_STATIC:-/data/opt/CSPP_ATMOS_1_0/anc/static}"
 HOST_CACHE="${ATMOS_CACHE:-/data/ancillary/atmos}"
 HOST_SDR_IN="${ATMOS_SDR_IN:-/data/output/jpss/level1/viirs}"
 HOST_EDR_OUT="${ATMOS_OUT:-/data/output/jpss/level2/atmosphere}"
+STATE_DIR="${ATMOS_STATE_DIR:-/data/output/jpss/state/cspp-atmos}"
 
 WORK_BASE="${ATMOS_WORK_BASE:-/data/tmp}"
 LOG_DIR="${ATMOS_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
-# Hilos de procesamiento (respeta la asignación de Slurm si la hay)
 CORES="${SLURM_CPUS_PER_TASK:-20}"
+
+# ==============================================================================
+# FUNCIONES
+# ==============================================================================
+
+uso() {
+    cat <<EOF
+Uso:
+  $0                Procesa la pasada más reciente de $HOST_SDR_IN
+  $0 --download     Permite descargar ancillary dinámico al vuelo
+  $0 --force        Reprocesa aunque ya exista el marcador
+
+Opciones:
+  -f, --force     Ignora el marcador de procesado
+      --download  Quita '-l': CSPP baja el ancillary que falte (requiere red)
+  -h, --help      Muestra esta ayuda
+EOF
+}
+
+# Deriva la clave de la pasada del nombre de un SDR:
+#   GMTCO_j01_d20260811_t1947330_e1948557_b45236_c2026...h5 -> j01_d20260811_b45236
+clave_de_pasada() {
+    local nombre sat fecha orbita
+    nombre=$(basename "$1")
+
+    IFS='_' read -r _ sat fecha _ _ orbita _ <<< "$nombre"
+
+    if [[ "$fecha" != d* ]] || [[ "$orbita" != b* ]]; then
+        return 1
+    fi
+
+    echo "${sat}_${fecha}_${orbita}"
+}
+
+formato_duracion() {
+    local s="$1"
+    if [ "$s" -ge 3600 ]; then
+        printf '%dh %dm %ds' $((s / 3600)) $(((s % 3600) / 60)) $((s % 60))
+    elif [ "$s" -ge 60 ]; then
+        printf '%dm %ds' $((s / 60)) $((s % 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
+# ==============================================================================
+# ARGUMENTOS
+# ==============================================================================
+
+FORCE=0
+DOWNLOAD=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -f|--force)  FORCE=1 ;;
+        --download)  DOWNLOAD=1 ;;
+        -h|--help)   uso; exit 0 ;;
+        *)
+            echo "ERROR: Argumento no reconocido: $1" >&2
+            uso >&2
+            exit 1
+            ;;
+    esac
+    shift
+done
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 START_EPOCH=$(date '+%s')
 HOST_WORK="${WORK_BASE}/atmos_work_${TIMESTAMP}"
+
+# ==============================================================================
+# SELECCIÓN DE LA PASADA
+# ==============================================================================
+
+if [ ! -d "$HOST_SDR_IN" ]; then
+    echo "ERROR: Directorio de SDR no encontrado: $HOST_SDR_IN" >&2
+    exit 1
+fi
+
+# El GMTCO más reciente define la pasada a procesar
+ULTIMO_GMTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name 'GMTCO*.h5' \
+                    -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+
+if [ -z "$ULTIMO_GMTCO" ]; then
+    echo "No hay SDR que procesar en $HOST_SDR_IN (no se ven archivos GMTCO*)."
+    exit 0
+fi
+
+if ! CLAVE=$(clave_de_pasada "$ULTIMO_GMTCO"); then
+    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GMTCO")" >&2
+    echo "       Se esperaba algo como GMTCO_j01_d20260811_t1947330_e1948557_b45236_c...h5" >&2
+    exit 1
+fi
+
+IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
+
+echo "=== ATMOSPHERE EDR v1.0 | pasada $CLAVE ==="
+
+# ==============================================================================
+# ¿YA FUE PROCESADA?
+# ==============================================================================
+
+MARKER="${STATE_DIR}/${CLAVE}.done"
+
+if [ -f "$MARKER" ] && [ "$FORCE" -eq 0 ]; then
+    echo ""
+    echo "ℹ  La pasada $CLAVE ya fue procesada:"
+    while IFS= read -r linea; do
+        echo "   $linea"
+    done < "$MARKER"
+    echo ""
+    echo "   No hay nada que hacer. Usa --force para reprocesarla."
+    exit 0
+fi
+
+if [ -f "$MARKER" ]; then
+    echo "--force: se reprocesa a pesar del marcador existente"
+fi
 
 # ==============================================================================
 # VALIDACIÓN DEL AMBIENTE
@@ -59,33 +185,50 @@ if [ ! -d "$HOST_STATIC/Config" ]; then
     exit 1
 fi
 
-if [ ! -d "$HOST_SDR_IN" ]; then
-    echo "ERROR: Directorio de SDR no encontrado: $HOST_SDR_IN" >&2
+if [ "$DOWNLOAD" -eq 0 ] && [ -z "$(ls -A "$HOST_CACHE" 2>/dev/null)" ]; then
+    echo "ERROR: El caché de ancillary está vacío: $HOST_CACHE" >&2
+    echo "       Ejecuta update_atmos_ancillary.sh (o usa --download)." >&2
     exit 1
 fi
 
-if ! compgen -G "$HOST_SDR_IN/GMTCO*.h5" > /dev/null; then
-    echo "ERROR: No hay SDR que procesar en $HOST_SDR_IN (no se ven archivos GMTCO*)" >&2
+# ==============================================================================
+# STAGING DE LA PASADA
+# ==============================================================================
+# viirs_atmos.sh procesa TODOS los SDR del directorio que se le pase, así que se
+# enlaza solo la pasada elegida. Los enlaces apuntan a rutas del host, por eso
+# más abajo se monta HOST_SDR_IN en su propia ruta además del staging.
+
+STAGING_DIR="${HOST_WORK}/input_pasada"
+mkdir -p "$STAGING_DIR" "$HOST_CACHE" "$HOST_EDR_OUT" "$LOG_DIR" "$STATE_DIR"
+
+ln -sf "$HOST_SDR_IN"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5 "$STAGING_DIR"/ 2>/dev/null || true
+
+SDR_COUNT=$(find "$STAGING_DIR" -name '*.h5' | wc -l)
+
+if [ "$SDR_COUNT" -eq 0 ]; then
+    echo "ERROR: No se enlazó ningún SDR de la pasada $CLAVE" >&2
+    rm -rf "$HOST_WORK"
     exit 1
 fi
 
-# El caché es propio de ATMOS y lo llena CSPP en la primera corrida
-mkdir -p "$HOST_CACHE" "$HOST_WORK" "$HOST_EDR_OUT" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/atmos_edr_${TIMESTAMP}_${CLAVE}.log"
 
-LOG_FILE="$LOG_DIR/atmos_edr_$TIMESTAMP.log"
-
-echo "=== INICIANDO PROCESAMIENTO ATMOSPHERE EDR v1.0 ===" | tee -a "$LOG_FILE"
-echo "  Entrada: $HOST_SDR_IN"          | tee -a "$LOG_FILE"
-echo "  Salida:  $HOST_EDR_OUT"         | tee -a "$LOG_FILE"
-echo "  Caché:   $HOST_CACHE"           | tee -a "$LOG_FILE"
-echo "  Hilos:   $CORES"                | tee -a "$LOG_FILE"
+echo "  Entrada: $HOST_SDR_IN ($SDR_COUNT archivos de la pasada)"  | tee -a "$LOG_FILE"
+echo "  Salida:  $HOST_EDR_OUT"                                    | tee -a "$LOG_FILE"
+echo "  Caché:   $HOST_CACHE"                                      | tee -a "$LOG_FILE"
+echo "  Hilos:   $CORES"                                           | tee -a "$LOG_FILE"
 
 # ==============================================================================
 # EJECUCIÓN
 # ==============================================================================
-# Sin '-l': esa bandera desactiva la descarga del ancillary remoto y, con el
-# caché vacío, CMCSST_DAILY aborta y la corrida entrega 0 productos.
-# Cuando exista update_atmos_ancillary.sh en cron, se puede volver a poner.
+
+if [ "$DOWNLOAD" -eq 1 ]; then
+    FLAG_LOCAL=""
+    echo "  Ancillary: se descargará lo que falte (--download)" | tee -a "$LOG_FILE"
+else
+    FLAG_LOCAL="-l"
+    echo "  Ancillary: solo caché local (precargado por cron)"  | tee -a "$LOG_FILE"
+fi
 
 # Referencia para contar solo lo generado en esta corrida. No sirve el mtime del
 # log (se escribe durante toda la ejecución, así que queda más nuevo que los
@@ -95,7 +238,8 @@ trap "rm -f $REF_FILE" EXIT
 
 EXIT_CODE=0
 apptainer exec \
-    --bind "$HOST_SDR_IN:/input_sdr" \
+    --bind "$STAGING_DIR:/input_sdr" \
+    --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
     --bind "$HOST_EDR_OUT:/output_edr" \
     --bind "$HOST_STATIC:/opt/CSPP_ATMOS_1_0/anc/static" \
     --bind "$HOST_CACHE:/opt/CSPP_ATMOS_1_0/anc/cache" \
@@ -106,14 +250,13 @@ apptainer exec \
         export PATH=\$CSPP_VIIRS_ATMOS_HOME/bin:\$PATH
         export HDF5_USE_FILE_LOCKING=FALSE
 
-        # Verificación del montaje de Config
         if [ ! -d \"/opt/CSPP_ATMOS_1_0/anc/static/Config\" ]; then
             echo 'FATAL: El contenedor no ve la carpeta Config.'
             exit 1
         fi
 
         echo '--- Ejecutando algoritmos Enterprise ---'
-        viirs_atmos.sh -v -W /work -p $CORES /input_sdr
+        viirs_atmos.sh -v $FLAG_LOCAL -W /work -p $CORES /input_sdr
         RC=\$?
 
         # El código de salida debe ser el de los algoritmos, no el del traslado:
@@ -130,12 +273,12 @@ apptainer exec \
         find /work -maxdepth 1 -name '*.nc' -exec mv -t /output_edr/ {} +
     " >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
-DURACION=$(( $(date '+%s') - START_EPOCH ))
+DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
 if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ ERROR: CSPP ATMOS falló (código $EXIT_CODE) tras ${DURACION}s" | tee -a "$LOG_FILE"
-    echo "   Revisa el log: $LOG_FILE"                                     | tee -a "$LOG_FILE"
-    echo "   El directorio de trabajo se conserva: $HOST_WORK"             | tee -a "$LOG_FILE"
+    echo "❌ ERROR: CSPP ATMOS falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
+    echo "   Revisa el log: $LOG_FILE"                                   | tee -a "$LOG_FILE"
+    echo "   El directorio de trabajo se conserva: $HOST_WORK"           | tee -a "$LOG_FILE"
     exit $EXIT_CODE
 fi
 
@@ -148,15 +291,31 @@ fi
 NC_COUNT=$(find "$HOST_EDR_OUT" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" 2>/dev/null | wc -l)
 
 if [ "$NC_COUNT" -eq 0 ]; then
-    echo "❌ ERROR: CSPP ATMOS terminó sin error pero no generó productos."  | tee -a "$LOG_FILE"
-    echo "   Busca en el log la línea 'products of' y los FATAL asociados:"  | tee -a "$LOG_FILE"
-    echo "   grep -E 'products of|FATAL|ERROR \\(USR' $LOG_FILE"             | tee -a "$LOG_FILE"
-    echo "   Causa típica: falta ancillary dinámico (CMCSST, GFS) en $HOST_CACHE" | tee -a "$LOG_FILE"
-    echo "   El directorio de trabajo se conserva: $HOST_WORK"               | tee -a "$LOG_FILE"
+    echo "❌ ERROR: CSPP ATMOS terminó sin error pero no generó productos."   | tee -a "$LOG_FILE"
+    echo "   Busca en el log la línea 'products of' y los FATAL asociados:"   | tee -a "$LOG_FILE"
+    echo "   grep -E 'products of|FATAL|ERROR \\(USR' $LOG_FILE"              | tee -a "$LOG_FILE"
+    echo "   Causa típica: falta ancillary dinámico (CMCSST, GFS) para $FECHA" | tee -a "$LOG_FILE"
+    echo "   en $HOST_CACHE. Corre update_atmos_ancillary.sh."                | tee -a "$LOG_FILE"
+    echo "   El directorio de trabajo se conserva: $HOST_WORK"                | tee -a "$LOG_FILE"
     exit 1
 fi
 
-echo "✅ ÉXITO: $NC_COUNT productos generados en $HOST_EDR_OUT (${DURACION}s)" | tee -a "$LOG_FILE"
+# ==============================================================================
+# MARCADOR DE PROCESAMIENTO EXITOSO
+# ==============================================================================
+
+{
+    echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "pasada:    $CLAVE"
+    echo "sdr:       $SDR_COUNT archivos de entrada"
+    echo "productos: $NC_COUNT archivos .nc"
+    echo "duracion:  $DURACION"
+    echo "salida:    $HOST_EDR_OUT"
+    echo "log:       $LOG_FILE"
+} > "$MARKER"
+
+echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE en $HOST_EDR_OUT ($DURACION)" | tee -a "$LOG_FILE"
+echo "   Marcador: $MARKER" | tee -a "$LOG_FILE"
 
 # Limpieza segura del temporal, solo cuando hubo productos
 rm -rf "$HOST_WORK"
