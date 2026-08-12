@@ -134,15 +134,43 @@ From: rockylinux:9
 
 %test
     # apptainer test polar2grid_v3.2-mapdrawer.sif
+    #
+    # Cada orden va sola, no encadenada con &&: 'set -e' no aborta cuando falla
+    # el lado izquierdo de un &&, así que una prueba encadenada imprimiría el
+    # error y seguiría de largo dando la impresión de que todo está bien.
     set -e
-    echo "Polar2Grid:"; $POLAR2GRID_HOME/bin/polar2grid.sh --list-readers > /dev/null && echo "  OK"
-    echo "mapdrawer:";    mapdrawer --help > /dev/null && echo "  OK $(command -v mapdrawer)"
-    echo "geotiff2view:"; geotiff2view --help > /dev/null && echo "  OK $(command -v geotiff2view)"
-    echo "venv:";         /opt/lanot-tools/venv/bin/python --version
+
+    # Nota: v3.2 no tiene --list-readers (eso era de la v3.1); -h sí sale con 0
+    echo "Polar2Grid:"
+    $POLAR2GRID_HOME/bin/polar2grid.sh -h > /dev/null
+    echo "  OK"
+
+    echo "mapdrawer:"
+    mapdrawer --help > /dev/null
+    echo "  OK $(command -v mapdrawer)"
+
+    echo "geotiff2view:"
+    geotiff2view --help > /dev/null
+    echo "  OK $(command -v geotiff2view)"
+
+    echo "venv:"
+    /opt/lanot-tools/venv/bin/python --version
+
+    # PROJ: se recortaron las rejillas de países, así que conviene comprobar
+    # que la base sigue completa y que una reproyección real funciona.
+    echo "PROJ:"
+    /opt/lanot-tools/venv/bin/python -c "
+from pyproj import Transformer
+x, y = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform(-99.13, 19.43)
+assert abs(x + 11035000) < 5000 and abs(y - 2205000) < 5000, (x, y)
+print('  OK reproyección CDMX a Web Mercator')
+"
+
     echo "Recursos:"
     for r in /usr/local/share/lanot/colortables \
              /usr/local/share/lanot/gpkg \
              /usr/local/share/lanot/logos \
              /usr/local/share/lanot/docs/recortes_coordenadas.csv; do
-        test -e "$r" && echo "  OK $r"
+        test -e "$r"
+        echo "  OK $r"
     done
