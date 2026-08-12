@@ -66,6 +66,19 @@ LOG_RT_STPS="${LOG_BASE}/rt-stps"
 # FUNCIONES
 # ============================================================================
 
+# Expresa una cantidad de segundos en forma legible (2h 5m 9s / 7m 30s / 12s)
+formato_duracion() {
+    local s="$1"
+
+    if [ "$s" -ge 3600 ]; then
+        printf '%dh %dm %ds' $((s / 3600)) $(((s % 3600) / 60)) $((s % 60))
+    elif [ "$s" -ge 60 ]; then
+        printf '%dm %ds' $((s / 60)) $((s % 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
 uso() {
     cat <<EOF
 Uso:
@@ -146,6 +159,7 @@ done
 
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 TIMESTAMP_FILE=$(date '+%Y%m%d_%H%M%S')
+START_EPOCH=$(date '+%s')
 
 # ============================================================================
 # SELECCIÓN DEL ARCHIVO A PROCESAR
@@ -305,6 +319,11 @@ apptainer exec \
     /bin/bash -c "cd /opt/rt-stps && ./bin/batch.sh /config_bind/config_temp.xml /input/$FILENAME" \
     > "$LOG_FILE" 2>&1 || APPTAINER_EXIT_CODE=$?
 
+# RT-STPS tarda minutos: de aquí en adelante los mensajes llevan la hora real,
+# no la del arranque del script.
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
+
 # Verificar éxito del procesamiento
 if [ $APPTAINER_EXIT_CODE -ne 0 ]; then
     echo "[$TIMESTAMP] ERROR: RT-STPS falló (código $APPTAINER_EXIT_CODE)" >&2
@@ -345,6 +364,7 @@ echo "[$TIMESTAMP] PROCESAMIENTO COMPLETADO"
 echo "=============================================================================="
 echo "  Satélite:      $SATELLITE"
 echo "  Archivos RDR:  $RDR_COUNT archivos .h5"
+echo "  Duración:      $DURACION"
 echo "  Log:           $LOG_FILE"
 echo "  Marcador:      $MARKER"
 echo "=============================================================================="

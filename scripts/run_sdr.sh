@@ -70,6 +70,19 @@ SENSOR_BUSCADO="viirs"
 # FUNCIONES
 # ============================================================================
 
+# Expresa una cantidad de segundos en forma legible (2h 5m 9s / 7m 30s / 12s)
+formato_duracion() {
+    local s="$1"
+
+    if [ "$s" -ge 3600 ]; then
+        printf '%dh %dm %ds' $((s / 3600)) $(((s % 3600) / 60)) $((s % 60))
+    elif [ "$s" -ge 60 ]; then
+        printf '%dm %ds' $((s / 60)) $((s % 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
 uso() {
     cat <<EOF
 Uso:
@@ -170,6 +183,7 @@ esac
 
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 TIMESTAMP_FILE=$(date '+%Y%m%d_%H%M%S')
+START_EPOCH=$(date '+%s')
 
 # ============================================================================
 # SELECCIÓN DEL ARCHIVO A PROCESAR
@@ -317,6 +331,11 @@ apptainer exec "${BIND_OPTS[@]}" "$SIF_CSPP" /bin/bash -c "
     $EXEC_CMD -p $CORES -a -g /input/$FILENAME
 " > "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
+# CSPP tarda minutos: de aquí en adelante los mensajes llevan la hora real, no
+# la del arranque del script.
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
+
 if [ $EXIT_CODE -ne 0 ]; then
     echo "[$TIMESTAMP] ERROR: CSPP SDR falló (código $EXIT_CODE)" >&2
     echo "[$TIMESTAMP] Ver log: $LOG_FILE" >&2
@@ -356,6 +375,7 @@ echo "[$TIMESTAMP] PROCESAMIENTO COMPLETADO"
 echo "=============================================================================="
 echo "  Sensor:        $SENSOR"
 echo "  Archivos SDR:  $SDR_COUNT archivos .h5"
+echo "  Duración:      $DURACION"
 echo "  Salida:        $OUTPUT_DIR"
 echo "  Log:           $LOG_FILE"
 echo "  Marcador:      $MARKER"
