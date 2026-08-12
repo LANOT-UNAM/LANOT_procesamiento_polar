@@ -17,10 +17,18 @@
 #   ./run_rt_stps.sh <archivo_raw>    # un archivo específico
 #   ./run_rt_stps.sh --force [raw]    # reprocesa aunque ya tenga marcador
 #
+#   Se considera exitoso solo si RT-STPS sale con código 0 Y genera al menos un
+#   RDR: con un RAW corrupto termina en 0 sin decodificar nada.
+#
 # Variables de entorno (para pruebas o rutas alternas):
 #   RTSTPS_INPUT_DIR    Buzón de RAW      (def. /datawork/input/polar/raw)
 #   RTSTPS_STATE_DIR    Marcadores .done  (def. /data/output/jpss/state/rt-stps)
+#   RTSTPS_OUTPUT_DIR   Salida Level 0    (def. /data/output/jpss/level0)
 #   RTSTPS_MIN_AGE_MIN  Edad mínima (min) (def. 1)
+#   RTSTPS_LOG_BASE     Raíz de logs      (def. /var/log/lanot/polares)
+#   RTSTPS_CONTAINER    Imagen .sif       (def. /opt/containers/rt_stps_7.0.sif)
+#   RTSTPS_CONFIG_DIR   XMLs de RT-STPS   (def. /data/opt/RT-STPS/rt-stps/config)
+#   RTSTPS_LEAPSEC      leapsec.dat       (def. /data/ancillary/common/leapsec.dat)
 #
 ################################################################################
 
@@ -31,11 +39,11 @@ set -euo pipefail  # Modo estricto: abortar en errores
 # ============================================================================
 
 # Contenedor RT-STPS
-CONTAINER_RT_STPS="/opt/containers/rt_stps_7.0.sif"
+CONTAINER_RT_STPS="${RTSTPS_CONTAINER:-/opt/containers/rt_stps_7.0.sif}"
 
 # Directorios del sistema
-HOST_CONFIG_DIR="/data/opt/RT-STPS/rt-stps/config"
-HOST_LEAPSEC="/data/ancillary/common/leapsec.dat"
+HOST_CONFIG_DIR="${RTSTPS_CONFIG_DIR:-/data/opt/RT-STPS/rt-stps/config}"
+HOST_LEAPSEC="${RTSTPS_LEAPSEC:-/data/ancillary/common/leapsec.dat}"
 
 # Buzón de archivos RAW de la antena (compartido con las cadenas legacy)
 INPUT_DIR="${RTSTPS_INPUT_DIR:-/datawork/input/polar/raw}"
@@ -48,10 +56,10 @@ STATE_DIR="${RTSTPS_STATE_DIR:-/data/output/jpss/state/rt-stps}"
 MIN_AGE_MIN="${RTSTPS_MIN_AGE_MIN:-1}"
 
 # Directorio de salida
-DIR_L0="/data/output/jpss/level0"
+DIR_L0="${RTSTPS_OUTPUT_DIR:-/data/output/jpss/level0}"
 
 # Directorio de logs
-LOG_BASE="/var/log/lanot/polares"
+LOG_BASE="${RTSTPS_LOG_BASE:-/var/log/lanot/polares}"
 LOG_RT_STPS="${LOG_BASE}/rt-stps"
 
 # ============================================================================
@@ -274,6 +282,12 @@ echo "[$TIMESTAMP] Procesando con RT-STPS..."
 
 LOG_FILE="${LOG_RT_STPS}/${TIMESTAMP_FILE}_${SATELLITE}_${FILENAME}.log"
 
+# Referencia para contar únicamente los RDR de esta corrida. No sirve el mtime
+# del RAW: si es viejo (o se reprocesa con --force), la cuenta arrastraría los
+# RDR de todas las pasadas posteriores.
+REF_FILE="${WORK_DIR}/.inicio"
+touch "$REF_FILE"
+
 # --- Ejecución del contenedor ---
 # El '|| APPTAINER_EXIT_CODE=$?' es indispensable: sin él, 'set -e' abortaría el
 # script antes de poder informar cuál es el log que hay que revisar.
@@ -295,8 +309,19 @@ if [ $APPTAINER_EXIT_CODE -ne 0 ]; then
     exit 1
 fi
 
-# Contar archivos RDR generados
-RDR_COUNT=$(find "$DIR_L0" -name "*.h5" -newer "$INPUT_FILE" 2>/dev/null | wc -l)
+# Contar los archivos RDR generados en esta corrida
+RDR_COUNT=$(find "$DIR_L0" -name "*.h5" -newer "$REF_FILE" 2>/dev/null | wc -l)
+
+# RT-STPS termina con código 0 aunque el RAW sea basura y no decodifique nada
+# (verificado en tahan el 2026-08-12), así que el código de salida por sí solo
+# no basta como criterio de éxito.
+if [ "$RDR_COUNT" -eq 0 ]; then
+    echo "[$TIMESTAMP] ERROR: RT-STPS terminó sin error pero no generó ningún RDR." >&2
+    echo "[$TIMESTAMP] El RAW puede estar corrupto o incompleto: $FILENAME" >&2
+    echo "[$TIMESTAMP] Ver log: $LOG_FILE" >&2
+    echo "[$TIMESTAMP] No se escribió el marcador: el archivo se reintentará." >&2
+    exit 1
+fi
 
 # ============================================================================
 # MARCADOR DE PROCESAMIENTO EXITOSO
