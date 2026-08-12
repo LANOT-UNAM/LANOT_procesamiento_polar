@@ -53,7 +53,15 @@ From: rockylinux:9
     dnf config-manager --set-enabled crb
 
     # fontconfig y freetype para Satpy, compiladores para Python, y GDAL
-    dnf install -y tar gzip bash fontconfig freetype git \
+    #
+    # --setopt=install_weak_deps=False es indispensable: sin él, gdal arrastra
+    # como recomendación las rejillas de datum de PROJ de otros países
+    # (proj-data-us 319 MB, -au 118, -ca 106, -de 76, -dk 61, -at 15, -nz 14:
+    # 709 MB en total). Ninguna se usa para México, y son las culpables de que
+    # la imagen pasara de 1.7 a 2.3 GB. El paquete 'proj' base ya trae proj.db,
+    # que es lo que necesitan las reproyecciones de la cadena.
+    dnf install -y --setopt=install_weak_deps=False \
+                   tar gzip bash fontconfig freetype git \
                    gcc gcc-c++ make cmake \
                    gdal gdal-devel python3 python3-pip python3-devel
 
@@ -79,11 +87,16 @@ From: rockylinux:9
     cd /opt
     rm -rf build_lanot
 
-    # 4. Quitar el toolchain, que solo hacía falta para compilar las
-    #    dependencias de pip. La verificación del paso 6 corre DESPUÉS de esto
-    #    a propósito: si el recorte se lleva algo necesario, la compilación
-    #    falla aquí y no en producción.
-    dnf remove -y gcc gcc-c++ make cmake gdal-devel python3-devel
+    # pip guarda las ruedas descargadas y se quedaban dentro de la imagen:
+    # 123 MB que no se usan en ningún momento en tiempo de ejecución.
+    rm -rf /root/.cache/pip
+
+    # 4. Quitar lo que solo hacía falta para compilar: el toolchain de las
+    #    dependencias de pip y git, que ya cumplió su papel al clonar.
+    #    La verificación del paso 6 corre DESPUÉS de esto a propósito: si el
+    #    recorte se lleva algo necesario, la compilación falla aquí y no en
+    #    producción.
+    dnf remove -y gcc gcc-c++ make cmake gdal-devel python3-devel git
     dnf clean all
     rm -rf /var/cache/dnf
 
