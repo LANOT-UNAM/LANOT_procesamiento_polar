@@ -89,26 +89,44 @@ formato_duracion() {
     fi
 }
 
-# Enlaza Cloud Mask y Cloud Height de los gránulos de la pasada. Los JRR-* no
-# llevan número de órbita: se emparejan por el sello temporal, que concatena
-# fecha y hora de inicio del gránulo (GMTCO d20260811 + t1947330 ->
-# JRR s202608111947330).
-enlazar_atmos() {
-    local destino="$1" origen="$2" enlazados=0 g nombre fecha tiempo sello prod
+# Calcula la ventana temporal de la pasada a partir del SDR agregado:
+#   GMTCO_j01_d20260811_t1947330_e2003097_b45236_... -> 202608111947330 .. 202608112003097
+ventana_de_pasada() {
+    local nombre fecha tini tfin
+    nombre=$(basename "$1")
+    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
 
-    for g in "$destino"/GMTCO_*.h5; do
-        [ -e "$g" ] || continue
-        nombre=$(basename "$g")
-        IFS='_' read -r _ _ fecha tiempo _ <<< "$nombre"
-        sello="s${fecha#d}${tiempo#t}"
+    FECHA_NUM="${fecha#d}"
+    VENTANA_INI="${FECHA_NUM}${tini#t}"
 
-        for prod in JRR-CloudMask JRR-CloudHeight; do
-            if compgen -G "$origen/${prod}*${sello}*.nc" > /dev/null; then
-                ln -sf "$origen"/"${prod}"*"${sello}"*.nc "$destino"/
-                enlazados=$((enlazados + 1))
-            fi
-        done
+    # Si la hora final es menor que la inicial, la pasada cruzó la medianoche
+    if [ "${tfin#e}" -lt "${tini#t}" ]; then
+        FECHA_SIG=$(date -u -d "${FECHA_NUM} +1 day" +%Y%m%d)
+    else
+        FECHA_SIG="$FECHA_NUM"
+    fi
+
+    VENTANA_FIN="${FECHA_SIG}${tfin#e}"
+}
+
+# Enlaza los productos $3 cuyo sello temporal cae dentro de la ventana de la
+# pasada. No se puede emparejar gránulo por gránulo: los SDR llegan agregados
+# (un archivo por banda para toda la pasada, con un solo GMTCO), mientras que
+# los productos de Level 2 son por gránulo.
+enlazar_en_ventana() {
+    local destino="$1" origen="$2" patron="$3" enlazados=0 f sello
+
+    shopt -s nullglob
+    for f in "$origen"/${patron}*.nc; do
+        sello=$(basename "$f" | grep -oE "(${FECHA_NUM}|${FECHA_SIG})[0-9]{7}" | head -1 || true)
+        [ -n "$sello" ] || continue
+
+        if [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ]; then
+            ln -sf "$f" "$destino"/
+            enlazados=$((enlazados + 1))
+        fi
     done
+    shopt -u nullglob
 
     echo "$enlazados"
 }
@@ -216,7 +234,9 @@ if [ "$SDR_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-PRODUCTOS_ATMOS=$(enlazar_atmos "$STAGING_DIR" "$INPUT_ATMOS_DIR")
+ventana_de_pasada "$ULTIMO_GMTCO"
+PRODUCTOS_ATMOS=$(( $(enlazar_en_ventana "$STAGING_DIR" "$INPUT_ATMOS_DIR" "JRR-CloudMask")
+                  + $(enlazar_en_ventana "$STAGING_DIR" "$INPUT_ATMOS_DIR" "JRR-CloudHeight") ))
 
 if [ "$PRODUCTOS_ATMOS" -eq 0 ]; then
     echo "ERROR: No hay Cloud Mask / Cloud Height para la pasada $CLAVE en $INPUT_ATMOS_DIR" >&2
@@ -227,7 +247,7 @@ fi
 LOG_FILE="$LOG_DIR/cryo_edr_${TIMESTAMP}_${CLAVE}.log"
 
 echo "  SDR:      $SDR_COUNT archivos (SVM* + GMTCO*)"        | tee -a "$LOG_FILE"
-echo "  ATMOS:    $PRODUCTOS_ATMOS productos enlazados"       | tee -a "$LOG_FILE"
+echo "  ATMOS:    $PRODUCTOS_ATMOS productos en $VENTANA_INI-$VENTANA_FIN"       | tee -a "$LOG_FILE"
 echo "  Salida:   $OUTPUT_CRYO_DIR"                           | tee -a "$LOG_FILE"
 echo "  Hilos:    $CORES"                                     | tee -a "$LOG_FILE"
 

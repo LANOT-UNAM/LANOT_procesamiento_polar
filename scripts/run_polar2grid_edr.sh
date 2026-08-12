@@ -89,24 +89,44 @@ formato_duracion() {
     fi
 }
 
-# Enlaza en $1 los productos de $2 que corresponden a los gránulos de la pasada.
-# Los .nc de Nivel 2 no llevan órbita: se emparejan por el sello temporal, que
-# concatena fecha y hora de inicio del gránulo (GMTCO d20260811 + t1947330 ->
-# s202608111947330). Imprime cuántos enlazó.
-enlazar_por_granulo() {
-    local destino="$1" origen="$2" patron="$3" enlazados=0 g nombre fecha tiempo sello
+# Calcula la ventana temporal de la pasada a partir del SDR agregado:
+#   GMTCO_j01_d20260811_t1947330_e2003097_b45236_... -> 202608111947330 .. 202608112003097
+ventana_de_pasada() {
+    local nombre fecha tini tfin
+    nombre=$(basename "$1")
+    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
 
-    for g in "$STAGING_SDR"/GMTCO_*.h5; do
-        [ -e "$g" ] || continue
-        nombre=$(basename "$g")
-        IFS='_' read -r _ _ fecha tiempo _ <<< "$nombre"
-        sello="s${fecha#d}${tiempo#t}"
+    FECHA_NUM="${fecha#d}"
+    VENTANA_INI="${FECHA_NUM}${tini#t}"
 
-        if compgen -G "$origen/${patron}*${sello}*.nc" > /dev/null; then
-            ln -sf "$origen"/"${patron}"*"${sello}"*.nc "$destino"/
+    # Si la hora final es menor que la inicial, la pasada cruzó la medianoche
+    if [ "${tfin#e}" -lt "${tini#t}" ]; then
+        FECHA_SIG=$(date -u -d "${FECHA_NUM} +1 day" +%Y%m%d)
+    else
+        FECHA_SIG="$FECHA_NUM"
+    fi
+
+    VENTANA_FIN="${FECHA_SIG}${tfin#e}"
+}
+
+# Enlaza en $1 los productos $3 de $2 cuyo sello temporal cae dentro de la
+# ventana de la pasada. No se puede emparejar gránulo por gránulo: los SDR
+# llegan agregados (un archivo por banda para toda la pasada, con un solo
+# GMTCO), mientras que los productos de Level 2 son por gránulo.
+enlazar_en_ventana() {
+    local destino="$1" origen="$2" patron="$3" enlazados=0 f sello
+
+    shopt -s nullglob
+    for f in "$origen"/${patron}*.nc; do
+        sello=$(basename "$f" | grep -oE "(${FECHA_NUM}|${FECHA_SIG})[0-9]{7}" | head -1 || true)
+        [ -n "$sello" ] || continue
+
+        if [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ]; then
+            ln -sf "$f" "$destino"/
             enlazados=$((enlazados + 1))
         fi
     done
+    shopt -u nullglob
 
     echo "$enlazados"
 }
@@ -212,16 +232,18 @@ if [ "$SDR_COUNT" -eq 0 ]; then
     exit 1
 fi
 
+ventana_de_pasada "$ULTIMO_GMTCO"
+
 EDR_COUNT=0
 LSR_COUNT=0
-[ -d "$HOST_EDR_IN" ] && EDR_COUNT=$(enlazar_por_granulo "$STAGING_EDR" "$HOST_EDR_IN" "JRR-")
-[ -d "$HOST_LSR_IN" ] && LSR_COUNT=$(enlazar_por_granulo "$STAGING_LSR" "$HOST_LSR_IN" "SurfRefl_")
+[ -d "$HOST_EDR_IN" ] && EDR_COUNT=$(enlazar_en_ventana "$STAGING_EDR" "$HOST_EDR_IN" "JRR-")
+[ -d "$HOST_LSR_IN" ] && LSR_COUNT=$(enlazar_en_ventana "$STAGING_LSR" "$HOST_LSR_IN" "SurfRefl_")
 
 LOG_FILE="$LOG_DIR/p2g_${TIMESTAMP}_${CLAVE}.log"
 
 echo "  SDR:      $SDR_COUNT archivos"                  | tee -a "$LOG_FILE"
-echo "  ATMOS:    $EDR_COUNT gránulos con productos"    | tee -a "$LOG_FILE"
-echo "  LSR:      $LSR_COUNT gránulos con productos"    | tee -a "$LOG_FILE"
+echo "  ATMOS:    $EDR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
+echo "  LSR:      $LSR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 
 REF_FILE=$(mktemp -t p2g_ref_XXXXXX)
 trap 'rm -rf "$HOST_WORK" "$REF_FILE"' EXIT
