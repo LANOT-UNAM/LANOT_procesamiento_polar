@@ -97,7 +97,7 @@ ventana_de_pasada() {
     IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
 
     FECHA_NUM="${fecha#d}"
-    VENTANA_INI="${FECHA_NUM}${tini#t}"
+    VENTANA_INI="${FECHA_NUM}${tini#t}"; VENTANA_INI="${VENTANA_INI:0:14}"
 
     # Si la hora final es menor que la inicial, la pasada cruzó la medianoche
     if [ "${tfin#e}" -lt "${tini#t}" ]; then
@@ -106,7 +106,45 @@ ventana_de_pasada() {
         FECHA_SIG="$FECHA_NUM"
     fi
 
-    VENTANA_FIN="${FECHA_SIG}${tfin#e}"
+    VENTANA_FIN="${FECHA_SIG}${tfin#e}"; VENTANA_FIN="${VENTANA_FIN:0:14}"
+}
+
+# Devuelve el sello temporal de un producto como AAAAMMDDHHMMSS, o código 1 si
+# no lo reconoce. En Level 2 conviven dos convenciones:
+#   JRR-CloudMask_v3r2_j01_s202608111947330_e...    -> fecha + hora + décimas
+#   NOAA20_VIIRS_750M_2026223_1947_33_NWP_GFS-INTP  -> año + día juliano + HHMM_SS
+sello_de_archivo() {
+    local nombre="$1" s anio doy fecha
+
+    # Convención con fecha calendario
+    s=$(echo "$nombre" | grep -oE "(${FECHA_NUM}|${FECHA_SIG})[0-9]{7}" | head -1 || true)
+    if [ -n "$s" ]; then
+        echo "${s:0:14}"   # se descartan las décimas de segundo
+        return 0
+    fi
+
+    # Convención con día juliano
+    s=$(echo "$nombre" | grep -oE "_[0-9]{7}_[0-9]{4}_[0-9]{2}_" | head -1 || true)
+    if [ -n "$s" ]; then
+        s="${s#_}"; s="${s%_}"
+        anio="${s:0:4}"; doy="${s:4:3}"
+        fecha=$(date -u -d "${anio}-01-01 +$((10#$doy - 1)) days" +%Y%m%d)
+        echo "${fecha}${s:8:4}${s:13:2}"
+        return 0
+    fi
+
+    return 1
+}
+
+# Rechaza un archivo si nombra explícitamente a OTRO satélite. Si no reconoce
+# ninguno, no estorba: la ventana temporal ya filtra.
+de_otro_satelite() {
+    case "$SAT" in
+        j01) echo "$1" | grep -qiE "j02|noaa21|npp" ;;
+        j02) echo "$1" | grep -qiE "j01|noaa20|npp" ;;
+        npp) echo "$1" | grep -qiE "j01|noaa20|j02|noaa21" ;;
+        *)   return 1 ;;
+    esac
 }
 
 # Enlaza los productos $3 cuyo sello temporal cae dentro de la ventana de la
@@ -114,12 +152,13 @@ ventana_de_pasada() {
 # (un archivo por banda para toda la pasada, con un solo GMTCO), mientras que
 # los productos de Level 2 son por gránulo.
 enlazar_en_ventana() {
-    local destino="$1" origen="$2" patron="$3" enlazados=0 f sello
+    local destino="$1" origen="$2" patron="$3" enlazados=0 f nombre sello
 
     shopt -s nullglob
     for f in "$origen"/${patron}*.nc; do
-        sello=$(basename "$f" | grep -oE "(${FECHA_NUM}|${FECHA_SIG})[0-9]{7}" | head -1 || true)
-        [ -n "$sello" ] || continue
+        nombre=$(basename "$f")
+        de_otro_satelite "$nombre" && continue
+        sello=$(sello_de_archivo "$nombre") || continue
 
         if [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ]; then
             ln -sf "$f" "$destino"/
