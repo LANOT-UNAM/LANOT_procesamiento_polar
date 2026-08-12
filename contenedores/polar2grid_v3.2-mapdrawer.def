@@ -1,23 +1,57 @@
 Bootstrap: docker
 From: rockylinux:9
 
+%labels
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
+    Version 3.2-mapdrawer-LANOT
+    LANOT_tools_commit e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
+
+%help
+    Polar2Grid v3.2 con las herramientas de LANOT para adornar las vistas
+    (logos, instante, recortes).
+
+    REQUISITO DE COMPILACIÓN: este .def toma recursos del HOST donde se
+    construye. La máquina debe tener:
+
+        /usr/local/share/lanot/gpkg
+        /usr/local/share/lanot/logos
+        /usr/local/share/lanot/docs/recortes_coordenadas.csv
+
+    Las colortables NO se copian del host: las instala LANOT_tools desde su
+    propio repositorio, que es donde están siempre al día.
+
+    Verificación tras compilar:  apptainer test polar2grid_v3.2-mapdrawer.sif
+
 %files
     # 1. El archivo fuente de Polar2Grid (debe estar junto a este .def en el host)
     CSPP_POLAR2GRID_V3.2.tar.gz /opt/
 
-    # 2. Inyectamos los recursos de mapdrawer descartando los pesados
-    # Sintaxis: <ruta_en_el_host> <ruta_en_el_contenedor>
-    /usr/local/share/lanot/colortables /usr/local/share/lanot/colortables
+    # 2. Recursos de mapdrawer que no vienen en el repo, descartando los pesados.
+    #    Sintaxis: <ruta_en_el_host> <ruta_en_el_contenedor>
+    #    Las colortables se omiten a propósito: install.sh copia las del repo a
+    #    /usr/local/share/lanot/colortables y sobrescribiría lo que se pusiera
+    #    aquí, porque %files se procesa ANTES que %post.
     /usr/local/share/lanot/gpkg /usr/local/share/lanot/gpkg
     /usr/local/share/lanot/logos /usr/local/share/lanot/logos
-	/usr/local/share/lanot/docs/recortes_coordenadas.csv /usr/local/share/lanot/docs/recortes_coordenadas.csv
-	
+    /usr/local/share/lanot/docs/recortes_coordenadas.csv /usr/local/share/lanot/docs/recortes_coordenadas.csv
+
 %post
+    # Sin esto, un fallo a media receta no detiene la compilación: Apptainer se
+    # queda con el código de la ÚLTIMA orden, así que el .sif se generaría con
+    # mapdrawer roto y solo se notaría en producción.
+    set -e
+
+    # Versión de LANOT_tools que queda dentro de la imagen. Se fija el commit
+    # porque el repositorio todavía no tiene etiquetas de versión; en cuanto las
+    # tenga, sustituir por --branch <etiqueta>.
+    LANOT_TOOLS_COMMIT=e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
+
     # 1. Dependencias Base y Repositorios Extra (EPEL y CRB son vitales para GDAL)
     dnf update -y
     dnf install -y epel-release dnf-plugins-core
     dnf config-manager --set-enabled crb
-    
+
     # fontconfig y freetype para Satpy, compiladores para Python, y GDAL
     dnf install -y tar gzip bash fontconfig freetype git \
                    gcc gcc-c++ make cmake \
@@ -31,31 +65,71 @@ From: rockylinux:9
     ln -s polar2grid_v_3_2 polar2grid
 
     # 3. Descargar e Instalar LANOT_tools (mapdrawer)
-    echo "--- Clonando e Instalando LANOT_tools ---"
+    echo "--- Clonando LANOT_tools en $LANOT_TOOLS_COMMIT ---"
     cd /opt
-    # Clonamos directamente la rama principal
     git clone https://github.com/asierra/LANOT_tools.git build_lanot
     cd build_lanot
-    
-    # install.sh ya tiene validaciones y usa /opt/lanot-tools/venv
+    git checkout "$LANOT_TOOLS_COMMIT"
+
+    # install.sh trae su propio 'set -e' y usa /opt/lanot-tools/venv
     chmod +x install.sh
     ./install.sh
-    
-    # Limpieza: Borramos el repositorio clonado (el código útil ya se copió a /opt/lanot-tools/src)
+
+    # Limpieza: el código útil ya quedó en /opt/lanot-tools/src
     cd /opt
     rm -rf build_lanot
 
-    # Limpiamos la caché de paquetes de Rocky Linux para reducir el tamaño final del SIF
+    # 4. Quitar el toolchain, que solo hacía falta para compilar las
+    #    dependencias de pip. La verificación del paso 6 corre DESPUÉS de esto
+    #    a propósito: si el recorte se lleva algo necesario, la compilación
+    #    falla aquí y no en producción.
+    dnf remove -y gcc gcc-c++ make cmake gdal-devel python3-devel
     dnf clean all
+    rm -rf /var/cache/dnf
 
-    # 4. Inicialización Obligatoria de Polar2Grid
+    # 5. Inicialización obligatoria del entorno inmutable
+    #    Se ejercitan los dos runtimes de Python para que descompriman sus
+    #    bibliotecas y compilen sus __pycache__ mientras la imagen todavía se
+    #    puede escribir.
     export POLAR2GRID_HOME=/opt/polar2grid
-    export PATH=$PATH:$POLAR2GRID_HOME/bin
-    
-    echo "--- Inicializando entorno inmutable ---"
-    $POLAR2GRID_HOME/bin/polar2grid.sh -h
+    export PATH=/usr/local/bin:$POLAR2GRID_HOME/bin:$PATH
+
+    echo "--- Inicializando Polar2Grid ---"
+    $POLAR2GRID_HOME/bin/polar2grid.sh -h > /dev/null
+
+    # Ambos salen con código 0 en --help (comprobado en una instalación real),
+    # así que esto sirve de verificación además de calentamiento: si el venv
+    # quedó incompleto, falla el import y el código deja de ser 0.
+    echo "--- Inicializando y verificando LANOT_tools ---"
+    mapdrawer --help > /dev/null
+    geotiff2view --help > /dev/null
+
+    # 6. Verificación de los recursos que usan las herramientas
+    test -x /opt/lanot-tools/venv/bin/python
+    test -d /usr/local/share/lanot/colortables
+    test -d /usr/local/share/lanot/gpkg
+    test -d /usr/local/share/lanot/logos
+    test -f /usr/local/share/lanot/docs/recortes_coordenadas.csv
+
+    echo "--- Contenedor listo ---"
 
 %environment
     export POLAR2GRID_HOME=/opt/polar2grid
-    # Agregamos primero /usr/local/bin para asegurar que mapdrawer y geotiff2view tengan prioridad
+    # Agregamos primero /usr/local/bin para asegurar que mapdrawer y
+    # geotiff2view tengan prioridad
     export PATH=/usr/local/bin:$POLAR2GRID_HOME/bin:$PATH
+
+%test
+    # apptainer test polar2grid_v3.2-mapdrawer.sif
+    set -e
+    echo "Polar2Grid:"; $POLAR2GRID_HOME/bin/polar2grid.sh --list-readers > /dev/null && echo "  OK"
+    echo "mapdrawer:";    mapdrawer --help > /dev/null && echo "  OK $(command -v mapdrawer)"
+    echo "geotiff2view:"; geotiff2view --help > /dev/null && echo "  OK $(command -v geotiff2view)"
+    echo "venv:";         /opt/lanot-tools/venv/bin/python --version
+    echo "Recursos:"
+    for r in /usr/local/share/lanot/colortables \
+             /usr/local/share/lanot/gpkg \
+             /usr/local/share/lanot/logos \
+             /usr/local/share/lanot/docs/recortes_coordenadas.csv; do
+        test -e "$r" && echo "  OK $r"
+    done
