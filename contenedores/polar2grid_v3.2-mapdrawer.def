@@ -1,10 +1,16 @@
 Bootstrap: docker
-From: rockylinux:9
+# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
+# mantiene sus imágenes: la de Docker Hub (rockylinux:9) quedó congelada en
+# 9.3 (mayo de 2024), así que arrancaba de una base de dos años atrás y el
+# 'dnf update' la subía hasta la versión del día. Por eso el contenido cambiaba
+# de una compilación a otra sin que nadie tocara este archivo.
+From: quay.io/rockylinux/rockylinux:9.8
 
 %labels
     Author Alejandro Aguilar Sierra - LANOT UNAM
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
     Version 3.2-mapdrawer-LANOT
+    Base quay.io/rockylinux/rockylinux:9.8
     LANOT_tools_commit e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
 
 %help
@@ -48,7 +54,8 @@ From: rockylinux:9
     LANOT_TOOLS_COMMIT=e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
 
     # 1. Dependencias Base y Repositorios Extra (EPEL y CRB son vitales para GDAL)
-    dnf update -y
+    #    Sin 'dnf update': la base ya viene en la versión menor que se fijó
+    #    arriba, y actualizarla la movería a la del día de la compilación.
     dnf install -y epel-release dnf-plugins-core
     dnf config-manager --set-enabled crb
 
