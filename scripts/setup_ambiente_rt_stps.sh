@@ -49,6 +49,7 @@ DIRS=(
     "/data/output/level1"
     "/data/output/level2"
     "/data/output/geotiff"
+    "/data/output/jpss/state/rt-stps"
     "/datawork/input/polar/raw"
     "/var/log/lanot/polares/rt-stps"
     "/var/log/lanot/polares/cspp-sdr"
