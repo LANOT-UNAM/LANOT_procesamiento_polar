@@ -61,8 +61,10 @@ Uso:
   $0 --force     Reprocesa aunque ya exista el marcador
 
 Opciones:
-  -f, --force   Ignora el marcador de procesado
-  -h, --help    Muestra esta ayuda
+  -f, --force          Ignora el marcador de procesado
+  -k, --keep-staging   Conserva el directorio de enlaces, para diagnosticar
+                       qué vio realmente el contenedor
+  -h, --help           Muestra esta ayuda
 EOF
 }
 
@@ -147,6 +149,16 @@ de_otro_satelite() {
     esac
 }
 
+# Enlaza un archivo en el staging. Se prefiere el enlace DURO: algunas
+# herramientas recorren la entrada con "find -type f", que no encuentra enlaces
+# simbólicos (son -type l), y entonces reportan que no hay archivos aunque estén
+# a la vista. El enlace duro es indistinguible de un archivo normal y no cuesta
+# espacio. Si origen y destino están en sistemas de archivos distintos, no se
+# puede, y se recurre al simbólico.
+enlazar() {
+    ln -f "$1" "$2" 2>/dev/null || ln -sf "$1" "$2"
+}
+
 # Enlaza los productos de $2 cuyo sello temporal cae dentro de la ventana de la
 # pasada. No se puede emparejar gránulo por gránulo: los SDR llegan agregados
 # (un archivo por banda para toda la pasada, con un solo GMTCO), mientras que
@@ -162,7 +174,7 @@ enlazar_en_ventana() {
         sello=$(sello_de_archivo "$nombre") || continue
 
         if [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ]; then
-            ln -sf "$f" "$destino"/
+            enlazar "$f" "$destino"/
             enlazados=$((enlazados + 1))
         fi
     done
@@ -176,10 +188,12 @@ enlazar_en_ventana() {
 # ==============================================================================
 
 FORCE=0
+KEEP=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        -f|--force) FORCE=1 ;;
+        -f|--force)      FORCE=1 ;;
+        -k|--keep-staging) KEEP=1 ;;
         -h|--help)  uso; exit 0 ;;
         *)
             echo "ERROR: Argumento no reconocido: $1" >&2
@@ -261,9 +275,21 @@ fi
 # ==============================================================================
 
 mkdir -p "$STAGING_DIR" "$OUTPUT_LSR_DIR" "$LOG_DIR" "$STATE_DIR"
-trap 'rm -rf "$STAGING_DIR"' EXIT
+limpiar() {
+    if [ "$KEEP" -eq 1 ]; then
+        echo "--keep-staging: se conserva $STAGING_DIR"
+        rm -f "${REF_FILE:-}"
+    else
+        rm -rf "$STAGING_DIR" "${REF_FILE:-}"
+    fi
+}
+trap limpiar EXIT
 
-ln -sf "$INPUT_SDR_DIR"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5 "$STAGING_DIR"/ 2>/dev/null || true
+shopt -s nullglob
+for f in "$INPUT_SDR_DIR"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
+    enlazar "$f" "$STAGING_DIR"/
+done
+shopt -u nullglob
 
 SDR_COUNT=$(find "$STAGING_DIR" -name '*.h5' | wc -l)
 
@@ -293,7 +319,6 @@ echo "  Hilos:    $CORES"                                    | tee -a "$LOG_FILE
 # ==============================================================================
 
 REF_FILE=$(mktemp -t lsr_edr_ref_XXXXXX)
-trap 'rm -rf "$STAGING_DIR" "$REF_FILE"' EXIT
 
 EXIT_CODE=0
 apptainer exec \
