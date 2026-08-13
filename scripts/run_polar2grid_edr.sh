@@ -19,8 +19,8 @@
 # geotiff2view recoloreando con un CPT. El Level 1 (bandas, DNB, RGB) está en
 # run_polar2grid_l1.sh.
 #
-# Satpy es sensible a los nombres: los SDR se enlazan quitándoles el sufijo
-# _cspp_dev, que impide el match de sus expresiones regulares.
+# Los SDR se enlazan con su nombre original: ver la nota del staging sobre el
+# sufijo _cspp_dev, que Satpy EXIGE y no estorba.
 #
 # Uso:
 #   ./run_polar2grid_edr.sh            # la pasada más reciente pendiente
@@ -57,11 +57,13 @@ HOST_ACSPO_IN="${P2G_ACSPO_IN:-/data/output/jpss/level2/acspo}"
 GEOTIFF="${P2G_GEOTIFF:-/data/output/jpss/geotiff}"
 HOST_TIF_OUT="$GEOTIFF/atmos"
 HOST_LSR_TIF_OUT="$GEOTIFF/lsr"
+HOST_LSR_RGB_TIF_OUT="$GEOTIFF/lsr_rgb"
 HOST_ACSPO_TIF_OUT="$GEOTIFF/acspo"
 
 VISTAS="${P2G_VISTAS:-/data/output/jpss/vistas}"
 HOST_IMG_OUT="$VISTAS/atmos"
 HOST_LSR_IMG_OUT="$VISTAS/lsr"
+HOST_LSR_RGB_IMG_OUT="$VISTAS/lsr_rgb"
 HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 
 # El contenedor trae la rejilla de fábrica, no las nuestras: hay que pasarle
@@ -70,6 +72,9 @@ HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GRID_CONFIG="${P2G_GRID_CONFIG:-$SCRIPT_DIR/../config/grid.yaml}"
 GRID="${P2G_GRID:-wgs84_geo_750m}"
+
+# Minutos de tolerancia al emparejar productos con la ventana de la pasada
+MARGEN_MIN="${P2G_MARGEN_MIN:-10}"
 
 STATE_DIR="${P2G_STATE_DIR:-/data/output/jpss/state/polar2grid}"
 WORK_BASE="${P2G_WORK_BASE:-/data/tmp}"
@@ -89,6 +94,7 @@ PALETAS=(
     "sst:sst.cpt"
     "CldTopTemp:cld_temp_acha.cpt"
     "CldTopHght:cld_height_acha.cpt"
+    "CldBaseHght:cld_height_acha.cpt"
     "CldTopPres:cld_top_press.cpt"
     "CldEmiss:cld_emiss.cpt"
     "CloudPhase:phase.cpt"
@@ -178,6 +184,23 @@ ventana_de_pasada() {
     fi
 
     VENTANA_FIN="${FECHA_SIG}${tfin#e}"; VENTANA_FIN="${VENTANA_FIN:0:14}"
+
+    # Margen a ambos lados. Hace falta porque no todos los productos fechan
+    # igual: el .nc de ACSPO de esta misma pasada sale como 20260811194400,
+    # 3.5 minutos ANTES del primer gránulo (t1947330), y sin margen quedaba
+    # fuera. Es seguro: dos pasadas consecutivas sobre la estación están
+    # separadas ~100 minutos, así que ningún margen razonable las confunde.
+    VENTANA_INI=$(desplazar_sello "$VENTANA_INI" "-$MARGEN_MIN")
+    VENTANA_FIN=$(desplazar_sello "$VENTANA_FIN" "+$MARGEN_MIN")
+}
+
+# Suma o resta minutos a un sello AAAAMMDDHHMMSS.
+# Se pasa por epoch a propósito: con "$s $minutos minutes", date lee un "-10"
+# pegado a la hora como huso horario y devuelve otro día.
+desplazar_sello() {
+    local s="$1" minutos="$2" base
+    base=$(date -u -d "${s:0:4}-${s:4:2}-${s:6:2} ${s:8:2}:${s:10:2}:${s:12:2} UTC" +%s)
+    date -u -d "@$((base + minutos * 60))" +%Y%m%d%H%M%S
 }
 
 # Devuelve el sello temporal de un producto como AAAAMMDDHHMMSS, o código 1 si
@@ -365,15 +388,19 @@ STAGING_LSR="${HOST_WORK}/lsr_links"
 STAGING_ACSPO="${HOST_WORK}/acspo_links"
 
 mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" \
-         "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
-         "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" \
+         "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_LSR_RGB_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
+         "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_LSR_RGB_IMG_OUT" "$HOST_ACSPO_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
 
-# SDR de la pasada, sin el sufijo _cspp_dev que confunde a Satpy
+# SDR de la pasada, CON su nombre original. El patrón de Satpy para viirs_sdr
+# termina en _{source:8s}.h5, un campo obligatorio de 8 caracteres que es
+# justamente 'cspp_dev': quitarlo no ayuda al match, lo impide. Verificado en
+# tahan el 2026-08-13, cuando el lector rechazó los 28 archivos con
+# "No filenames found for reader: viirs_sdr".
 for f in "$HOST_SDR_IN"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
     [ -e "$f" ] || continue
-    ln -sf "$f" "$STAGING_SDR/$(basename "$f" | sed 's/_cspp_dev//')"
+    ln -sf "$f" "$STAGING_SDR/"
 done
 
 SDR_COUNT=$(find "$STAGING_SDR" -name '*.h5' | wc -l)
@@ -425,9 +452,11 @@ en_contenedor() {
         --bind "$GRID_CONFIG:/config/grid.yaml:ro" \
         --bind "$HOST_TIF_OUT:/output_tif" \
         --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif" \
+        --bind "$HOST_LSR_RGB_TIF_OUT:/output_lsr_rgb_tif" \
         --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif" \
         --bind "$HOST_IMG_OUT:/output_img" \
         --bind "$HOST_LSR_IMG_OUT:/output_lsr_img" \
+        --bind "$HOST_LSR_RGB_IMG_OUT:/output_lsr_rgb_img" \
         --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img" \
         --bind "$HOST_WORK:/work" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
@@ -441,19 +470,37 @@ en_contenedor() {
 
 # --- Etapa 1: remuestreo a la rejilla, una sola vez por conjunto ---
 
-P2G_COMUN="--grid-configs /config/grid.yaml -g $GRID --method nearest --dtype float32 --no-enhance"
+P2G_COMUN="--grid-configs /config/grid.yaml -g $GRID --method nearest"
+P2G_DATOS="$P2G_COMUN --dtype float32 --no-enhance"
 
 if [ "$EDR_COUNT" -gt 0 ]; then
     en_contenedor "Productos atmosféricos (EDR)" \
-        "cd /output_tif && polar2grid.sh -v -r viirs_edr -w geotiff $P2G_COMUN -f /input_edr/JRR-*.nc /input_sdr/GMTCO*.h5"
+        "cd /output_tif && polar2grid.sh -v -r viirs_edr -w geotiff $P2G_DATOS -f /input_edr/JRR-*.nc /input_sdr/GMTCO*.h5"
 else
     echo "  ⚠ Sin productos de ATMOS para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
 
 if [ "$LSR_COUNT" -gt 0 ]; then
-    # Los SurfRefl traen su propia geolocalización, no necesitan GMTCO
+    # Los SurfRefl traen su propia geolocalización, no necesitan GMTCO.
+    #
+    # Van en dos llamadas porque el conjunto de LSR mezcla las dos naturalezas
+    # de la regla: catorce productos de una banda —que son datos— y dos
+    # composiciones RGB. Pedirlos juntos con --dtype float32 aborta con
+    # "Image must be in 'L' mode for floating point geotiff saving", y con ello
+    # se pierden también los que ya se habían remuestreado (verificado en tahan
+    # el 2026-08-13: murió tras escribir 3 de 14). Los nombres van explícitos
+    # porque Polar2Grid no tiene forma de excluir productos.
+    LSR_DATOS="surf_refl_i01 surf_refl_i02 surf_refl_i03"
+    LSR_DATOS="$LSR_DATOS surf_refl_m01 surf_refl_m02 surf_refl_m03 surf_refl_m04 surf_refl_m05"
+    LSR_DATOS="$LSR_DATOS surf_refl_m07 surf_refl_m08 surf_refl_m10 surf_refl_m11 NDVI EVI"
+
     en_contenedor "Productos de superficie (LSR)" \
-        "cd /output_lsr_tif && polar2grid.sh -v -r viirs_edr -w geotiff $P2G_COMUN -f /input_lsr/SurfRefl_*.nc"
+        "cd /output_lsr_tif && polar2grid.sh -v -r viirs_edr -w geotiff -p $LSR_DATOS $P2G_DATOS -f /input_lsr/SurfRefl_*.nc"
+
+    # Los RGB de superficie ya salen como imagen: no llevan float32 ni
+    # --no-enhance, y se visten con mapdrawer en vez de recolorearse.
+    en_contenedor "RGB de superficie (LSR)" \
+        "cd /output_lsr_rgb_tif && polar2grid.sh -v -r viirs_edr -w geotiff -p true_color_surf false_color_surf $P2G_COMUN -f /input_lsr/SurfRefl_*.nc"
 else
     echo "  ⚠ Sin productos de LSR para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
@@ -473,10 +520,16 @@ fi
 
 vestir() {
     local etiqueta="$1" dir_tif="$2" montaje_tif="$3" montaje_img="$4"
+    local herramienta="${5:-geotiff2view}"
     local tif nombre cpt ordenes=""
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
+        if [ "$herramienta" = "mapdrawer" ]; then
+            # Ya es imagen: solo se viste, no se recolorea
+            ordenes+="mapdrawer '$montaje_tif/$nombre' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
+            continue
+        fi
         if ! cpt=$(paleta_de "$nombre"); then
             echo "  · sin paleta, no se genera vista: $nombre" >> "$LOG_FILE"
             continue
@@ -495,6 +548,7 @@ vestir() {
 vestir "Vistas de ATMOS" "$HOST_TIF_OUT"       /output_tif       /output_img
 vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img
 vestir "Vistas de SST"   "$HOST_ACSPO_TIF_OUT" /output_acspo_tif /output_acspo_img
+vestir "Vistas RGB de superficie" "$HOST_LSR_RGB_TIF_OUT" /output_lsr_rgb_tif /output_lsr_rgb_img mapdrawer
 
 # ==============================================================================
 # VERIFICACIÓN
@@ -506,13 +560,15 @@ contar_nuevos() {
 
 TIF_ATMOS=$(contar_nuevos "$HOST_TIF_OUT"       '*.tif')
 TIF_LSR=$(contar_nuevos   "$HOST_LSR_TIF_OUT"   '*.tif')
+TIF_LSR_RGB=$(contar_nuevos "$HOST_LSR_RGB_TIF_OUT" '*.tif')
 TIF_SST=$(contar_nuevos   "$HOST_ACSPO_TIF_OUT" '*.tif')
 JPG_ATMOS=$(contar_nuevos "$HOST_IMG_OUT"       '*.jpg')
 JPG_LSR=$(contar_nuevos   "$HOST_LSR_IMG_OUT"   '*.jpg')
+JPG_LSR_RGB=$(contar_nuevos "$HOST_LSR_RGB_IMG_OUT" '*.jpg')
 JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
 
-TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST))
-JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST))
+TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_LSR_RGB + TIF_SST))
+JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_LSR_RGB + JPG_SST))
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -530,12 +586,13 @@ fi
     echo "pasada:      $CLAVE"
     echo "atmos:       $TIF_ATMOS geotiff, $JPG_ATMOS vistas"
     echo "lsr:         $TIF_LSR geotiff, $JPG_LSR vistas"
+    echo "lsr rgb:     $TIF_LSR_RGB geotiff, $JPG_LSR_RGB vistas"
     echo "sst:         $TIF_SST geotiff, $JPG_SST vistas"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST) en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, lsr_rgb $TIF_LSR_RGB, sst $TIF_SST) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, lsr_rgb $JPG_LSR_RGB, sst $JPG_SST) en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"

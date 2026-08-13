@@ -26,8 +26,8 @@ Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_
 | Level 2 incendios | `run_active_fire_edr.sh` | 11 productos, 2m 47s |
 | Level 2 SST | `run_acspo_edr.sh` | 1 producto, 1m 48s (la imagen ahora la hace Polar2Grid) |
 | Level 2 inundaciones | `run_flood_edr.sh` | 11 productos, 4m 34s |
-| Vistas de Level 2 | `run_polar2grid_edr.sh` | **nunca se ha ejecutado** |
-| Vistas de Level 1 | `run_polar2grid_l1.sh` | **nunca se ha ejecutado** |
+| Vistas de Level 2 | `run_polar2grid_edr.sh` | 7 GeoTIFF de ATMOS y 4 vistas, 1m 23s (2026-08-13) |
+| Vistas de Level 1 | `run_polar2grid_l1.sh` | **falló entero**; corregido, falta reintentar |
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
@@ -117,11 +117,11 @@ Decisiones tomadas:
 
 Preguntas sin responder:
 
-- **Paletas**: los CPT de `colortables/` se hicieron para las variables de CLAVR-x y los
-  `JRR-*` traen otros nombres, códigos y rangos. La tabla `PALETAS` de
-  `run_polar2grid_edr.sh` es tentativa: hay que cotejarla contra los nombres de producto
-  que escriba Polar2Grid en la primera corrida real. Un producto sin paleta no genera
-  vista y no es error.
+- **Paletas**: ya se conocen los nombres reales. De los 7 productos de ATMOS hacen match
+  4 (`AOD550`, `CldTopHght`, `CldTopTemp`, `CloudPhase`) y se agregó `CldBaseHght`, que
+  comparte unidades con `CldTopHght`. Faltan `CloudLayer` —categórico— y
+  `Total_Cloud_Fraction`, que no tienen CPT: hay que hacerlos, no adivinar con uno
+  existente. Un producto sin paleta no genera vista y no es error.
 - ¿De dónde salen hoy los `.tif` de `acspo` y `fire` que consume `crea_vistas_viirs.sh`?
   Los scripts que los generarían no están en cron.
 - Falta cubrir **OMPS**, que `referencia/cspp.sh` sí procesa y la cadena nueva no. Ver
@@ -222,6 +222,20 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   `*_VIIRS_750M*`.
 - **El mismo satélite aparece con tres nombres** según el producto: `j01` en los SDR,
   `NOAA20` en los `VIIRS_750M` de ATMOS, `n20` en los de Flood.
+- **`_cspp_dev` es obligatorio, no estorbo.** El patrón de `viirs_sdr` termina en
+  `_{source:8s}.h5`. Quitarlo —que es lo que hacíamos— tumbó los cuatro renderizados de
+  Level 1 con `No filenames found for reader`.
+- **Un RGB no se puede guardar como float32.** Pedir todo el conjunto de LSR con
+  `--dtype float32 --no-enhance` aborta en `true_color_surf` con `Image must be in 'L'
+  mode`, y se pierden también los productos de una banda que ya se habían remuestreado
+  (murió tras escribir 3 de 14). Por eso LSR va en dos llamadas.
+- **Cada producto de Level 2 fecha a su manera y no todas coinciden con la pasada.** El
+  `.nc` de ACSPO de `j01_d20260811_b45236` se llama `20260811194400…`, 3.5 minutos antes
+  del primer gránulo (`t1947330`). De ahí el margen de 10 minutos al emparejar por
+  ventana; es seguro porque dos pasadas consecutivas están a ~100 minutos.
+- **Polar2Grid renderiza un subconjunto de los `JRR-*`**: de 110 productos de ATMOS en la
+  ventana salieron 7 GeoTIFF (`AOD550`, `CldBaseHght`, `CldTopHght`, `CldTopTemp`,
+  `CloudLayer`, `CloudPhase`, `Total_Cloud_Fraction`).
 - **Los SDR de `run_sdr.sh` vienen agregados**: un archivo por banda para toda la pasada,
   con un solo GMTCO. Por eso el emparejamiento con los productos de Level 2 se hace por
   ventana temporal y no gránulo por gránulo.

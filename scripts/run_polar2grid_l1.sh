@@ -30,8 +30,8 @@
 # el producto más visible de todos. Como P2G ya los entrega como imagen, solo
 # hay que vestirlos, y de eso se encarga mapdrawer sin recolorear.
 #
-# Satpy es sensible a los nombres: los SDR se enlazan quitándoles el sufijo
-# _cspp_dev, que impide el match de sus expresiones regulares.
+# Los SDR se enlazan con su nombre original: ver la nota del staging sobre el
+# sufijo _cspp_dev, que Satpy EXIGE y no estorba.
 #
 # Uso:
 #   ./run_polar2grid_l1.sh            # la pasada más reciente pendiente
@@ -239,10 +239,14 @@ mkdir -p "$STAGING_SDR" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
 
-# SDR de la pasada, sin el sufijo _cspp_dev que confunde a Satpy
+# SDR de la pasada, CON su nombre original. El patrón de Satpy para viirs_sdr
+# termina en _{source:8s}.h5, un campo obligatorio de 8 caracteres que es
+# justamente 'cspp_dev': quitarlo no ayuda al match, lo impide. Verificado en
+# tahan el 2026-08-13, cuando el lector rechazó los 28 archivos con
+# "No filenames found for reader: viirs_sdr".
 for f in "$HOST_SDR_IN"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
     [ -e "$f" ] || continue
-    ln -sf "$f" "$STAGING_SDR/$(basename "$f" | sed 's/_cspp_dev//')"
+    ln -sf "$f" "$STAGING_SDR/"
 done
 
 SDR_COUNT=$(find "$STAGING_SDR" -name '*.h5' | wc -l)
