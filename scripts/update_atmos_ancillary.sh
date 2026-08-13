@@ -35,6 +35,17 @@ LOG_DIR="${ATMOS_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 START_EPOCH=$(date '+%s')
 
+formato_duracion() {
+    local s="$1"
+    if [ "$s" -ge 3600 ]; then
+        printf '%dh %dm %ds' $((s / 3600)) $(((s % 3600) / 60)) $((s % 60))
+    elif [ "$s" -ge 60 ]; then
+        printf '%dm %ds' $((s / 60)) $((s % 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
 if [ ! -f "$SIF_ATMOS" ]; then
     echo "ERROR: Contenedor no encontrado: $SIF_ATMOS" >&2
     exit 1
@@ -74,15 +85,15 @@ apptainer exec \
     " >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
 DESPUES=$(find "$HOST_CACHE" -maxdepth 1 -type f 2>/dev/null | wc -l)
-DURACION=$(( $(date '+%s') - START_EPOCH ))
+DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
 if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ ERROR: La actualización falló (código $EXIT_CODE) tras ${DURACION}s" | tee -a "$LOG_FILE"
+    echo "❌ ERROR: La actualización falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
     echo "   Revisa el log: $LOG_FILE" | tee -a "$LOG_FILE"
     exit $EXIT_CODE
 fi
 
-echo "✅ ÉXITO: caché con $DESPUES archivos (antes $ANTES) en ${DURACION}s" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: caché con $DESPUES archivos (antes $ANTES) en $DURACION" | tee -a "$LOG_FILE"
 echo "   Espacio usado: $(du -sh "$HOST_CACHE" | cut -f1)" | tee -a "$LOG_FILE"
 
 # Los logs de esta tarea se acumulan rápido: se corren 4 veces al día

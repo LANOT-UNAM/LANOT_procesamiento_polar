@@ -29,6 +29,7 @@
 #   SDR_CONTAINER     Imagen .sif      (def. /opt/containers/cspp_sdr_v4.1.1.sif)
 #   SDR_STATIC_BASE   LUTs estáticos   (def. /data/opt/SDR_4_1)
 #   SDR_DYNAMIC       Ancillary TLE/GFS(def. /data/ancillary)
+#   SDR_OPTS          Banderas de CSPP (def. según el sensor, ver detectar_sensor)
 #
 ################################################################################
 
@@ -100,16 +101,22 @@ EOF
 }
 
 # Identifica el sensor a partir del nombre del RDR.
-# Imprime "<sensor> <script_de_cspp>" y devuelve 1 si no lo reconoce.
-# El orden importa: los RDR de VIIRS se llaman RNSCA-RVIRS_*, así que deben
-# evaluarse antes que el patrón genérico RNSCA.
+# Imprime "<sensor> <script_de_cspp> <banderas>" y devuelve 1 si no lo reconoce.
+#
+# El sensor lo da SIEMPRE el RDR de ciencia (RVIRS/RATMS/RCRIS). RNSCA no es un
+# sensor: es el spacecraft diary (efemérides y actitud) que RT-STPS adjunta a
+# los tres (RNSCA-RVIRS, RATMS-RNSCA, RCRIS-RNSCA), así que no puede usarse para
+# distinguirlos — hacerlo mandaba los RDR de CrIS a atms_sdr.sh.
+#
+# Las banderas no son iguales para los tres drivers: adl_atms_sdr.py no acepta
+# -g (verificado en tahan, 2026-08-13), solo viirs_sdr.sh lo entiende.
 detectar_sensor() {
     local nombre="$1"
 
     case "$nombre" in
-        *RVIIRS*|*RVIRS*) echo "viirs viirs_sdr.sh" ;;
-        *RNSCA*|*RATMS*)  echo "atms atms_sdr.sh"   ;;
-        *RCRIS*)          echo "cris cris_sdr.sh"   ;;
+        *RVIIRS*|*RVIRS*) echo "viirs viirs_sdr.sh -a -g" ;;
+        *RATMS*)          echo "atms atms_sdr.sh -a"      ;;
+        *RCRIS*)          echo "cris cris_sdr.sh -a"      ;;
         *) return 1 ;;
     esac
 }
@@ -226,11 +233,14 @@ echo "==========================================================================
 
 if ! SENSOR_INFO=$(detectar_sensor "$FILENAME"); then
     echo "[$TIMESTAMP] ERROR: Sensor no identificado en el nombre: $FILENAME" >&2
-    echo "Patrones esperados: RVIIRS/RVIRS (viirs), RNSCA/RATMS (atms), RCRIS (cris)" >&2
+    echo "Patrones esperados: RVIIRS/RVIRS (viirs), RATMS (atms), RCRIS (cris)." >&2
+    echo "RNSCA por sí solo es el spacecraft diary, no un RDR de ciencia." >&2
     exit 1
 fi
 
-read -r SENSOR EXEC_CMD <<< "$SENSOR_INFO"
+# La última variable de 'read' recoge el resto de la línea: las banderas
+read -r SENSOR EXEC_CMD OPTS_SENSOR <<< "$SENSOR_INFO"
+OPTS_SENSOR="${SDR_OPTS:-$OPTS_SENSOR}"
 
 OUTPUT_DIR="$BASE_OUTPUT/$SENSOR"
 
@@ -328,7 +338,7 @@ apptainer exec "${BIND_OPTS[@]}" "$SIF_CSPP" /bin/bash -c "
     cd /output
 
     echo '--- Iniciando CSPP SDR para $SENSOR ---'
-    $EXEC_CMD -p $CORES -a -g /input/$FILENAME
+    $EXEC_CMD -p $CORES $OPTS_SENSOR /input/$FILENAME
 " > "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
 # CSPP tarda minutos: de aquí en adelante los mensajes llevan la hora real, no
