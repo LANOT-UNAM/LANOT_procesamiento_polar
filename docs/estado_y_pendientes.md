@@ -2,9 +2,10 @@
 
 **Última actualización: 2026-08-13**
 
-**Los diez eslabones corren con datos reales sobre una misma pasada.** La cadena nueva ya
-cubre lo que hace el servidor viejo, RGB incluido. Falta OMPS, que está escrito y sin
-probar (pendiente 8).
+**Los once eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
+servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
+que faltaba. Del ozono queda pendiente solo la vista, que exige Polar2Grid 3.3
+(pendiente 8).
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
@@ -14,7 +15,9 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 ## Lo que corre hoy de punta a punta
 
 Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_b45236`**
-(NOAA-20, 11 gránulos, 19:47–20:03 UTC).
+(NOAA-20, 11 gránulos, 19:47–20:03 UTC). La excepción es OMPS, que corrió sobre
+`b45237`: es el mismo sobrevuelo (19:49–20:02 UTC), pero sus archivos llevan la órbita
+siguiente. Ver el pendiente 8.
 
 | Eslabón | Script | Resultado |
 |---|---|---|
@@ -26,6 +29,7 @@ Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_
 | Level 2 incendios | `run_active_fire_edr.sh` | 11 productos, 2m 47s |
 | Level 2 SST | `run_acspo_edr.sh` | 1 producto, 1m 48s (la imagen ahora la hace Polar2Grid) |
 | Level 2 inundaciones | `run_flood_edr.sh` | 11 productos, 4m 34s |
+| Level 2 ozono | `run_omps_edr.sh` | 39 productos (V8TOz 20, V8PRO 19), 28s — pasada `b45237` |
 | Vistas de Level 1 | `run_polar2grid_l1.sh` | 62 GeoTIFF (M 36, I 14, DNB 10, RGB 2) y 12 vistas, 4m 8s |
 | Vistas de Level 2 | `run_polar2grid_edr.sh` | 24 GeoTIFF (atmos 7, lsr 14, lsr_rgb 2, sst 1) y 8 vistas, 3m 46s |
 
@@ -141,8 +145,8 @@ Preguntas sin responder:
   soportados**: no es que no los pidamos. Si se quieren, hay que renderizarlos por otra
   vía o esperar a una versión que los incluya. En la lista por omisión aparece además un
   `VLST` (temperatura de superficie) que tampoco está disponible con estos archivos.
-- Falta cubrir **OMPS**, que `referencia/cspp.sh` sí procesa y la cadena nueva no. Ver
-  el pendiente 8.
+- **OMPS** ya está cubierto (`run_omps_edr.sh`, 2026-08-13), pero su vista no: el lector
+  de ozono llega hasta Polar2Grid 3.3 y tenemos la 3.2. Ver el pendiente 8.
 
 Resuelto de paso: el renderizado de la SST salió de `run_acspo_edr.sh` y ahora es un
 bloque más de `run_polar2grid_edr.sh`, que queda como **renderizador único de Level 2**.
@@ -152,10 +156,10 @@ temperaturas, sobre un arreglo estirado a 0-255. Ahora sale `float32` y `geotiff
 colorea sobre los valores físicos. `run_acspo_edr.sh` ya solo produce `.nc` y perdió su
 bandera `--no-render`.
 
-### 8. OMPS — escrito el 2026-08-13, sin probar
+### 8. OMPS — probado el 2026-08-13; falta la vista
 Los RDR **ya estaban llegando** a `level0` desde enero sin que nadie los procesara
-(`RNSCA-ROTCS*` y `RNSCA-RONPS*`, incluida la pasada de prueba `d20260811`). Ya está
-escrito el camino completo hasta Level 2:
+(`RNSCA-ROTCS*` y `RNSCA-RONPS*`, incluida la pasada de prueba `d20260811`). El camino
+completo hasta Level 2 ya corrió con datos reales:
 
 ```bash
 scripts/run_sdr.sh --sensor omps_nm     # Nadir Mapper  (ROTCS)
@@ -163,8 +167,32 @@ scripts/run_sdr.sh --sensor omps_np     # Nadir Profiler (RONPS)
 scripts/run_omps_edr.sh                 # V8TOz y V8PRO
 ```
 
-Hace falta compilar `contenedores/cspp_omps_l2_v1.0.def` (el tarball
-`cspp_omps_l2-1.0.tar.gz` ya está en `/opt/contenedores`).
+Resultado sobre `j01_d20260811_b45237`: **39 productos en 28 s** (20 V8TOz y 19 V8PRO,
+uno por gránulo de cada instrumento). Es con mucho el EDR más rápido de la cadena.
+
+**Dos trampas que costaron la primera corrida**, ambas ya corregidas en
+`run_omps_edr.sh`:
+
+1. **El staging por symlinks necesita que la ruta de origen esté montada.** Los enlaces
+   apuntan a `/data/output/jpss/level1/omps`, que dentro del contenedor no existía
+   porque solo se montaba el staging. El driver vio los *nombres* —el log lista los 39
+   gránulos, uno por línea— pero ningún `open()` funcionó, y remató con
+   `0 products of 20 without errors`, sin un solo mensaje de error. La pista es la marca
+   de tiempo: los 39 gránulos "procesados" en **el mismo segundo**. Se arregla con
+   `--bind "$HOST_SDR_IN:$HOST_SDR_IN"`, que los demás EDR ya traían y a este se le
+   había olvidado.
+2. **El driver borra lo que cuelga de `-W`.** El staging estaba en `$HOST_WORK/input`, y
+   la limpieza final de `omps_l2.sh` (`removed dir` en el log) se lo llevaba: el
+   directorio "conservado para depurar" aparecía vacío. Ahora staging y directorio de
+   trabajo son hermanos bajo `/data/tmp`, como en ACSPO y flood.
+
+**La órbita es por instrumento.** Los SDR de OMPS de este sobrevuelo llevan `b45237` y
+los de VIIRS `b45236`, aunque cubren la misma ventana (19:49–20:02 frente a 19:47–20:03
+UTC). No es que la pasada se parta en dos: no hay **ningún** `GOTCO*_b45236_*` en
+`level1/omps` (verificado en tahan), así que `run_omps_edr.sh` procesó el sobrevuelo
+entero y la unidad de trabajo por órbita es correcta. Lo que no se vale es cruzar claves
+entre instrumentos: para encontrar el OMPS de una pasada de VIIRS hay que emparejar por
+tiempo, no por el `b#####`.
 
 CSPP OMPS EDR v1.0 produce **V8TOz** —columna total de ozono en unidades Dobson, más
 índice de aerosoles y reflectividad a 331 nm— y **V8PRO**, perfil de ozono en 21 capas.
