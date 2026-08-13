@@ -323,19 +323,28 @@ en_contenedor "RGB true_color / false_color (750 m)" \
 # GeoTIFF de datos (escala a 8 bits y decora), mapdrawer para los que ya son
 # imagen (solo los viste).
 
+# $5 es un ERE opcional: solo se viste lo que haga match. Sirve para dejar
+# fuera los productos que son datos y no imágenes.
 ordenes_de() {
-    local dir_tif="$1" montaje_tif="$2" montaje_img="$3" herramienta="$4"
+    local dir_tif="$1" montaje_tif="$2" montaje_img="$3" herramienta="$4" filtro="${5:-.}"
     local tif nombre
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
         echo "$herramienta '$montaje_tif/$nombre' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"
-    done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null | sort)
+    done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null \
+                  | grep -E "$filtro" | sort)
 }
 
 # El DNB va sin -p: es una imagen en escala de grises, no lleva paleta. El -b
 # pinta de color de fondo los NoData en vez de dejarlos transparentes.
-ORDENES_DNB=$(ordenes_de "$OUT_DNB" /output_dnb /vista_dnb "geotiff2view -b")
+#
+# Solo se visten los cinco algoritmos. La llamada pide además
+# --dnb-angle-products, que son ángulos solares y lunares: datos útiles como
+# GeoTIFF, pero no imágenes que tenga sentido decorar con logo y timestamp
+# (verificado en tahan el 2026-08-13, cuando salieron 10 vistas en vez de 5).
+DNB_VISTAS='adaptive_dnb|dynamic_dnb|histogram_dnb|hncc_dnb'
+ORDENES_DNB=$(ordenes_de "$OUT_DNB" /output_dnb /vista_dnb "geotiff2view -b" "$DNB_VISTAS")
 if [ -n "$ORDENES_DNB" ]; then
     en_contenedor "Vistas de DNB" "$ORDENES_DNB"
 else

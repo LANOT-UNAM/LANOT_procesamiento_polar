@@ -2,9 +2,9 @@
 
 **Última actualización: 2026-08-13**
 
-Ocho eslabones probados con datos reales sobre una misma pasada. Faltan los dos de
-visualización, `run_polar2grid_edr.sh` y `run_polar2grid_l1.sh`, que solo se han
-ejercitado con un `apptainer` simulado.
+**Los diez eslabones corren con datos reales sobre una misma pasada.** La cadena nueva ya
+cubre lo que hace el servidor viejo, RGB incluido. Falta OMPS, que está escrito y sin
+probar (pendiente 8).
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
@@ -26,8 +26,8 @@ Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_
 | Level 2 incendios | `run_active_fire_edr.sh` | 11 productos, 2m 47s |
 | Level 2 SST | `run_acspo_edr.sh` | 1 producto, 1m 48s (la imagen ahora la hace Polar2Grid) |
 | Level 2 inundaciones | `run_flood_edr.sh` | 11 productos, 4m 34s |
-| Vistas de Level 2 | `run_polar2grid_edr.sh` | 7 GeoTIFF de ATMOS y 4 vistas, 1m 23s (2026-08-13) |
-| Vistas de Level 1 | `run_polar2grid_l1.sh` | **falló entero**; corregido, falta reintentar |
+| Vistas de Level 1 | `run_polar2grid_l1.sh` | 62 GeoTIFF (M 36, I 14, DNB 10, RGB 2) y 12 vistas, 4m 8s |
+| Vistas de Level 2 | `run_polar2grid_edr.sh` | 24 GeoTIFF (atmos 7, lsr 14, lsr_rgb 2, sst 1) y 8 vistas, 3m 46s |
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
@@ -58,18 +58,19 @@ ejecutan una sola vez al preparar un servidor, nunca en cron.
 
 ## Pendientes, en orden sugerido
 
-### 1. Probar los dos scripts de Polar2Grid
-Son los únicos eslabones que nunca han corrido con datos reales. Ya tienen todos sus
-insumos y pasaron la corrida simulada en bucéfalo.
+### 1. Paletas que faltan
+Los dos scripts de Polar2Grid ya corrieron con datos reales. Lo que queda es que varios
+productos salen como GeoTIFF pero sin vista, porque no hay CPT:
 
-```bash
-scripts/run_polar2grid_edr.sh     # Level 2: atmosphere y lsr
-scripts/run_polar2grid_l1.sh      # Level 1: bandas M/I, DNB y RGB
-```
+| Producto | Qué es | Nota |
+|---|---|---|
+| `CloudLayer` | categórico | Necesita un CPT discreto, como `cloud_type.cpt` |
+| `Total_Cloud_Fraction` | fracción 0-1 | |
+| `NDVI`, `EVI` | índices de vegetación | Los más visibles de LSR |
+| `surf_refl_*` (14) | reflectancias por banda | Son datos, como las bandas M/I: probablemente no lleven vista |
 
-Qué mirar: que los `.tif` salgan en las rejillas de `config/grid.yaml` y no en la
-dinámica de fábrica; qué nombres de producto escribe Polar2Grid, para completar la tabla
-`PALETAS`; y el cotejo del DNB descrito en el pendiente 3.
+No reciclar un CPT de rango distinto: una paleta equivocada es peor que ninguna vista.
+Mientras tanto el script lo anota en el log y sigue, que es lo correcto.
 
 ### 2. Precarga de ancillary de ATMOS
 `update_atmos_ancillary.sh` no se ha ejecutado nunca. Correrlo a mano una vez y luego
