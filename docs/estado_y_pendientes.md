@@ -203,11 +203,29 @@ necesita solo el Nadir Mapper; V8PRO necesita los dos instrumentos, así que
 procesa gránulos diurnos: ambos algoritmos miden radiancia ultravioleta retrodispersada.
 
 **La vista de ozono exige Polar2Grid 3.3** (manual de OMPS §4: *"Starting with Polar2Grid
-Version 3.3, a subset of key OMPS V8TOz EDR parameters are supported"*). Tenemos la 3.2.
-El release existe (`github.com/ssec/polar2grid/releases/tag/v3.3.0`) pero no está
-anunciado. Decisión pendiente: subir a 3.3 implica receta nueva y revalidar VIIRS, que es
-lo que sostiene la cadena. Mientras tanto el ozono queda en NetCDF, publicable pero sin
-imagen.
+Version 3.3, a subset of key OMPS V8TOz EDR parameters are supported"*). Tenemos la 3.2, y
+**no hay a qué subir: el bundle 3.3 no existe todavía.**
+
+Ojo con el tag `v3.3.0` del GitHub de SSEC, que parece ser ese release y no lo es. SSEC
+numera dos cosas por separado y publica ambas como "releases":
+
+| Tag | Nombre | Qué es |
+|---|---|---|
+| `v3.3.0` | "Python Package Version 3.3.0" | el paquete de Python (PyPI/conda) |
+| `p2g-v3.2.0` | "Polar2Grid Version 3.2.0" | **el bundle de CSPP**, que es lo que instalamos |
+
+Ambos son del 2 de marzo, con notas de release idénticas y el mismo commit: son dos
+etiquetas de **una** entrega. El bundle 3.2 ya contiene el paquete 3.3.0, así que
+recompilar desde `v3.3.0` daría exactamente el mismo software y costaría revalidar VIIRS
+a cambio de nada. Lo confirma la documentación pública de Polar2Grid 3.2: lista quince
+lectores y **ninguno de OMPS**.
+
+Qué sí se puede hacer, en orden: preguntarle a SSEC cuándo sale el bundle 3.3 (publicaron
+el manual de OMPS prometiendo ese soporte, así que tienen la fecha), y mientras tanto
+publicar el ozono en NetCDF. Un renderizador propio es el último recurso: Satpy trae un
+lector `omps_edr`, pero sus patrones son para los productos operativos de NASA/NOAA
+(`OMPS-NPP_NMTO3-L2*`, `TC_EDR_TO3*.h5`), no para los `V8TOZ-EDR_v4r5*.nc` de CSPP, así
+que habría que escribir el lector — y tirarlo el día que salga el 3.3.
 
 ### 9. Recorte y encuadre de las vistas
 En el `true_color` de la pasada de prueba, más de la mitad del cuadro es negro: la rejilla
