@@ -110,13 +110,24 @@ EOF
 #
 # Las banderas no son iguales para los tres drivers: adl_atms_sdr.py no acepta
 # -g (verificado en tahan, 2026-08-13), solo viirs_sdr.sh lo entiende.
+#
+# CrIS y ATMS van SIN -a a propósito. La agregación no es el modo por omisión
+# (manual CSPP SDR 4.1.1 §5.1 y §6.1) y es destructiva cuando la pasada tiene
+# huecos: calibrar un gránulo exige tener sus vecinos (CrIS ±4, o sea 9 RDR
+# contiguos; ATMS ±1), así que un gránulo truncado —que el filtro de tamaño
+# descarta— inutiliza a los de su ventana; nagg no sabe rellenar el hueco,
+# falla, y como los intermedios se borran por omisión se pierden TAMBIÉN los
+# gránulos que sí habían salido bien. Fue exactamente lo que pasó con CrIS el
+# 2026-08-13: 6 de 14 gránulos completos y el directorio de salida vacío.
+# Sin -a cada gránulo queda en su par (SCRIF*/GCRSO* en CrIS, TATMS*/GATMO* en
+# ATMS), que es lo que HEAP espera y de todos modos desagrega antes de procesar.
 detectar_sensor() {
     local nombre="$1"
 
     case "$nombre" in
         *RVIIRS*|*RVIRS*) echo "viirs viirs_sdr.sh -a -g" ;;
-        *RATMS*)          echo "atms atms_sdr.sh -a"      ;;
-        *RCRIS*)          echo "cris cris_sdr.sh -a"      ;;
+        *RATMS*)          echo "atms atms_sdr.sh"         ;;
+        *RCRIS*)          echo "cris cris_sdr.sh"         ;;
         *) return 1 ;;
     esac
 }
