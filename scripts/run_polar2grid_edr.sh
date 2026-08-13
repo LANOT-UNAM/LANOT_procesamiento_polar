@@ -151,21 +151,39 @@ de_otro_satelite() {
 # ventana de la pasada. No se puede emparejar gránulo por gránulo: los SDR
 # llegan agregados (un archivo por banda para toda la pasada, con un solo
 # GMTCO), mientras que los productos de Level 2 son por gránulo.
+enlazar() {
+    ln -f "$1" "$2" 2>/dev/null || ln -sf "$1" "$2"
+}
+
 enlazar_en_ventana() {
-    local destino="$1" origen="$2" patron="$3" enlazados=0 f nombre sello
+    local destino="$1" origen="$2" patron="$3" enlazados=0 f nombre sello clave
+    local -A elegido=()
 
     shopt -s nullglob
     for f in "$origen"/${patron}*.nc; do
         nombre=$(basename "$f")
         de_otro_satelite "$nombre" && continue
         sello=$(sello_de_archivo "$nombre") || continue
+        [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ] || continue
 
-        if [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ]; then
-            ln -sf "$f" "$destino"/
-            enlazados=$((enlazados + 1))
+        # Deduplicación: los JRR-* llevan campo de creación (_c<sello>), así que
+        # reprocesar una pasada deja DOS archivos del mismo producto y gránulo.
+        # Hay que quedarse con el más reciente, porque LSR deduce cuántos
+        # gránulos hay contando los JRR-AOD (cspp_viirs_surface_reflectance.py:313)
+        # y luego exige esa misma cantidad de los demás productos. Los duplicados
+        # inflan la cuenta y hacen fallar la corrida con un mensaje que culpa a
+        # los NWP_GFS-INTP, que no se duplican porque su nombre no lleva _c.
+        clave=$(echo "$nombre" | sed -E 's/_c[0-9]+\./_c./')
+        if [ -z "${elegido[$clave]:-}" ] || [ "$f" -nt "${elegido[$clave]}" ]; then
+            elegido[$clave]="$f"
         fi
     done
     shopt -u nullglob
+
+    for f in "${elegido[@]}"; do
+        enlazar "$f" "$destino"/
+        enlazados=$((enlazados + 1))
+    done
 
     echo "$enlazados"
 }
