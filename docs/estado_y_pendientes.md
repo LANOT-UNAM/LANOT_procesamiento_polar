@@ -64,9 +64,16 @@ productos salen como GeoTIFF pero sin vista, porque no hay CPT:
 
 | Producto | Qué es | Nota |
 |---|---|---|
-| `CloudLayer` | categórico | Necesita un CPT discreto, como `cloud_type.cpt` |
-| `Total_Cloud_Fraction` | fracción 0-1 | |
+| `Total_Cloud_Fraction` | `float`, `valid_range 0..1`, `_FillValue -999` | De `JRR-CloudCoverLayers_v2r0` |
 | `NDVI`, `EVI` | índices de vegetación | Los únicos de LSR que llevarán vista |
+
+**`CloudLayer` no lleva vista y no necesita paleta.** Su `long_name` lo dice: *"Cloud
+Layer Flag. Bit1(lowest flight layer); Cloudy (1); Clear(0)"*, con `valid_range 0..62`.
+Es una **máscara de bits** —cinco capas de vuelo, las mismas que enumera `Layer_Frac`,
+con el bit 0 sin usar, de ahí que el máximo sea `0b111110`—, así que sus 32 valores son
+combinaciones y no una escala. Pintarlos en una rampa sugiere un orden que no existe. Si
+alguna vez se quiere ver, el producto es el **número** de capas nubosas (popcount de los
+bits, ordinal 0-5), y eso hay que calcularlo.
 
 Decidido el 2026-08-13: **no llevan vista** las bandas M/I con sus ángulos y radiancias,
 los 14 `surf_refl_*` ni los ángulos del DNB. Son datos por banda; lo visible son el RGB,

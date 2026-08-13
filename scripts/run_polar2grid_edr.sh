@@ -89,7 +89,10 @@ JOB_ID="${SLURM_JOB_ID:-$$}"
 # OJO: estos CPT se hicieron para las variables de CLAVR-x y los JRR-* traen
 # otros nombres y rangos, así que el emparejamiento es tentativo. Un producto
 # sin paleta no genera vista y no es error — se anota en el log y se sigue.
-# Completar tras ver los nombres reales que escribe Polar2Grid.
+#
+# Faltan por hacer los de Total_Cloud_Fraction, NDVI y EVI. CloudLayer NO lleva
+# paleta a propósito: es una máscara de bits (una capa de vuelo por bit,
+# valid_range 0..62), así que sus valores son combinaciones y no una escala.
 PALETAS=(
     "sst:sst.cpt"
     "CldTopTemp:cld_temp_acha.cpt"
