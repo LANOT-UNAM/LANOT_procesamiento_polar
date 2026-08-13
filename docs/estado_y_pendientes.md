@@ -252,6 +252,12 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   `*_VIIRS_750M*`.
 - **El mismo satélite aparece con tres nombres** según el producto: `j01` en los SDR,
   `NOAA20` en los `VIIRS_750M` de ATMOS, `n20` en los de Flood.
+- **En un CPT nuevo, `B` va en negro.** Los scripts llaman a `geotiff2view` con `-b`, que
+  usa el color `B` (fondo) para los NaN, y los GeoTIFF de Polar2Grid traen
+  `NoData Value=nan`. Si `B` es igual al extremo bajo de la rampa —como salieron las tres
+  paletas nuevas la primera vez— el relleno fuera del swath se confunde con el valor
+  mínimo y no se ve dónde miró el satélite. No se puede resolver quitando `-b` para que
+  use `N`: `phase.cpt` tiene `N 255 0 0` y pintaría todo el fondo de rojo.
 - **`_cspp_dev` es obligatorio, no estorbo.** El patrón de `viirs_sdr` termina en
   `_{source:8s}.h5`. Quitarlo —que es lo que hacíamos— tumbó los cuatro renderizados de
   Level 1 con `No filenames found for reader`.
