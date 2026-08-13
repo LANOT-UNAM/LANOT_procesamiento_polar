@@ -1,0 +1,79 @@
+###############################################################################
+###                Polar2Grid Example Grid Configuration File               ###
+###############################################################################
+# Description: This file provides a few working examples of various types of
+#              grids that can be added to polar2grid. This file is to help
+#              a user add their own grids to polar2grid in addition to the
+#              documentation at
+#              http://www.ssec.wisc.edu/software/polar2grid/dev_guide/grids.html
+#              There is also additional information about this format from the
+#              pyresample documentation at
+#              https://pyresample.readthedocs.io/en/latest/geometry_utils.html
+#
+# Grids (a.k.a "areas") can be specified with as much information as is known
+# and anything that is missing will be filled in at runtime with the input
+# geolocation data. Grids that need this additional information are known as
+# "dynamics" grids.
+# Note that "extent" information defines the outer edge of the grid and not the
+# center of the pixels.
+#
+###############################################################################
+### NOTE: Polar2Grid does not use this file by default                      ###
+###       Use `--grid-configs my_grids.yaml` to add your own grids          ###
+###############################################################################
+wgs84_geo_750m:
+  description: 'EPSG:4326 - WGS 84'
+  projection:
+    EPSG: 4326
+  resolution:
+    dy: 0.007238
+    dx: 0.007238
+wgs84_geo_375m:
+  description: 'EPSG:4326 - WGS 84'
+  projection:
+    EPSG: 4326
+  resolution:
+    dy: 0.003619
+    dx: 0.003619
+wgs84_geo_1000m:
+  description: 'EPSG:4326 - WGS 84'
+  projection:
+    EPSG: 4326
+  resolution:
+    dy: 0.014535
+    dx: 0.014535
+wgs84_geo_500m:
+  description: 'EPSG:4326 - WGS 84'
+  projection:
+    EPSG: 4326
+  resolution:
+    dy: 0.0072675
+    dx: 0.0072675
+wgs84_geo_250m:
+  description: 'EPSG:4326 - WGS 84'
+  projection:
+    EPSG: 4326
+  resolution:
+    dy: 0.00363375
+    dx: 0.00363375
+itrf2008_lcc_750m:
+  description: 'Mexico ITRF2008 / LCC'
+  projection:
+    EPSG: 6372
+  resolution:
+    dy: 750.0
+    dx: 750.0
+itrf2008_lcc_375m:
+  description: 'Mexico ITRF2008 / LCC'
+  projection:
+    EPSG: 6372
+  resolution:
+    dy: 375.0
+    dx: 375.0
+itrf2008_lcc_375m:
+  description: 'Mexico ITRF2008 / LCC'
+  projection:
+    EPSG: 6372
+  resolution:
+    dy: 1000.0
+    dx: 1000.0

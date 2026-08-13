@@ -39,6 +39,8 @@ python3 scripts/generar_xml.py
 sudo ./scripts/setup_ambiente_rt_stps.sh
 ```
 
+**Estado y pendientes**: `docs/estado_y_pendientes.md` es el documento vivo — qué eslabón se ha probado con datos reales, qué falta y qué preguntas siguen abiertas. Los otros dos documentos de `docs/` describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
 ## Arquitectura
 
 ### Cadena de procesamiento
@@ -62,6 +64,7 @@ RAW (CCSDS de antena)
 - **`scripts/run_*.sh`** (RT-STPS, SDR, cada EDR, Polar2Grid): la generación **actual y funcional**. Un script por etapa, cada uno se invoca a mano o vía Slurm. Escriben en `/data/output/jpss/{level0,level1,level2,vistas}`.
 - **`scripts/procesar_cadena_completa.sh` + `scripts/recibe.sh`**: orquestador monolítico de la primera fase de migración. **No está en uso, pero se conserva a propósito**: es la plantilla para reunificar los eslabones en una sola cadena cuando todos los `run_*.sh` corran de forma confiable. Mientras tanto está desactualizado — apunta a `cspp_sdr_v4.1.sif`, `polar2grid_v3.1.sif` y a un `cspp_nucaps_v1.0.sif` que nunca existió, y usa el árbol de rutas viejo `/data/products/{level0,level1,level2,geotiff}`. No borrarlo ni "arreglarlo" por cuenta propia. Los documentos en `docs/` describen esta generación, no la actual.
 - **`scripts/old_cspp_no_usar.sh`**: referencia histórica del sistema bare-metal. No usar.
+- **`scripts/cspp_1_ptog.sh`**: el script que corre **hoy en producción** en el servidor viejo (Level 1 → GeoTIFF, vistas DNB y RGB). Está aquí como referencia de lo que la cadena nueva tiene que llegar a cubrir; no se ejecuta desde este repositorio. De ahí salen las rejillas propias, ahora versionadas en `config/grid.yaml`: `wgs84_geo_750m` para bandas M, DNB y RGB, `wgs84_geo_375m` para bandas I. Ese archivo hay que pasárselo a Polar2Grid con `--grid-configs`, porque el contenedor trae el de fábrica, que no las incluye. Ojo: la cadena nueva todavía **no genera RGB** (`true_color`/`false_color`), que es el producto más visible del script viejo.
 
 Al tocar rutas o versiones de contenedor, confirmar en qué generación se está trabajando; los dos árboles de directorios (`/data/products/*` vs `/data/output/jpss/*`) coexisten en el repo por esta razón.
 
