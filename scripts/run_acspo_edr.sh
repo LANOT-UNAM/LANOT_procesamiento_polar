@@ -22,24 +22,21 @@
 # parezca al de CSPP SDR, son archivos distintos (GFS a 1 grado) y mezclarlos
 # ensucia ambos.
 #
-# El marcador cubre la generación de los .nc de ACSPO, que es la parte cara. Si
-# falla el renderizado posterior, el script sale con error pero el marcador ya
-# está escrito: corrige y vuelve a renderizar, o usa --force para rehacer todo.
+# Este script solo genera los .nc. El GeoTIFF y la vista de la SST salen de
+# run_polar2grid_edr.sh, que es el renderizador único de Level 2: ahí están las
+# rejillas de config/grid.yaml, las paletas y la separación geotiff/ ÷ vistas/.
 #
 # Uso:
 #   ./run_acspo_edr.sh              # la pasada más reciente pendiente
-#   ./run_acspo_edr.sh --no-render  # solo genera los .nc, sin GeoTIFF
 #   ./run_acspo_edr.sh --force      # reprocesa aunque ya tenga marcador
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   ACSPO_SDR_IN     Entrada Level 1  (def. /data/output/jpss/level1/viirs)
 #   ACSPO_OUT        Salida .nc       (def. /data/output/jpss/level2/acspo)
-#   ACSPO_IMG_OUT    Salida GeoTIFF   (def. /data/output/jpss/vistas/acspo)
 #   ACSPO_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-acspo)
 #   ACSPO_CACHE      Caché dinámico   (def. /data/ancillary/acspo)
 #   ACSPO_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_acspo_edr_v3.0.sif)
-#   P2G_CONTAINER    Imagen Polar2Grid(def. /opt/containers/polar2grid_v3.2.sif)
-#   ACSPO_WORK_BASE  Raíz de staging  (def. /data/output/jpss/tmp)
+#   ACSPO_WORK_BASE  Raíz de staging  (def. /data/tmp)
 #   ACSPO_LOG_BASE   Raíz de logs     (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -47,15 +44,13 @@
 set -euo pipefail
 
 SIF_ACSPO="${ACSPO_CONTAINER:-/opt/containers/cspp_acspo_edr_v3.0.sif}"
-SIF_P2G="${P2G_CONTAINER:-/opt/containers/polar2grid_v3.2.sif}"
 
 INPUT_SDR_DIR="${ACSPO_SDR_IN:-/data/output/jpss/level1/viirs}"
 OUTPUT_ACSPO_DIR="${ACSPO_OUT:-/data/output/jpss/level2/acspo}"
-OUTPUT_IMG_DIR="${ACSPO_IMG_OUT:-/data/output/jpss/vistas/acspo}"
 STATE_DIR="${ACSPO_STATE_DIR:-/data/output/jpss/state/cspp-acspo}"
 HOST_CACHE="${ACSPO_CACHE:-/data/ancillary/acspo}"
 
-WORK_BASE="${ACSPO_WORK_BASE:-/data/output/jpss/tmp}"
+WORK_BASE="${ACSPO_WORK_BASE:-/data/tmp}"
 LOG_DIR="${ACSPO_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CORES="${SLURM_CPUS_PER_TASK:-16}"
@@ -69,13 +64,13 @@ uso() {
     cat <<EOF
 Uso:
   $0                Procesa la pasada más reciente de $INPUT_SDR_DIR
-  $0 --no-render    Genera los .nc de ACSPO sin renderizar GeoTIFF
   $0 --force        Reprocesa aunque ya exista el marcador
 
 Opciones:
   -f, --force      Ignora el marcador de procesado
-      --no-render  Omite el paso de Polar2Grid
   -h, --help       Muestra esta ayuda
+
+Las vistas de la SST las genera run_polar2grid_edr.sh.
 EOF
 }
 
@@ -106,12 +101,10 @@ formato_duracion() {
 # ==============================================================================
 
 FORCE=0
-RENDER=1
 
 while [ $# -gt 0 ]; do
     case "$1" in
         -f|--force)   FORCE=1 ;;
-        --no-render)  RENDER=0 ;;
         -h|--help)    uso; exit 0 ;;
         *)
             echo "ERROR: Argumento no reconocido: $1" >&2
@@ -183,17 +176,11 @@ if [ ! -f "$SIF_ACSPO" ]; then
     exit 1
 fi
 
-if [ "$RENDER" -eq 1 ] && [ ! -f "$SIF_P2G" ]; then
-    echo "ERROR: Contenedor de Polar2Grid no encontrado: $SIF_P2G" >&2
-    echo "       Usa --no-render si solo quieres los .nc." >&2
-    exit 1
-fi
-
 # ==============================================================================
 # STAGING DE LA PASADA
 # ==============================================================================
 
-mkdir -p "$STAGING_DIR" "$WORK_DIR/dynamic" "$OUTPUT_ACSPO_DIR" "$OUTPUT_IMG_DIR" \
+mkdir -p "$STAGING_DIR" "$WORK_DIR/dynamic" "$OUTPUT_ACSPO_DIR" \
          "$HOST_CACHE" "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$STAGING_DIR" "$WORK_DIR"' EXIT
 
@@ -265,43 +252,7 @@ fi
     echo "log:       $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ACSPO: $NC_COUNT productos de la pasada $CLAVE ($DURACION)" | tee -a "$LOG_FILE"
-
-if [ "$RENDER" -eq 0 ]; then
-    echo "   Renderizado omitido (--no-render). Marcador: $MARKER" | tee -a "$LOG_FILE"
-    exit 0
-fi
-
-# ==============================================================================
-# PASO 2: RENDERIZADO CON POLAR2GRID
-# ==============================================================================
-
-LATEST_NC=$(find "$OUTPUT_ACSPO_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" \
-                 -printf '%T@ %p\n' | sort -rn | head -1 | cut -d' ' -f2-)
-
-echo ">>> Renderizando $(basename "$LATEST_NC") con Polar2Grid..." | tee -a "$LOG_FILE"
-
-RENDER_CODE=0
-apptainer exec \
-    -B "${OUTPUT_ACSPO_DIR}":/input_nc \
-    -B "${OUTPUT_IMG_DIR}":/output_img \
-    -B "${WORK_DIR}":/work_p2g \
-    "${SIF_P2G}" \
-    bash -c "
-        cd /output_img
-        polar2grid.sh -v -r acspo -w geotiff -p sst --grid-coverage=0.0 \
-            -f /input_nc/$(basename "$LATEST_NC")
-    " >> "$LOG_FILE" 2>&1 || RENDER_CODE=$?
-
-TIF_COUNT=$(find "$OUTPUT_IMG_DIR" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null | wc -l)
-
-if [ $RENDER_CODE -ne 0 ] || [ "$TIF_COUNT" -eq 0 ]; then
-    echo "❌ ERROR: El renderizado falló (código $RENDER_CODE, $TIF_COUNT imágenes)" | tee -a "$LOG_FILE"
-    echo "   Los .nc de ACSPO sí se generaron y el marcador ya está escrito."        | tee -a "$LOG_FILE"
-    echo "   Corrige y vuelve a renderizar, o usa --force para rehacer todo."        | tee -a "$LOG_FILE"
-    echo "   Revisa el log: $LOG_FILE"                                               | tee -a "$LOG_FILE"
-    exit 1
-fi
-
-echo "✅ ÉXITO: $NC_COUNT productos y $TIF_COUNT imágenes de la pasada $CLAVE" | tee -a "$LOG_FILE"
-echo "   Marcador: $MARKER" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE ($DURACION)" | tee -a "$LOG_FILE"
+echo "   Salida:   $OUTPUT_ACSPO_DIR"                               | tee -a "$LOG_FILE"
+echo "   Marcador: $MARKER"                                         | tee -a "$LOG_FILE"
+echo "   Las vistas de la SST las genera run_polar2grid_edr.sh"     | tee -a "$LOG_FILE"

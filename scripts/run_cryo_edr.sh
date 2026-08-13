@@ -31,7 +31,7 @@
 #   CRYO_OUT        Salida            (def. /data/output/jpss/level2/cryosphere)
 #   CRYO_STATE_DIR  Marcadores .done  (def. /data/output/jpss/state/cspp-cryo)
 #   CRYO_CONTAINER  Imagen .sif       (def. /opt/containers/cspp_cryo_edr_v1.0.sif)
-#   CRYO_WORK_BASE  Raíz de staging   (def. /data/output/jpss/tmp)
+#   CRYO_WORK_BASE  Raíz de staging   (def. /data/tmp)
 #   CRYO_LOG_BASE   Raíz de logs      (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -45,7 +45,7 @@ INPUT_ATMOS_DIR="${CRYO_ATMOS_IN:-/data/output/jpss/level2/atmosphere}"
 OUTPUT_CRYO_DIR="${CRYO_OUT:-/data/output/jpss/level2/cryosphere}"
 STATE_DIR="${CRYO_STATE_DIR:-/data/output/jpss/state/cspp-cryo}"
 
-WORK_BASE="${CRYO_WORK_BASE:-/data/output/jpss/tmp}"
+WORK_BASE="${CRYO_WORK_BASE:-/data/tmp}"
 LOG_DIR="${CRYO_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CORES="${SLURM_CPUS_PER_TASK:-8}"

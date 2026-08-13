@@ -30,7 +30,7 @@
 #   LSR_OUT        Salida            (def. /data/output/jpss/level2/lsr)
 #   LSR_STATE_DIR  Marcadores .done  (def. /data/output/jpss/state/cspp-lsr)
 #   LSR_CONTAINER  Imagen .sif       (def. /opt/containers/cspp_lsr_edr_v2.0.sif)
-#   LSR_WORK_BASE  Raíz de staging   (def. /data/output/jpss/tmp)
+#   LSR_WORK_BASE  Raíz de staging   (def. /data/tmp)
 #   LSR_LOG_BASE   Raíz de logs      (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -44,7 +44,7 @@ INPUT_ATMOS_DIR="${LSR_ATMOS_IN:-/data/output/jpss/level2/atmosphere}"
 OUTPUT_LSR_DIR="${LSR_OUT:-/data/output/jpss/level2/lsr}"
 STATE_DIR="${LSR_STATE_DIR:-/data/output/jpss/state/cspp-lsr}"
 
-WORK_BASE="${LSR_WORK_BASE:-/data/output/jpss/tmp}"
+WORK_BASE="${LSR_WORK_BASE:-/data/tmp}"
 LOG_DIR="${LSR_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CORES="${SLURM_CPUS_PER_TASK:-8}"

@@ -1,0 +1,82 @@
+#!/bin/bash
+
+REMOTE_DIR=/nexus/data1/passdisk
+INPUT_DIR=/data2/input/polar/raw
+PROC_DIR=/data/opt/AAPP/work
+AMSUA_DIR_NOAA=/dataservice/noaa-metop/amsua/level1
+AMSUB_DIR_NOAA=/dataservice/noaa-metop/amsub/level1
+HIRS_DIR_NOAA=/dataservice/noaa-metop/hirs/level1
+AVHRR_DIR_NOAA=/dataservice/noaa-metop/avhrr/level1
+AVHRR_DIR2_NOAA=/dataservice/noaa-metop/avhrr/vistas
+DCS_DIR_NOAA=/dataservice/noaa-metop/dcs/level1
+log=/home/lanotadm/log
+
+## Trae imagen polar NOAA
+
+#echo -e "Trayendo archivos polares\n"
+#files=$(rsync -it --min-size='50M' -e "ssh" teradm@polaracql:$REMOTE_DIR/chain5* $INPUT_DIR/)
+
+#echo "Traidos "${files[@]}
+
+################## Genera L1B NOAA products ###################
+
+. $HOME/ATOVS_ENV8
+. $AAPP_PREFIX/ATOVS_CONF
+
+export POLAR2GRID_HOME=/data/opt/POLAR2GRID/polar2grid_v_2_3
+export PATH=$PATH:$POLAR2GRID_HOME/bin
+
+cd $PROC_DIR
+
+lastch5=$(ls -t $INPUT_DIR/chain5-*|head -1)
+if ! [ -s $lastch5 ]
+then 
+	echo -e "El archivo $lastch5 está vacío\n"
+	exit 0
+else
+	if [[ ! $lastch5 == `cat $log/lastch5` ]]
+	then
+		echo $lastch5 > $log/lastch5
+		get_tle
+		echo -e "\n Telemetria actualizada\n"
+		cp $lastch5 .
+		chain5=$(ls -t $PROC_DIR/chain5-*|head -1)
+		infile=$chain5
+		outfile=${infile}.hrp
+		/data/opt/AAPP/strip_hrpt.pl < $infile > $outfile
+		AAPP_RUN_NOAA -i AMSU-A -o $PROC_DIR $outfile
+		AAPP_RUN_NOAA -i AMSU-B -o $PROC_DIR $outfile
+		AAPP_RUN_NOAA -i HIRS -o $PROC_DIR $outfile
+		AAPP_RUN_NOAA -i MSU -o $PROC_DIR $outfile
+		AAPP_RUN_NOAA -i AVHRR -o $PROC_DIR $outfile
+		AAPP_RUN_NOAA -i DCS -o $PROC_DIR $outfile
+		echo -e "\n Productos L1b procesados\n"
+
+############## Conversion of AAPP binary formats to HDF5 ##############
+
+		convert_to_hdf5 amsual1c*.l1c
+		convert_to_hdf5 mhsl1c*.l1c
+		convert_to_hdf5 hirsl1*
+		convert_to_hdf5 hrpt*.l1b
+		echo -e "\n Productos L1b bin to hdf5\n"
+		cp -uv amsual1* $AMSUA_DIR_NOAA
+		cp -uv mhsl1* $AMSUB_DIR_NOAA
+		cp -uv hirsl1* $HIRS_DIR_NOAA
+		cp -uv hrpt* $AVHRR_DIR_NOAA
+		cp -uv dcs* $DCS_DIR_NOAA
+############### Genera GEOTIFF de los archivos L1b AVHRR ###################
+
+		lastnoaal1b=$(ls -t $PROC_DIR/hrpt_*.l1b|head -1)
+		polar2grid.sh avhrr gtiff --dtype uint16 --grid-configs ${POLAR2GRID_HOME}/grid_configs/grids.conf -g wgs84_geo_1000m --overwrite --exit-on-error -f $lastnoaal1b
+		mv -uv *.tif $AVHRR_DIR_NOAA
+		echo -e "\n Los archivos GEOTIFF NOAA fueron transferidos\n"
+		polar2grid.sh avhrr gtiff --dtype uint8 --compress JPEG --grid-configs ${POLAR2GRID_HOME}/grid_configs/grids.conf -g wgs84_geo_1000m -f $lastnoaal1b
+		mv -uv *.tif $AVHRR_DIR2_NOAA
+		mv -uv *.log ../tmp/
+		rm -f $PROC_DIR/*
+		echo -e "\n Las vistas NOAA fueron transferidas\n"
+	else
+		echo -e "\n Ya fue procesado $lastch5\n"
+		exit 0
+	fi
+fi

@@ -1,0 +1,83 @@
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
+
+%labels
+    Base lanot_base_rocky9.sif
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP OMPS EDR Version 1.0 - V8TOz y V8PRO (Rocky 9)
+    Version 1.0-LANOT
+
+%help
+    CSPP OMPS EDR v1.0: ozono de columna total (V8TOz, en unidades Dobson) y
+    perfil de ozono en 21 capas (V8PRO), a partir de los SDR de OMPS.
+
+    A diferencia de ATMOS o ACSPO, **no necesita ancillary dinámico**: no hay
+    caché que refrescar ni cron de precarga. Todo lo que usa —climatologías y
+    tablas de transferencia radiativa— viene dentro del tarball.
+
+    El manual admite Rocky 8.10 y 9; se elige la 9 por ser la base más ligera
+    de las dos y la que ya usan los demás EDR.
+
+    Entradas (§1.4 del manual):
+      V8TOz  solo Nadir Mapper      SOMTC*.h5 + GOTCO*.h5
+      V8PRO  Nadir Mapper Y Profiler  + SOMPS*.h5 + GONPO*.h5
+
+    Salidas: V8TOZ-EDR_v4r5*.nc y V8PRO-EDR_v4r5*.nc
+
+    Verificación tras compilar:  apptainer test cspp_omps_l2_v1.0.sif
+
+%files
+    # Software base (binarios). Ojo con el nombre: el tarball no sigue la
+    # convención en mayúsculas de los otros paquetes de CSPP.
+    cspp_omps_l2-1.0.tar.gz /opt/
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    cd /opt
+    echo "--- Descomprimiendo CSPP OMPS EDR v1.0 ---"
+    tar -zxf cspp_omps_l2-1.0.tar.gz
+    rm -f cspp_omps_l2-1.0.tar.gz
+
+    # El manual (§2.2) indica que la extracción crea cspp_omps_l2-1.0
+    REAL_FOLDER="cspp_omps_l2-1.0"
+
+    if [ ! -d "$REAL_FOLDER" ]; then
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Enlace genérico, para que los scripts no dependan del nombre exacto que
+    # produzca el tarball de la siguiente versión
+    ln -s "$REAL_FOLDER" cspp_omps_l2
+
+    # Puntos de montaje genéricos: el script del contenedor no ve rutas del host
+    mkdir -p /input /output /work
+
+%environment
+    export CSPP_OMPS_L2_HOME=/opt/cspp_omps_l2
+    export PATH=$CSPP_OMPS_L2_HOME/bin:$PATH
+
+%test
+    # apptainer test cspp_omps_l2_v1.0.sif
+    #
+    # Cada orden va sola, no encadenada con &&: 'set -e' no aborta cuando falla
+    # el lado izquierdo de un &&, así que una prueba encadenada imprimiría el
+    # error y seguiría de largo dando la impresión de que todo está bien.
+    set -e
+
+    test -d /opt/cspp_omps_l2
+    echo "  OK /opt/cspp_omps_l2 -> $(readlink /opt/cspp_omps_l2)"
+
+    test -f /opt/cspp_omps_l2/omps_l2_env.sh
+    echo "  OK omps_l2_env.sh"
+
+    # Sin argumentos, omps_l2.sh imprime sus opciones (§2.2 del manual)
+    . /opt/cspp_omps_l2/omps_l2_env.sh
+    omps_l2.sh -V
+    echo "  OK omps_l2.sh"

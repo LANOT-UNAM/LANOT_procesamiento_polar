@@ -36,7 +36,7 @@
 #   FLOOD_OUT        Salida           (def. /data/output/jpss/level2/flood)
 #   FLOOD_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-flood)
 #   FLOOD_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_flood_v2.0.sif)
-#   FLOOD_WORK_BASE  Raíz de staging  (def. /data/output/jpss/tmp)
+#   FLOOD_WORK_BASE  Raíz de staging  (def. /data/tmp)
 #   FLOOD_LOG_BASE   Raíz de logs     (def. /var/log/lanot/polares)
 #   FLOOD_AOI        Archivo de área de interés, opcional (ver manual §3.3)
 #
@@ -50,7 +50,7 @@ INPUT_SDR_DIR="${FLOOD_SDR_IN:-/data/output/jpss/level1/viirs}"
 OUTPUT_DIR="${FLOOD_OUT:-/data/output/jpss/level2/flood}"
 STATE_DIR="${FLOOD_STATE_DIR:-/data/output/jpss/state/cspp-flood}"
 
-WORK_BASE="${FLOOD_WORK_BASE:-/data/output/jpss/tmp}"
+WORK_BASE="${FLOOD_WORK_BASE:-/data/tmp}"
 LOG_DIR="${FLOOD_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CORES="${SLURM_CPUS_PER_TASK:-8}"

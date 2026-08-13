@@ -1,9 +1,10 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-12**
+**Última actualización: 2026-08-13**
 
-Ocho eslabones probados con datos reales sobre una misma pasada. Falta el noveno,
-`run_polar2grid_edr.sh`, que nunca se ha ejecutado.
+Ocho eslabones probados con datos reales sobre una misma pasada. Faltan los dos de
+visualización, `run_polar2grid_edr.sh` y `run_polar2grid_l1.sh`, que solo se han
+ejercitado con un `apptainer` simulado.
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
@@ -23,9 +24,10 @@ Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_
 | Level 2 superficie | `run_lsr_edr.sh` | 11 productos, 1m 37s |
 | Level 2 criósfera | `run_cryo_edr.sh` | 22 productos, 5s |
 | Level 2 incendios | `run_active_fire_edr.sh` | 11 productos, 2m 47s |
-| Level 2 SST | `run_acspo_edr.sh` | 1 producto + 1 imagen, 1m 48s |
+| Level 2 SST | `run_acspo_edr.sh` | 1 producto, 1m 48s (la imagen ahora la hace Polar2Grid) |
 | Level 2 inundaciones | `run_flood_edr.sh` | 11 productos, 4m 34s |
-| Vistas | `run_polar2grid_edr.sh` | **nunca se ha ejecutado** |
+| Vistas de Level 2 | `run_polar2grid_edr.sh` | **nunca se ha ejecutado** |
+| Vistas de Level 1 | `run_polar2grid_l1.sh` | **nunca se ha ejecutado** |
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
@@ -56,8 +58,18 @@ ejecutan una sola vez al preparar un servidor, nunca en cron.
 
 ## Pendientes, en orden sugerido
 
-### 1. Probar `run_polar2grid_edr.sh`
-Es el único eslabón que nunca ha corrido. Ya tiene todos sus insumos.
+### 1. Probar los dos scripts de Polar2Grid
+Son los únicos eslabones que nunca han corrido con datos reales. Ya tienen todos sus
+insumos y pasaron la corrida simulada en bucéfalo.
+
+```bash
+scripts/run_polar2grid_edr.sh     # Level 2: atmosphere y lsr
+scripts/run_polar2grid_l1.sh      # Level 1: bandas M/I, DNB y RGB
+```
+
+Qué mirar: que los `.tif` salgan en las rejillas de `config/grid.yaml` y no en la
+dinámica de fábrica; qué nombres de producto escribe Polar2Grid, para completar la tabla
+`PALETAS`; y el cotejo del DNB descrito en el pendiente 3.
 
 ### 2. Precarga de ancillary de ATMOS
 `update_atmos_ancillary.sh` no se ha ejecutado nunca. Correrlo a mano una vez y luego
@@ -71,32 +83,86 @@ del GFS):
 Mientras no exista ese cron, `run_atmos_edr.sh` fallará con una fecha nueva, porque usa
 `-l` (solo caché local). `--download` es la salida de emergencia.
 
-### 3. Vistas decoradas — el tema abierto
-Discutido a fondo y sin cerrar. Lo que quedó establecido:
+### 3. Vistas decoradas — decidido el 2026-08-13, falta probarlo
+La regla quedó así: **Polar2Grid remuestrea una vez por (lector, rejilla, conjunto de
+bandas) y entrega GeoTIFF de datos; lo visual sale de LANOT_tools.** `geotiff2view` para
+lo que llega sin paleta, `mapdrawer` para lo que ya es imagen. Está escrita en
+`CLAUDE.md`.
 
-- Las vistas se hacen con `geotiff2view` (recolorea con un CPT) y `mapdrawer` (no
-  recolorea: usa la paleta embebida). Ambas viven en el contenedor
-  `polar2grid_v3.2-mapdrawer.sif`, que es el que debe usar el script.
-- **Polar2Grid es indispensable**: los sensores polares miden en swath y hay que
-  remuestrear a una rejilla antes de poder dibujar.
-- Las rejillas de producción son propias y ahora están versionadas en
-  **`config/grid.yaml`**: `wgs84_geo_750m` (bandas M, DNB, RGB) y `wgs84_geo_375m`
-  (bandas I). Son dinámicas —solo proyección y resolución—, así que cada pasada da una
-  extensión distinta.
+Decisiones tomadas:
+
+- **Dos scripts, uno por nivel.** `run_polar2grid_l1.sh` (nuevo) cubre bandas M, bandas
+  I, DNB y RGB, y sustituye a `referencia/cspp_1_ptog.sh`; `run_polar2grid_edr.sh` se
+  queda en Level 2. Con esto la cadena nueva **ya produce RGB**.
+- **Los RGB se componen en Polar2Grid**, no apilando bandas con `geotiff2view`: Satpy
+  aplica corrección de Rayleigh y afilado por razón con I01, y `geotiff2view.py` solo
+  recorta y escala a uint8. Como P2G ya los entrega como imagen, `mapdrawer` solo los
+  viste.
+- **El DNB se remuestrea una sola vez**, en float32. `cspp_1_ptog.sh` lo hace dos veces
+  (datos y realce) sin necesidad: `adaptive_dnb`, `dynamic_dnb`, `hncc_dnb` e
+  `histogram_dnb` son productos que calcula Satpy, así que el algoritmo ya está dentro
+  del float32 y lo único que falta es el escalado a 8 bits, que hace `geotiff2view`.
+  **Verificar una vez con datos reales**: generar un producto por los dos caminos y
+  comparar. Si no coinciden, revisar el realce en `$POLAR2GRID_HOME/etc/enhancements/`.
+- **Datos y vistas en árboles separados**: `geotiff/{m_bands,i_bands,dnb,rgb,atmos,lsr}`
+  para los `.tif`, `vistas/{dnb,rgb,atmos,lsr}` para los `.jpg`.
+- **Una sola imagen de Polar2Grid**, la `-mapdrawer`; se retiró
+  `contenedores/polar2grid_v3.2.def`. Consecuencia: esa receta solo compila en un host
+  con `/usr/local/share/lanot/{gpkg,logos,docs}`.
+- Las rejillas propias están en **`config/grid.yaml`** y se pasan con `--grid-configs`,
+  montándolo en `/config/grid.yaml`. Son dinámicas —solo proyección y resolución—, así
+  que cada pasada da una extensión distinta.
 - Los argumentos de decoración validados en producción están en
-  `LANOT_tools/crea_vistas_viirs.sh:96-118`.
-- Prioridad acordada: primero los productos de `geotiff2view` + CPT; los de `mapdrawer`
-  (ya grillados y con paleta) se discuten después.
+  `LANOT_tools/crea_vistas_viirs.sh:96-118` y ya están copiados en los dos scripts.
 
 Preguntas sin responder:
 
-- **Alcance**: ¿`run_polar2grid_edr.sh` cubre también el Level 1 (RGB `true_color` /
-  `false_color` y DNB), reemplazando a `referencia/cspp_1_ptog.sh`, o se queda en Level 2?
-  Hoy la cadena nueva **no produce RGB**, que es el producto más visible de todos.
+- **Paletas**: los CPT de `colortables/` se hicieron para las variables de CLAVR-x y los
+  `JRR-*` traen otros nombres, códigos y rangos. La tabla `PALETAS` de
+  `run_polar2grid_edr.sh` es tentativa: hay que cotejarla contra los nombres de producto
+  que escriba Polar2Grid en la primera corrida real. Un producto sin paleta no genera
+  vista y no es error.
 - ¿De dónde salen hoy los `.tif` de `acspo` y `fire` que consume `crea_vistas_viirs.sh`?
   Los scripts que los generarían no están en cron.
-- Paletas para nubes, LSR y criósfera: los CPT de `colortables/` se hicieron para las
-  variables de CLAVR-x y los `JRR-*` traen otros nombres, códigos y rangos.
+- Falta cubrir **OMPS**, que `referencia/cspp.sh` sí procesa y la cadena nueva no. Ver
+  el pendiente 8.
+
+Resuelto de paso: el renderizado de la SST salió de `run_acspo_edr.sh` y ahora es un
+bloque más de `run_polar2grid_edr.sh`, que queda como **renderizador único de Level 2**.
+Además de unificar rejillas y decoración, corrige un problema real: ACSPO generaba la
+imagen ya realzada a 8 bits y encima se le aplicaba `sst.cpt`, una paleta definida en
+temperaturas, sobre un arreglo estirado a 0-255. Ahora sale `float32` y `geotiff2view`
+colorea sobre los valores físicos. `run_acspo_edr.sh` ya solo produce `.nc` y perdió su
+bandera `--no-render`.
+
+### 8. OMPS — escrito el 2026-08-13, sin probar
+Los RDR **ya estaban llegando** a `level0` desde enero sin que nadie los procesara
+(`RNSCA-ROTCS*` y `RNSCA-RONPS*`, incluida la pasada de prueba `d20260811`). Ya está
+escrito el camino completo hasta Level 2:
+
+```bash
+scripts/run_sdr.sh --sensor omps_nm     # Nadir Mapper  (ROTCS)
+scripts/run_sdr.sh --sensor omps_np     # Nadir Profiler (RONPS)
+scripts/run_omps_edr.sh                 # V8TOz y V8PRO
+```
+
+Hace falta compilar `contenedores/cspp_omps_l2_v1.0.def` (el tarball
+`cspp_omps_l2-1.0.tar.gz` ya está en `/opt/contenedores`).
+
+CSPP OMPS EDR v1.0 produce **V8TOz** —columna total de ozono en unidades Dobson, más
+índice de aerosoles y reflectividad a 331 nm— y **V8PRO**, perfil de ozono en 21 capas.
+Dos cosas lo hacen más simple que los demás EDR: **no usa ancillary dinámico** (nada de
+caché ni cron) y su driver recibe un solo argumento, el directorio de entrada. V8TOz
+necesita solo el Nadir Mapper; V8PRO necesita los dos instrumentos, así que
+`run_omps_edr.sh` sigue adelante con lo que haya y avisa si no pudo hacer V8PRO. Solo
+procesa gránulos diurnos: ambos algoritmos miden radiancia ultravioleta retrodispersada.
+
+**La vista de ozono exige Polar2Grid 3.3** (manual de OMPS §4: *"Starting with Polar2Grid
+Version 3.3, a subset of key OMPS V8TOz EDR parameters are supported"*). Tenemos la 3.2.
+El release existe (`github.com/ssec/polar2grid/releases/tag/v3.3.0`) pero no está
+anunciado. Decisión pendiente: subir a 3.3 implica receta nueva y revalidar VIIRS, que es
+lo que sostiene la cadena. Mientras tanto el ozono queda en NetCDF, publicable pero sin
+imagen.
 
 ### 4. HEAP (rama ATMS/CrIS)
 El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
@@ -123,9 +189,10 @@ imagen se ha recompilado con eso. Orden sugerido: primero las de Rocky 9 (menor 
 ya validadas hoy), y al final RT-STPS y CSPP SDR, que sostienen los dos primeros eslabones
 y pasan de 8.9 a 8.10. Conservar el `.sif` viejo hasta comprobar los conteos.
 
-### 7. Decidir sobre Polar2Grid v3.1
-Nadie lo usa en la cadena actual y su tarball ya no está en `/opt/contenedores`. O se
-retira `contenedores/polar2grid_v3.1.def` del repositorio, o se recupera el tarball.
+### 7. Polar2Grid v3.1 — cerrado
+`contenedores/polar2grid_v3.1.def` ya no está en el repositorio; la nota que pedía
+decidir sobre él quedó obsoleta. Lo único que sigue apuntando a esa imagen es
+`scripts/procesar_cadena_completa.sh`, que no está en uso y se conserva a propósito.
 
 ---
 

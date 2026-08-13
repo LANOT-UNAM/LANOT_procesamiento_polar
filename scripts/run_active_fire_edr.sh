@@ -31,7 +31,7 @@
 #   FIRE_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-active-fire)
 #   FIRE_CACHE      Máscaras tierra/agua (def. /data/ancillary/active_fire_cache)
 #   FIRE_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_active_fire_edr_v2.1.sif)
-#   FIRE_WORK_BASE  Raíz de staging  (def. /data/output/jpss/tmp)
+#   FIRE_WORK_BASE  Raíz de staging  (def. /data/tmp)
 #   FIRE_LOG_BASE   Raíz de logs     (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -45,7 +45,7 @@ OUTPUT_DIR="${FIRE_OUT:-/data/output/jpss/level2/fires}"
 STATE_DIR="${FIRE_STATE_DIR:-/data/output/jpss/state/cspp-active-fire}"
 HOST_CACHE="${FIRE_CACHE:-/data/ancillary/active_fire_cache}"
 
-WORK_BASE="${FIRE_WORK_BASE:-/data/output/jpss/tmp}"
+WORK_BASE="${FIRE_WORK_BASE:-/data/tmp}"
 LOG_DIR="${FIRE_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CONTAINER_HOME="/opt/cspp-active-fire-noaa_2.1"
