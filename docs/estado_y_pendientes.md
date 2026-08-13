@@ -66,8 +66,11 @@ productos salen como GeoTIFF pero sin vista, porque no hay CPT:
 |---|---|---|
 | `CloudLayer` | categórico | Necesita un CPT discreto, como `cloud_type.cpt` |
 | `Total_Cloud_Fraction` | fracción 0-1 | |
-| `NDVI`, `EVI` | índices de vegetación | Los más visibles de LSR |
-| `surf_refl_*` (14) | reflectancias por banda | Son datos, como las bandas M/I: probablemente no lleven vista |
+| `NDVI`, `EVI` | índices de vegetación | Los únicos de LSR que llevarán vista |
+
+Decidido el 2026-08-13: **no llevan vista** las bandas M/I con sus ángulos y radiancias,
+los 14 `surf_refl_*` ni los ángulos del DNB. Son datos por banda; lo visible son el RGB,
+el DNB y los productos geofísicos. Ya está aplicado con el filtro de `vestir()`.
 
 No reciclar un CPT de rango distinto: una paleta equivocada es peor que ninguna vista.
 Mientras tanto el script lo anota en el log y sigue, que es lo correcto.

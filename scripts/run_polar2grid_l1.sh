@@ -16,7 +16,7 @@
 #
 #   1. bandas M + ángulos + radiancias   float32   wgs84_geo_750m
 #   2. bandas I + ángulos + radiancias   float32   wgs84_geo_375m
-#   3. DNB (cinco algoritmos) + ángulos  float32   wgs84_geo_750m
+#   3. DNB (cuatro algoritmos) + ángulos float32   wgs84_geo_750m
 #   4. RGB true_color / false_color      8 bits    wgs84_geo_750m
 #
 # El script viejo hace cinco llamadas porque remuestrea el DNB dos veces: una en
@@ -306,10 +306,12 @@ en_contenedor "Bandas M (750 m)" \
 en_contenedor "Bandas I (375 m)" \
     "cd /output_i && polar2grid.sh -r viirs_sdr -w geotiff --i-bands --i-angle-products --i-rad-products $DATOS -g $GRID_375 -f /input_sdr/*.h5"
 
-# Los cinco algoritmos DNB en una sola pasada: dynamic_dnb_saturation e
-# histogram_dnb solo existían en la segunda llamada del script viejo.
+# Los algoritmos DNB en una sola pasada: histogram_dnb solo existía en la
+# segunda llamada del script viejo. dynamic_dnb_saturation viene de ahí también
+# pero NO se pide: Polar2Grid 3.2 no lo genera —la corrida del 2026-08-13 dejó
+# 4 algoritmos, no 5—, así que era un producto de la 3.0.
 en_contenedor "Day/Night Band (750 m)" \
-    "cd /output_dnb && polar2grid.sh -r viirs_sdr -w geotiff -p adaptive_dnb dynamic_dnb dynamic_dnb_saturation histogram_dnb hncc_dnb --dnb-angle-products $DATOS -g $GRID_750 -f /input_sdr/*.h5"
+    "cd /output_dnb && polar2grid.sh -r viirs_sdr -w geotiff -p adaptive_dnb dynamic_dnb histogram_dnb hncc_dnb --dnb-angle-products $DATOS -g $GRID_750 -f /input_sdr/*.h5"
 
 # El RGB sale ya como imagen de 8 bits: aquí no van --dtype ni --no-enhance,
 # porque el realce es parte de la composición de Satpy.
@@ -339,7 +341,7 @@ ordenes_de() {
 # El DNB va sin -p: es una imagen en escala de grises, no lleva paleta. El -b
 # pinta de color de fondo los NoData en vez de dejarlos transparentes.
 #
-# Solo se visten los cinco algoritmos. La llamada pide además
+# Solo se visten los algoritmos. La llamada pide además
 # --dnb-angle-products, que son ángulos solares y lunares: datos útiles como
 # GeoTIFF, pero no imágenes que tenga sentido decorar con logo y timestamp
 # (verificado en tahan el 2026-08-13, cuando salieron 10 vistas en vez de 5).
@@ -366,6 +368,12 @@ fi
 contar_nuevos() {
     find "$1" -maxdepth 1 -name "$2" -newer "$REF_FILE" 2>/dev/null | wc -l
 }
+
+# Polar2Grid escribe su propio .log en el pwd, que aquí es el directorio de
+# productos. Lo que dice ya quedó en $LOG_FILE, así que se descarta para no
+# ensuciar el árbol de salida.
+find "$OUT_M" "$OUT_I" "$OUT_DNB" "$OUT_RGB" \
+     -maxdepth 1 -name '*.log' -delete 2>/dev/null || true
 
 TIF_M=$(contar_nuevos   "$OUT_M"      '*.tif')
 TIF_I=$(contar_nuevos   "$OUT_I"      '*.tif')

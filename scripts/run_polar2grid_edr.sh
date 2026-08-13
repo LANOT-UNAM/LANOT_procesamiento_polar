@@ -518,9 +518,11 @@ fi
 # Los productos llegan sin paleta, así que recolorea geotiff2view. Un producto
 # sin CPT no genera vista y no es error.
 
+# $5 herramienta, $6 ERE opcional: solo se viste lo que haga match. Sirve para
+# dejar fuera lo que es dato y no imagen.
 vestir() {
     local etiqueta="$1" dir_tif="$2" montaje_tif="$3" montaje_img="$4"
-    local herramienta="${5:-geotiff2view}"
+    local herramienta="${5:-geotiff2view}" filtro="${6:-.}"
     local tif nombre cpt ordenes=""
 
     while IFS= read -r tif; do
@@ -535,10 +537,13 @@ vestir() {
             continue
         fi
         ordenes+="geotiff2view '$montaje_tif/$nombre' -b -p '$cpt' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
-    done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null | sort)
+    done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null \
+                  | grep -E "$filtro" | sort)
 
     if [ -z "$ordenes" ]; then
-        echo "  ⚠ $etiqueta: ningún GeoTIFF con paleta conocida" | tee -a "$LOG_FILE"
+        # Puede ser que el filtro dejara fuera todo (son datos, no imágenes) o
+        # que ningún producto tenga CPT. El detalle queda arriba, en el log.
+        echo "  ⚠ $etiqueta: nada que vestir" | tee -a "$LOG_FILE"
         return 0
     fi
 
@@ -546,7 +551,9 @@ vestir() {
 }
 
 vestir "Vistas de ATMOS" "$HOST_TIF_OUT"       /output_tif       /output_img
-vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img
+# De LSR solo se miran los índices de vegetación: los 14 surf_refl_* son
+# reflectancias por banda, o sea dato, igual que las bandas M/I de Level 1.
+vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img geotiff2view 'NDVI|EVI'
 vestir "Vistas de SST"   "$HOST_ACSPO_TIF_OUT" /output_acspo_tif /output_acspo_img
 vestir "Vistas RGB de superficie" "$HOST_LSR_RGB_TIF_OUT" /output_lsr_rgb_tif /output_lsr_rgb_img mapdrawer
 
@@ -557,6 +564,12 @@ vestir "Vistas RGB de superficie" "$HOST_LSR_RGB_TIF_OUT" /output_lsr_rgb_tif /o
 contar_nuevos() {
     find "$1" -maxdepth 1 -name "$2" -newer "$REF_FILE" 2>/dev/null | wc -l
 }
+
+# Polar2Grid escribe su propio .log en el pwd, que aquí es el directorio de
+# productos. Lo que dice ya quedó en $LOG_FILE, así que se descarta para no
+# ensuciar el árbol de salida.
+find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_LSR_RGB_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
+     -maxdepth 1 -name '*.log' -delete 2>/dev/null || true
 
 TIF_ATMOS=$(contar_nuevos "$HOST_TIF_OUT"       '*.tif')
 TIF_LSR=$(contar_nuevos   "$HOST_LSR_TIF_OUT"   '*.tif')
