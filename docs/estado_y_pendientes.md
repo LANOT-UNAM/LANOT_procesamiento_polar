@@ -2,6 +2,9 @@
 
 **Última actualización: 2026-08-12**
 
+Ocho eslabones probados con datos reales sobre una misma pasada. Falta el noveno,
+`run_polar2grid_edr.sh`, que nunca se ha ejecutado.
+
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
@@ -21,7 +24,7 @@ Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_
 | Level 2 criósfera | `run_cryo_edr.sh` | 22 productos, 5s |
 | Level 2 incendios | `run_active_fire_edr.sh` | 11 productos, 2m 47s |
 | Level 2 SST | `run_acspo_edr.sh` | 1 producto + 1 imagen, 1m 48s |
-| Level 2 inundaciones | `run_flood_edr.sh` | 11 gránulos procesados; **falta reconfirmar tras el arreglo** |
+| Level 2 inundaciones | `run_flood_edr.sh` | 11 productos, 4m 34s |
 | Vistas | `run_polar2grid_edr.sh` | **nunca se ha ejecutado** |
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
@@ -31,18 +34,10 @@ de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
 
 ## Pendientes, en orden sugerido
 
-### 1. Reconfirmar Flood
-El arreglo del traslado desde el directorio de trabajo no se ha probado con datos reales.
-
-```bash
-rm /data/output/jpss/state/cspp-flood/j01_d20260811_b45236.done
-scripts/run_flood_edr.sh          # esperado: 11 .nc en level2/flood
-```
-
-### 2. Probar `run_polar2grid_edr.sh`
+### 1. Probar `run_polar2grid_edr.sh`
 Es el único eslabón que nunca ha corrido. Ya tiene todos sus insumos.
 
-### 3. Precarga de ancillary de ATMOS
+### 2. Precarga de ancillary de ATMOS
 `update_atmos_ancillary.sh` no se ha ejecutado nunca. Correrlo a mano una vez y luego
 montarlo en cron **cuatro veces al día** (el manual §2.4 lo pide por las cuatro corridas
 del GFS):
@@ -54,7 +49,7 @@ del GFS):
 Mientras no exista ese cron, `run_atmos_edr.sh` fallará con una fecha nueva, porque usa
 `-l` (solo caché local). `--download` es la salida de emergencia.
 
-### 4. Vistas decoradas — el tema abierto
+### 3. Vistas decoradas — el tema abierto
 Discutido a fondo y sin cerrar. Lo que quedó establecido:
 
 - Las vistas se hacen con `geotiff2view` (recolorea con un CPT) y `mapdrawer` (no
@@ -81,7 +76,7 @@ Preguntas sin responder:
 - Paletas para nubes, LSR y criósfera: los CPT de `colortables/` se hicieron para las
   variables de CLAVR-x y los `JRR-*` traen otros nombres, códigos y rangos.
 
-### 5. HEAP (rama ATMS/CrIS)
+### 4. HEAP (rama ATMS/CrIS)
 El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
 `docs/manuals/`. Antes hay que validar la rama que nunca se ha ejercitado:
 
@@ -93,20 +88,20 @@ scripts/run_sdr.sh --sensor cris
 HEAP descarga su propio ancillary dinámico (con `lftp`), así que repite el patrón de
 ATMOS: caché propio, modo local y descargador en cron.
 
-### 6. Productos duplicados
+### 5. Productos duplicados
 `/data/output/jpss/level2/atmosphere` crece con cada reproceso: los `JRR-*` llevan campo
 de creación en el nombre, así que una segunda corrida agrega en vez de sobrescribir. El
 staging ya se protege enlazando solo la versión más reciente, pero falta decidir la
 política de limpieza. La propuesta sobre la mesa es un `limpiar_productos.sh` en cron que
 conserve la versión más reciente de cada producto y borre lo que pase de N días.
 
-### 7. Recompilar con la base común
+### 6. Recompilar con la base común
 Las recetas ahora parten de `lanot_base_rocky8.sif` / `lanot_base_rocky9.sif`. Ninguna
 imagen se ha recompilado con eso. Orden sugerido: primero las de Rocky 9 (menor riesgo,
 ya validadas hoy), y al final RT-STPS y CSPP SDR, que sostienen los dos primeros eslabones
 y pasan de 8.9 a 8.10. Conservar el `.sif` viejo hasta comprobar los conteos.
 
-### 8. Decidir sobre Polar2Grid v3.1
+### 7. Decidir sobre Polar2Grid v3.1
 Nadie lo usa en la cadena actual y su tarball ya no está en `/opt/contenedores`. O se
 retira `contenedores/polar2grid_v3.1.def` del repositorio, o se recupera el tarball.
 
