@@ -116,7 +116,12 @@ done
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 START_EPOCH=$(date '+%s')
+
+# Staging y directorio de trabajo son HERMANOS, no anidados: el driver borra lo
+# que encuentra bajo -W al terminar ("removed dir" en el log), así que un
+# staging dentro de /work se lo lleva por delante.
 HOST_WORK="${WORK_BASE}/omps_work_${JOB_ID}"
+STAGING_DIR="${WORK_BASE}/omps_staging_${JOB_ID}"
 
 # ==============================================================================
 # SELECCIÓN DE LA PASADA
@@ -183,12 +188,14 @@ fi
 # STAGING DE LA PASADA
 # ==============================================================================
 # El driver recibe un directorio y procesa todo lo que encuentre, así que se
-# enlaza únicamente lo de esta pasada.
+# enlaza únicamente lo de esta pasada. Los enlaces apuntan a $HOST_SDR_IN, que
+# por eso se monta más abajo sobre sí mismo: sin ese bind el contenedor ve los
+# nombres pero no los archivos, y el driver los da por procesados sin abrir
+# ninguno (verificado en tahan el 2026-08-13: 39 gránulos "listos" en el mismo
+# segundo y "0 products of 20 without errors").
 
-STAGING_DIR="${HOST_WORK}/input"
-
-mkdir -p "$STAGING_DIR" "$HOST_EDR_OUT" "$LOG_DIR" "$STATE_DIR"
-trap 'rm -rf "$HOST_WORK"' EXIT
+mkdir -p "$STAGING_DIR" "$HOST_WORK" "$HOST_EDR_OUT" "$LOG_DIR" "$STATE_DIR"
+trap 'rm -rf "$HOST_WORK" "$STAGING_DIR"' EXIT
 
 NM_COUNT=0
 NP_COUNT=0
@@ -229,9 +236,11 @@ fi
 # ==============================================================================
 # PROCESAMIENTO
 # ==============================================================================
-# El manual pide directorio de trabajo limpio en cada ejecución, y con -W los
-# productos quedan ahí en vez de en el pwd. Como HOST_WORK nace vacío y se
-# descarta al final, ambas cosas se cumplen solas.
+# El manual pide directorio de trabajo limpio en cada ejecución: HOST_WORK nace
+# vacío y se descarta al final, así que eso se cumple solo. `omps_l2.sh -h` no
+# ofrece opción de salida, y con --pwd /work los productos caen ahí tanto si los
+# escribe bajo -W como si los deja en el pwd, que es lo que hacen varios
+# ejecutables de CSPP.
 
 echo "" | tee -a "$LOG_FILE"
 echo ">>> Ejecutando omps_l2.sh..." | tee -a "$LOG_FILE"
@@ -239,7 +248,9 @@ echo ">>> Ejecutando omps_l2.sh..." | tee -a "$LOG_FILE"
 EXIT_CODE=0
 apptainer exec \
     --bind "$STAGING_DIR:/input" \
+    --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
     --bind "$HOST_WORK:/work" \
+    --pwd /work \
     "$SIF_OMPS" /bin/bash -c "
         export HDF5_USE_FILE_LOCKING=FALSE
         export LC_ALL=C
@@ -252,7 +263,7 @@ DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ ERROR: CSPP OMPS EDR falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
     echo "   Revisa el log: $LOG_FILE"                                     | tee -a "$LOG_FILE"
-    echo "   El directorio de trabajo se conserva: $HOST_WORK"             | tee -a "$LOG_FILE"
+    echo "   Se conservan $HOST_WORK y $STAGING_DIR"                       | tee -a "$LOG_FILE"
     trap - EXIT
     exit $EXIT_CODE
 fi
@@ -262,15 +273,23 @@ fi
 # ==============================================================================
 # El código de salida no basta: estos drivers pueden terminar en 0 sin producir
 # nada. Como el directorio de trabajo nace vacío, basta con contar lo que hay.
+# Sin -maxdepth, por si el driver los deja en un subdirectorio de los que crea y
+# luego poda; el staging ya no cuelga de aquí, así que no hay qué confundir.
 
-mapfile -t PRODUCTOS < <(find "$HOST_WORK" -maxdepth 1 -type f -name '*.nc' | sort)
+mapfile -t PRODUCTOS < <(find "$HOST_WORK" -type f -name '*.nc' | sort)
 NC_COUNT=${#PRODUCTOS[@]}
 
 if [ "$NC_COUNT" -eq 0 ]; then
     echo "❌ ERROR: OMPS terminó sin error pero no generó productos."     | tee -a "$LOG_FILE"
-    echo "   Causa típica: la pasada es nocturna y no hay retrievals."    | tee -a "$LOG_FILE"
+    echo "   Busca en el log la línea 'products of':"                     | tee -a "$LOG_FILE"
+    echo "   grep -n 'products of' $LOG_FILE"                             | tee -a "$LOG_FILE"
+    echo "   Si dice '0 products of N' y los gránulos salen todos con la" | tee -a "$LOG_FILE"
+    echo "   misma marca de tiempo, no llegó a abrirlos: revisa que"      | tee -a "$LOG_FILE"
+    echo "   $HOST_SDR_IN se vea dentro del contenedor."                  | tee -a "$LOG_FILE"
+    echo "   Si tardó de verdad, la pasada puede ser nocturna: ambos"     | tee -a "$LOG_FILE"
+    echo "   algoritmos miden radiancia UV y no hay nada que recuperar."  | tee -a "$LOG_FILE"
     echo "   Revisa el log: $LOG_FILE"                                    | tee -a "$LOG_FILE"
-    echo "   El directorio de trabajo se conserva: $HOST_WORK"            | tee -a "$LOG_FILE"
+    echo "   Se conservan $HOST_WORK y $STAGING_DIR"                      | tee -a "$LOG_FILE"
     trap - EXIT
     exit 1
 fi
