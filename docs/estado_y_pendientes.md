@@ -32,6 +32,28 @@ de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
 
 ---
 
+## Tareas programadas
+
+Qué debe quedar en el `crontab` de `lanotadm`. **Ninguna está confirmada como activa**:
+falta cotejar contra un `crontab -l` en tahan.
+
+| Tarea | Frecuencia | Por qué | Estado |
+|---|---|---|---|
+| `update_sdr_daily.sh` | diaria | LUTs de calibración y TLE/GFS de CSPP SDR. Sin esto, la calibración se degrada con los días. | Existe desde antes; **verificar si está en cron** |
+| `update_atmos_ancillary.sh` | 4× al día (`17 2,8,14,20 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Pendiente de montar** |
+| Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
+| Limpieza de productos | por definir | Los `JRR-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
+
+Los `run_*.sh` **no van en cron**: se disparan por pasada. Hoy se invocan a mano; cuando
+todos corran solos, el encadenamiento se hará desde `recibe.sh` con
+`procesar_cadena_completa.sh` como plantilla, que es lo que se dispara al recibir un RAW
+de la antena.
+
+Las tareas de despliegue —`setup_ambiente_rt_stps.sh`, `deploy_static_data_sdr.sh`— se
+ejecutan una sola vez al preparar un servidor, nunca en cron.
+
+---
+
 ## Pendientes, en orden sugerido
 
 ### 1. Probar `run_polar2grid_edr.sh`
@@ -69,7 +91,7 @@ Discutido a fondo y sin cerrar. Lo que quedó establecido:
 Preguntas sin responder:
 
 - **Alcance**: ¿`run_polar2grid_edr.sh` cubre también el Level 1 (RGB `true_color` /
-  `false_color` y DNB), reemplazando a `cspp_1_ptog.sh`, o se queda en Level 2?
+  `false_color` y DNB), reemplazando a `referencia/cspp_1_ptog.sh`, o se queda en Level 2?
   Hoy la cadena nueva **no produce RGB**, que es el producto más visible de todos.
 - ¿De dónde salen hoy los `.tif` de `acspo` y `fire` que consume `crea_vistas_viirs.sh`?
   Los scripts que los generarían no están en cron.
@@ -141,10 +163,10 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
 
 ## Material de referencia
 
-- `scripts/cspp_1_ptog.sh` — el script **en producción hoy** en el servidor viejo, que
+- `referencia/cspp_1_ptog.sh` — el script **en producción hoy** en el servidor viejo, que
   genera los GeoTIFF de Level 1, las vistas DNB y las RGB. Es la referencia de lo que la
   cadena nueva tiene que llegar a cubrir. No se ejecuta desde este repositorio.
-- `scripts/old_cspp_no_usar.sh` — la cadena monolítica anterior, solo como referencia.
+- `referencia/old_cspp_no_usar.sh` — la cadena monolítica anterior, solo como referencia.
 - `scripts/procesar_cadena_completa.sh` — plantilla para reunificar los eslabones cuando
   todos corran solos. En espera, no en uso.
 - `docs/manuals/` — manuales oficiales de CSPP y RT-STPS, sin rastrear en git. Consultar
