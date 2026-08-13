@@ -224,8 +224,12 @@ echo "  Hilos:   $CORES"                                    | tee -a "$LOG_FILE"
 # ==============================================================================
 # EJECUCIÓN
 # ==============================================================================
-# El driver no tiene opción de directorio de salida: escribe en el directorio
-# actual, de ahí el --pwd /output_data.
+# El driver no tiene opción de directorio de salida (-o no existe en su línea de
+# comandos) y deja los productos en el DIRECTORIO DE TRABAJO, no en el actual:
+#   "Moving output files from /work/NOAA_VIIRS_Flood_..._run_0 to /work"
+# Por eso hay que moverlos desde /work al destino antes de limpiar, igual que en
+# run_atmos_edr.sh. Con --pwd /work, además, los intermedios que escriba en el
+# directorio actual no ensucian la salida.
 
 REF_FILE=$(mktemp -t flood_ref_XXXXXX)
 
@@ -247,11 +251,20 @@ EXIT_CODE=0
 apptainer exec \
     --env LC_ALL=C \
     "${BIND_OPTS[@]}" \
-    --pwd /output_data \
+    --pwd /work \
     "${SIF_IMAGE}" \
     /bin/bash -c "
         . \$CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
         \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood.sh -W /work -n $CORES -vv $OPCION_AOI /input_data
+        RC=\$?
+
+        if [ \$RC -ne 0 ]; then
+            echo \"--- cspp_viirs_flood.sh terminó con código \$RC ---\"
+            exit \$RC
+        fi
+
+        echo '--- Trasladando resultados (NetCDF) a Lustre ---'
+        find /work -maxdepth 1 -name '*.nc' -exec mv -t /output_data/ {} +
     " >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
@@ -265,10 +278,32 @@ fi
 NC_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" 2>/dev/null | wc -l)
 
 # ==============================================================================
+# VERIFICACIÓN
+# ==============================================================================
+# Cero productos puede significar dos cosas muy distintas, y confundirlas ya
+# costó una corrida: el algoritmo solo trabaja de día, así que una pasada
+# nocturna termina bien y sin salida; pero si procesó gránulos y aun así no hay
+# archivos, algo se rompió. Se distingue con el propio reporte del driver, que
+# lista los gránulos que salieron adelante:
+#     successful_runs   []                 -> no procesó nada (de noche)
+#     successful_runs   ['J01...', ...]    -> sí procesó
+GRANULOS_OK=0
+if grep -qE "successful_runs +\[.+\]" "$LOG_FILE"; then
+    GRANULOS_OK=1
+fi
+
+if [ "$NC_COUNT" -eq 0 ] && [ "$GRANULOS_OK" -eq 1 ]; then
+    echo "❌ ERROR: el driver procesó gránulos pero no quedó ningún producto." | tee -a "$LOG_FILE"
+    echo "   Revisa dónde los dejó; deberían estar en $OUTPUT_DIR."           | tee -a "$LOG_FILE"
+    echo "   grep 'output files' $LOG_FILE"                                    | tee -a "$LOG_FILE"
+    echo "   No se escribió el marcador: la pasada se reintentará."            | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+# ==============================================================================
 # MARCADOR
 # ==============================================================================
-# A diferencia de los demás eslabones, cero productos no es error: el algoritmo
-# solo trabaja de día. Se marca igual para no reintentar la pasada en cada
+# Si no procesó gránulos, se marca igual para no reintentar la pasada en cada
 # corrida, pero el resumen lo dice con todas sus letras.
 
 {
