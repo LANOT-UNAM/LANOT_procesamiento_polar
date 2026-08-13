@@ -168,6 +168,19 @@ anunciado. Decisión pendiente: subir a 3.3 implica receta nueva y revalidar VII
 lo que sostiene la cadena. Mientras tanto el ozono queda en NetCDF, publicable pero sin
 imagen.
 
+### 9. Recorte y encuadre de las vistas
+En el `true_color` de la pasada de prueba, más de la mitad del cuadro es negro: la rejilla
+dinámica cubre el rectángulo que envuelve un swath diagonal y el resto es relleno. Hoy
+solo se recorta por abajo, con `--lat-south 11`.
+
+`geotiff2view` acepta `--clip` con cuatro coordenadas o con el **nombre de una región**,
+que resuelve contra `/usr/local/share/lanot/docs/recortes_coordenadas.csv` (ya viene en el
+contenedor). Falta decidir qué región usar por producto — probablemente una para México y
+otra más amplia para los productos oceánicos como la SST.
+
+Pendiente menor del mismo tema: confirmar si el logo se está cortando en el borde
+izquierdo o si el diseño es así. Se ve como "LAN" seguido de dos iconos.
+
 ### 4. HEAP (rama ATMS/CrIS)
 El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
 `docs/manuals/`. Antes hay que validar la rama que nunca se ha ejercitado:
