@@ -58,14 +58,14 @@ ejecutan una sola vez al preparar un servidor, nunca en cron.
 
 ## Pendientes, en orden sugerido
 
-### 1. Paletas que faltan
-Los dos scripts de Polar2Grid ya corrieron con datos reales. Lo que queda es que varios
-productos salen como GeoTIFF pero sin vista, porque no hay CPT:
+### 1. Paletas — hechas el 2026-08-13, falta verlas con datos
+`ndvi.cpt`, `evi.cpt` y `cloud_fraction.cpt` ya están en `LANOT_tools/colortables` y
+registradas en la tabla `PALETAS`. **En el servidor tienen que llegar a
+`/usr/local/share/lanot/colortables`** (con `install.sh` de LANOT_tools), que es el
+directorio que los scripts montan sobre el del contenedor; si solo están en el clon de
+git, el contenedor no las ve.
 
-| Producto | Qué es | Nota |
-|---|---|---|
-| `Total_Cloud_Fraction` | `float`, `valid_range 0..1`, `_FillValue -999` | De `JRR-CloudCoverLayers_v2r0` |
-| `NDVI`, `EVI` | índices de vegetación | Los únicos de LSR que llevarán vista |
+Falta mirar las tres imágenes y ajustar rangos si hace falta.
 
 **`CloudLayer` no lleva vista y no necesita paleta.** Su `long_name` lo dice: *"Cloud
 Layer Flag. Bit1(lowest flight layer); Cloudy (1); Clear(0)"*, con `valid_range 0..62`.
@@ -135,6 +135,12 @@ Preguntas sin responder:
   existente. Un producto sin paleta no genera vista y no es error.
 - ¿De dónde salen hoy los `.tif` de `acspo` y `fire` que consume `crea_vistas_viirs.sh`?
   Los scripts que los generarían no están en cron.
+- **Lo que Polar2Grid 3.2 NO cubre.** `--list-products` con el lector `viirs_edr` sobre la
+  pasada de prueba devuelve exactamente los 7 productos de ATMOS y los 16 de LSR que ya
+  renderizamos. `JRR-ADP`, `JRR-VolcanicAsh` y los `JRR-CloudDCOMP`/`NCOMP` **no están
+  soportados**: no es que no los pidamos. Si se quieren, hay que renderizarlos por otra
+  vía o esperar a una versión que los incluya. En la lista por omisión aparece además un
+  `VLST` (temperatura de superficie) que tampoco está disponible con estos archivos.
 - Falta cubrir **OMPS**, que `referencia/cspp.sh` sí procesa y la cadena nueva no. Ver
   el pendiente 8.
 

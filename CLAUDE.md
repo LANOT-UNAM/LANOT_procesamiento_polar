@@ -77,6 +77,7 @@ Al tocar rutas o versiones de contenedor, confirmar en qué generación se está
 Los `.def` instalan **solo binarios**. Todo lo que cambia con el tiempo o pesa mucho vive en el host y se monta con `--bind`:
 
 - **Estático por software**: `/data/opt/SDR_4_1/{anc,<sensor>/luts}`, `/data/opt/CSPP_ATMOS_1_0/anc/static`, `/data/opt/RT-STPS/rt-stps/config` → se montan sobre la ruta interna equivalente (`/opt/SDR_4_1/...`, etc.). Se despliegan una vez con `scripts/deploy_static_data_sdr.sh`.
+- **Paletas**: `/usr/local/share/lanot/colortables` del host se monta sobre el del contenedor cuando existe. `install.sh` de LANOT_tools las copia dentro de la imagen al compilar, así que sin ese montaje **cada CPT nuevo obligaría a recompilar** `polar2grid_v3.2-mapdrawer.sif`. Override: `P2G_COLORTABLES` / `L1G_COLORTABLES`.
 - **Dinámico**: `/data/ancillary` (LUTs de calibración, TLE, GFS, `common/leapsec.dat`) → refrescado por `scripts/update_sdr_daily.sh` (cron diario, ejecuta `sdr_luts.sh` y `sdr_ancillary.sh` dentro del SIF).
 - **Datos**: entradas y salidas se montan en puntos genéricos (`/input`, `/input_sdr`, `/output`, `/output_data`, `/work`) para que el script del contenedor no vea rutas del host.
 

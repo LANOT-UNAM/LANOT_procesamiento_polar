@@ -48,6 +48,7 @@
 #   L1G_GRID_375    Rejilla bandas I  (def. wgs84_geo_375m)
 #   L1G_WORKERS     Hilos de P2G      (def. SLURM_CPUS_PER_TASK o 20)
 #   L1G_WORK_BASE   Raíz de staging   (def. /data/tmp)
+#   L1G_COLORTABLES Paletas del host  (def. /usr/local/share/lanot/colortables)
 #   L1G_LOG_BASE    Raíz de logs      (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -86,6 +87,14 @@ WORK_BASE="${L1G_WORK_BASE:-/data/tmp}"
 LOG_DIR="${L1G_LOG_BASE:-/var/log/lanot/polares}/polar2grid"
 
 JOB_ID="${SLURM_JOB_ID:-$$}"
+
+# Las paletas viven dentro de la imagen: install.sh las copia al compilar. Si
+# el host tiene el directorio, se monta encima, para que agregar un CPT no
+# obligue a recompilar el contenedor. Es el mismo criterio que con los LUTs de
+# CSPP: binarios en la imagen, lo que cambia en el host.
+COLORTABLES="${L1G_COLORTABLES:-/usr/local/share/lanot/colortables}"
+BIND_CPT=()
+[ -d "$COLORTABLES" ] && BIND_CPT=(--bind "$COLORTABLES:/usr/local/share/lanot/colortables:ro")
 
 # Argumentos de decoración validados en producción (LANOT_tools,
 # crea_vistas_viirs.sh:96-118)
@@ -276,6 +285,7 @@ en_contenedor() {
 
     echo "--- $etiqueta ---" >> "$LOG_FILE"
     apptainer exec \
+        "${BIND_CPT[@]}" \
         --bind "$STAGING_SDR:/input_sdr" \
         --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
         --bind "$GRID_CONFIG:/config/grid.yaml:ro" \

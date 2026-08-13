@@ -38,6 +38,7 @@
 #   P2G_GRID_CONFIG Rejillas propias  (def. <repo>/config/grid.yaml)
 #   P2G_GRID        Rejilla a usar    (def. wgs84_geo_750m)
 #   P2G_WORK_BASE   Raíz de staging   (def. /data/tmp)
+#   P2G_COLORTABLES Paletas del host  (def. /usr/local/share/lanot/colortables)
 #   P2G_LOG_BASE    Raíz de logs      (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -90,8 +91,7 @@ JOB_ID="${SLURM_JOB_ID:-$$}"
 # otros nombres y rangos, así que el emparejamiento es tentativo. Un producto
 # sin paleta no genera vista y no es error — se anota en el log y se sigue.
 #
-# Faltan por hacer los de Total_Cloud_Fraction, NDVI y EVI. CloudLayer NO lleva
-# paleta a propósito: es una máscara de bits (una capa de vuelo por bit,
+# CloudLayer NO lleva paleta a propósito: es una máscara de bits (una capa de vuelo por bit,
 # valid_range 0..62), así que sus valores son combinaciones y no una escala.
 PALETAS=(
     "sst:sst.cpt"
@@ -103,7 +103,18 @@ PALETAS=(
     "CloudPhase:phase.cpt"
     "CloudType:cloud_type.cpt"
     "AOD550:aod550.cpt"
+    "Total_Cloud_Fraction:cloud_fraction.cpt"
+    "NDVI:ndvi.cpt"
+    "EVI:evi.cpt"
 )
+
+# Las paletas viven dentro de la imagen: install.sh las copia al compilar. Si
+# el host tiene el directorio, se monta encima, para que agregar un CPT no
+# obligue a recompilar el contenedor. Es el mismo criterio que con los LUTs de
+# CSPP: binarios en la imagen, lo que cambia en el host.
+COLORTABLES="${P2G_COLORTABLES:-/usr/local/share/lanot/colortables}"
+BIND_CPT=()
+[ -d "$COLORTABLES" ] && BIND_CPT=(--bind "$COLORTABLES:/usr/local/share/lanot/colortables:ro")
 
 # Argumentos de decoración validados en producción (LANOT_tools,
 # crea_vistas_viirs.sh:96-118)
@@ -444,6 +455,7 @@ en_contenedor() {
 
     echo "--- $etiqueta ---" >> "$LOG_FILE"
     apptainer exec \
+        "${BIND_CPT[@]}" \
         --bind "$STAGING_SDR:/input_sdr" \
         --bind "$STAGING_EDR:/input_edr" \
         --bind "$STAGING_LSR:/input_lsr" \
