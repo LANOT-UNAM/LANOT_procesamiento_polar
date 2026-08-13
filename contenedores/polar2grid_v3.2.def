@@ -1,17 +1,27 @@
 Bootstrap: docker
-From: rockylinux:9
+# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
+# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
+# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
+# del día de la compilación. Eso hacía que el contenido cambiara solo.
+From: quay.io/rockylinux/rockylinux:9.8
+
+%labels
+    Base quay.io/rockylinux/rockylinux:9.8
 
 %files
     # El archivo debe estar en la misma carpeta que este .def
     CSPP_POLAR2GRID_V3.2.tar.gz /opt/
 
 %post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
     # 1. Dependencias Base
-    dnf update -y
     # fontconfig y freetype son necesarios internamente por Satpy/matplotlib 
     # para poder dibujar contornos de costas y textos en los GeoTIFF.
-    dnf install -y tar gzip bash fontconfig freetype
-    dnf clean all
+    dnf install -y --setopt=install_weak_deps=False tar gzip bash fontconfig freetype
+    dnf clean all && rm -rf /var/cache/dnf
 
     # 2. Descomprimir e Instalar
     cd /opt
