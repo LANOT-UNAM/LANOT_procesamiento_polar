@@ -1,12 +1,10 @@
-Bootstrap: docker
-# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
-# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
-# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
-# del día de la compilación. Eso hacía que el contenido cambiara solo.
-From: quay.io/rockylinux/rockylinux:9.8
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
 
 %labels
-    Base quay.io/rockylinux/rockylinux:9.8
+    Base lanot_base_rocky9.sif
     Author Alejandro Aguilar Sierra - LANOT UNAM
     Description CSPP Land Surface Reflectance (LSR) EDR v2.0 (Rocky 9)
     Version 2.0-LANOT
@@ -20,21 +18,18 @@ From: quay.io/rockylinux/rockylinux:9.8
     # Apptainer se queda con el código de la ÚLTIMA orden.
     set -e
 
-    # 1. Repositorios y Dependencias
-    dnf install -y --setopt=install_weak_deps=False epel-release
-    dnf config-manager --set-enabled crb
-    # Agregamos paquetes típicos de compilación y librerías científicas base
-    dnf install -y --setopt=install_weak_deps=False wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng perl
+    # el driver de LSR es un script de perl
+    dnf install -y --setopt=install_weak_deps=False perl
     dnf clean all && rm -rf /var/cache/dnf
 
-    # 2. Instalación de los Binarios
+    # Instalación de los Binarios
     cd /opt
     echo "--- Descomprimiendo Binarios de LSR ---"
     tar -zxf CSPP_VIIRS_SURFACE_REFLECTANCE_V2.0.tar.gz
-    
+
     # Buscamos la carpeta recién creada 
     REAL_FOLDER=$(find . -maxdepth 1 -type d -not -path "." -not -path "./cspp_lsr" | head -n 1 | sed 's|./||')
-    
+
     if [ -n "$REAL_FOLDER" ]; then
         echo "Carpeta detectada: $REAL_FOLDER"
         ln -s "$REAL_FOLDER" cspp_lsr
@@ -54,7 +49,7 @@ From: quay.io/rockylinux/rockylinux:9.8
 
 %environment
     export CSPP_LSR_HOME=/opt/cspp_lsr
-    
+
     # Cargar el entorno de CSPP LSR
     if [ -f /opt/cspp_lsr/cspp_lsr_env.sh ]; then
         source /opt/cspp_lsr/cspp_lsr_env.sh

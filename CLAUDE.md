@@ -13,9 +13,16 @@ Todo (comentarios, mensajes de log, documentación) está en español. Mantener 
 ## Comandos
 
 ```bash
-# Compilar un contenedor (el tarball correspondiente debe estar en contenedores/)
-cd contenedores/
-sudo apptainer build cspp_sdr_v4.1.1.sif cspp_sdr_v4.1.1.def
+# Compilar un contenedor. Las recetas parten de una imagen base común, así que
+# hay un orden; construir.sh lo resuelve y compila donde están los tarballs
+# (TARBALLS, por omisión /opt/contenedores)
+./contenedores/construir.sh                    # lista lo disponible
+./contenedores/construir.sh cspp_sdr_v4.1.1    # compila esa receta y su base
+
+# A mano, si hace falta: primero la base de la serie, luego la receta
+cd /opt/contenedores/
+sudo apptainer build lanot_base_rocky8.sif ~/…/contenedores/lanot_base_rocky8.def
+sudo apptainer build cspp_sdr_v4.1.1.sif   ~/…/contenedores/cspp_sdr_v4.1.1.def
 
 # Sanity check de una imagen ya compilada
 apptainer exec rt_stps_7.0.sif ./bin/batch.sh --help
@@ -67,6 +74,8 @@ Los `.def` instalan **solo binarios**. Todo lo que cambia con el tiempo o pesa m
 - **Datos**: entradas y salidas se montan en puntos genéricos (`/input`, `/input_sdr`, `/output`, `/output_data`, `/work`) para que el script del contenedor no vea rutas del host.
 
 Cada `run_*.sh` sigue el mismo patrón: `apptainer exec` con los binds, y dentro un `/bin/bash -c` que exporta `CSPP_*_HOME`, `HDF5_USE_FILE_LOCKING=FALSE` y `LC_ALL=C`, hace `source <cspp_env.sh>` y luego invoca el ejecutable. Varios ejecutables CSPP escriben en el `pwd`, por eso los scripts usan `cd /output` o `--pwd /output_data`.
+
+**Imagen base común**: todas las recetas parten de `lanot_base_rocky8.sif` o `lanot_base_rocky9.sif` (`Bootstrap: localimage`), que concentran las decisiones que antes estaban repetidas: registro (Quay, porque las imágenes de Docker Hub están congeladas en 9.3 y 8.9), versión menor fijada, repositorios EPEL/CRB/PowerTools y las utilidades comunes. Cada receta instala solo lo suyo (perl, Java, GDAL, mesa-libGL). Consecuencia: **hay orden de compilación** — la base antes que el resto, y el `.sif` de la base debe estar en el directorio desde donde se ejecuta `apptainer build`. Eso es lo que resuelve `contenedores/construir.sh`.
 
 Cada `.def` crea un symlink genérico (`/opt/cspp_sdr` → `SDR_4_1`, `/opt/polar2grid` → `polar2grid_v_3_2`, …) para que los scripts no dependan del nombre exacto de la carpeta que produce el tarball.
 

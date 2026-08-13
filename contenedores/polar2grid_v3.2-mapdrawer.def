@@ -1,16 +1,13 @@
-Bootstrap: docker
-# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
-# mantiene sus imágenes: la de Docker Hub (rockylinux:9) quedó congelada en
-# 9.3 (mayo de 2024), así que arrancaba de una base de dos años atrás y el
-# 'dnf update' la subía hasta la versión del día. Por eso el contenido cambiaba
-# de una compilación a otra sin que nadie tocara este archivo.
-From: quay.io/rockylinux/rockylinux:9.8
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
 
 %labels
     Author Alejandro Aguilar Sierra - LANOT UNAM
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
     Version 3.2-mapdrawer-LANOT
-    Base quay.io/rockylinux/rockylinux:9.8
+    Base lanot_base_rocky9.sif
     LANOT_tools_commit e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
 
 %help
@@ -30,10 +27,10 @@ From: quay.io/rockylinux/rockylinux:9.8
     Verificación tras compilar:  apptainer test polar2grid_v3.2-mapdrawer.sif
 
 %files
-    # 1. El archivo fuente de Polar2Grid (debe estar junto a este .def en el host)
+    # El archivo fuente de Polar2Grid (debe estar junto a este .def en el host)
     CSPP_POLAR2GRID_V3.2.tar.gz /opt/
 
-    # 2. Recursos de mapdrawer que no vienen en el repo, descartando los pesados.
+    # Recursos de mapdrawer que no vienen en el repo, descartando los pesados.
     #    Sintaxis: <ruta_en_el_host> <ruta_en_el_contenedor>
     #    Las colortables se omiten a propósito: install.sh copia las del repo a
     #    /usr/local/share/lanot/colortables y sobrescribiría lo que se pusiera
@@ -53,13 +50,8 @@ From: quay.io/rockylinux/rockylinux:9.8
     # tenga, sustituir por --branch <etiqueta>.
     LANOT_TOOLS_COMMIT=e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
 
-    # 1. Dependencias Base y Repositorios Extra (EPEL y CRB son vitales para GDAL)
-    #    Sin 'dnf update': la base ya viene en la versión menor que se fijó
-    #    arriba, y actualizarla la movería a la del día de la compilación.
-    dnf install -y epel-release dnf-plugins-core
-    dnf config-manager --set-enabled crb
-
-    # fontconfig y freetype para Satpy, compiladores para Python, y GDAL
+    # Lo que esta receta necesita además de la base: GDAL y el toolchain para
+    # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
     #
     # --setopt=install_weak_deps=False es indispensable: sin él, gdal arrastra
     # como recomendación las rejillas de datum de PROJ de otros países
@@ -68,18 +60,17 @@ From: quay.io/rockylinux/rockylinux:9.8
     # la imagen pasara de 1.7 a 2.3 GB. El paquete 'proj' base ya trae proj.db,
     # que es lo que necesitan las reproyecciones de la cadena.
     dnf install -y --setopt=install_weak_deps=False \
-                   tar gzip bash fontconfig freetype git \
-                   gcc gcc-c++ make cmake \
-                   gdal gdal-devel python3 python3-pip python3-devel
+                   git gcc gcc-c++ make cmake \
+                   gdal gdal-devel python3-pip python3-devel
 
-    # 2. Descomprimir e Instalar Polar2Grid
+    # Descomprimir e Instalar Polar2Grid
     cd /opt
     echo "--- Descomprimiendo Polar2Grid v3.2 ---"
     tar -zxf CSPP_POLAR2GRID_V3.2.tar.gz
     rm -f CSPP_POLAR2GRID_V3.2.tar.gz
     ln -s polar2grid_v_3_2 polar2grid
 
-    # 3. Descargar e Instalar LANOT_tools (mapdrawer)
+    # Descargar e Instalar LANOT_tools (mapdrawer)
     echo "--- Clonando LANOT_tools en $LANOT_TOOLS_COMMIT ---"
     cd /opt
     git clone https://github.com/asierra/LANOT_tools.git build_lanot
@@ -98,19 +89,18 @@ From: quay.io/rockylinux/rockylinux:9.8
     # 123 MB que no se usan en ningún momento en tiempo de ejecución.
     rm -rf /root/.cache/pip
 
-    # 4. Quitar lo que solo hacía falta para compilar: el toolchain de las
-    #    dependencias de pip y git, que ya cumplió su papel al clonar.
-    #    La verificación del paso 6 corre DESPUÉS de esto a propósito: si el
-    #    recorte se lleva algo necesario, la compilación falla aquí y no en
-    #    producción.
+    # Quitar lo que solo hacía falta para compilar: el toolchain de las
+    # dependencias de pip y git, que ya cumplió su papel al clonar. La
+    # verificación de más abajo corre DESPUÉS de esto a propósito: si el
+    # recorte se lleva algo necesario, la compilación falla aquí y no en
+    # producción.
     dnf remove -y gcc gcc-c++ make cmake gdal-devel python3-devel git
     dnf clean all
     rm -rf /var/cache/dnf
 
-    # 5. Inicialización obligatoria del entorno inmutable
-    #    Se ejercitan los dos runtimes de Python para que descompriman sus
-    #    bibliotecas y compilen sus __pycache__ mientras la imagen todavía se
-    #    puede escribir.
+    # Inicialización obligatoria del entorno inmutable: se ejercitan los dos
+    # runtimes de Python para que descompriman sus bibliotecas y compilen sus
+    # __pycache__ mientras la imagen todavía se puede escribir.
     export POLAR2GRID_HOME=/opt/polar2grid
     export PATH=/usr/local/bin:$POLAR2GRID_HOME/bin:$PATH
 
@@ -124,7 +114,7 @@ From: quay.io/rockylinux/rockylinux:9.8
     mapdrawer --help > /dev/null
     geotiff2view --help > /dev/null
 
-    # 6. Verificación de los recursos que usan las herramientas
+    # Verificación de los recursos que usan las herramientas
     test -x /opt/lanot-tools/venv/bin/python
     test -d /usr/local/share/lanot/colortables
     test -d /usr/local/share/lanot/gpkg

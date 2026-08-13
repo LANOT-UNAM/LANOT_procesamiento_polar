@@ -1,12 +1,10 @@
-Bootstrap: docker
-# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
-# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
-# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
-# del día de la compilación. Eso hacía que el contenido cambiara solo.
-From: quay.io/rockylinux/rockylinux:8.10
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky8.sif
 
 %labels
-    Base quay.io/rockylinux/rockylinux:8.10
+    Base lanot_base_rocky8.sif
     Author LANOT - Laboratorio Nacional de Observación de la Tierra
     Institution UNAM
     Contact lanotadm@lanot.unam.mx
@@ -21,18 +19,19 @@ From: quay.io/rockylinux/rockylinux:8.10
     # Apptainer se queda con el código de la ÚLTIMA orden.
     set -e
 
-    # 1. Dependencias
-    dnf install -y --setopt=install_weak_deps=False epel-release
-    # Polar2Grid necesita Python 3 y librerías gráficas básicas
-    dnf install -y --setopt=install_weak_deps=False python3 tar gzip which mesa-libGL
+    # requerido por el runtime gráfico de Polar2Grid v3.1
+    dnf install -y --setopt=install_weak_deps=False mesa-libGL
     dnf clean all && rm -rf /var/cache/dnf
 
-    # 2. Instalación
+    # 1. Dependencias
+    # Polar2Grid necesita Python 3 y librerías gráficas básicas
+
+    # Instalación
     cd /opt
     echo "Instalando Polar2Grid v3.1..."
     tar -zxf CSPP_POLAR2GRID_V3.1.tar.gz
     rm -f CSPP_POLAR2GRID_V3.1.tar.gz
-    
+
     # Polar2Grid v3.1 crea carpeta 'polar2grid_v_3_1'
     ln -s polar2grid_v_3_1 p2g
 
@@ -49,4 +48,4 @@ From: quay.io/rockylinux/rockylinux:8.10
 %runscript
     echo "Contenedor Polar2Grid v3.1 Listo."
     exec "$@"
-    
+

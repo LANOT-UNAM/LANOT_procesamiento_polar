@@ -1,12 +1,10 @@
-Bootstrap: docker
-# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
-# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
-# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
-# del día de la compilación. Eso hacía que el contenido cambiara solo.
-From: quay.io/rockylinux/rockylinux:9.8
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
 
 %labels
-    Base quay.io/rockylinux/rockylinux:9.8
+    Base lanot_base_rocky9.sif
     Author Alejandro Aguilar Sierra - LANOT UNAM
     Description CSPP ACSPO Version 3.0 (Rocky 9)
     Version 3.0-LANOT
@@ -20,22 +18,18 @@ From: quay.io/rockylinux/rockylinux:9.8
     # Apptainer se queda con el código de la ÚLTIMA orden.
     set -e
 
-    # 1. Repositorios y Dependencias
-    dnf install -y --setopt=install_weak_deps=False epel-release
-    dnf config-manager --set-enabled crb
-    
-    # perl es un requerimiento explícito en el manual de ACSPO v3.0
-    dnf install -y --setopt=install_weak_deps=False wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng perl
+    # perl es un requerimiento explícito del manual de ACSPO v3.0
+    dnf install -y --setopt=install_weak_deps=False perl
     dnf clean all && rm -rf /var/cache/dnf
 
-    # 2. Instalación de los Binarios
+    # Instalación de los Binarios
     cd /opt
     echo "--- Descomprimiendo Binarios ---"
     tar -zxf CSPP_ACSPO_V3.0.tar.gz
-    
+
     # El manual indica que la extracción creará la carpeta acspo_sst_v3
     REAL_FOLDER="acspo_sst_v3"
-    
+
     if [ -d "$REAL_FOLDER" ]; then
         echo "Carpeta detectada: $REAL_FOLDER"
         # Creamos un enlace simbólico genérico por comodidad
@@ -52,7 +46,7 @@ From: quay.io/rockylinux/rockylinux:9.8
     # 3. Preparación de Puntos de Montaje y Caché Dinámico
     # ACSPO requiere un directorio para descargas automáticas de datos ancilares dinámicos (GFS, GHRSST)
     mkdir -p "/opt/$REAL_FOLDER/viirs/input/anc/ancil_download"
-    
+
     # Puntos de montaje estándar para flujos de trabajo en el clúster
     mkdir -p /data/sdr
     mkdir -p /data/ancillary

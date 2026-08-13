@@ -1,12 +1,10 @@
-Bootstrap: docker
-# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
-# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
-# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
-# del día de la compilación. Eso hacía que el contenido cambiara solo.
-From: quay.io/rockylinux/rockylinux:8.10
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky8.sif
 
 %labels
-    Base quay.io/rockylinux/rockylinux:8.10
+    Base lanot_base_rocky8.sif
     Author LANOT - Laboratorio Nacional de Observación de la Tierra
     Institution UNAM
     Contact lanotadm@lanot.unam.mx
@@ -23,19 +21,18 @@ From: quay.io/rockylinux/rockylinux:8.10
     # Apptainer se queda con el código de la ÚLTIMA orden.
     set -e
 
-    # 1. Instalar Java 11 (Requerido para v7.0) y utilidades
-    dnf install -y --setopt=install_weak_deps=False epel-release
-    dnf install -y --setopt=install_weak_deps=False java-11-openjdk-devel wget tar gzip which sed
+    # RT-STPS v7.0 requiere Java 11
+    dnf install -y --setopt=install_weak_deps=False java-11-openjdk-devel
     dnf clean all && rm -rf /var/cache/dnf
 
-    # 2. Descomprimir RT-STPS 7.0 Base
+    # Descomprimir RT-STPS 7.0 Base
     cd /opt
     echo "Instalando Base..."
     tar -zxf RT-STPS_7.0.tar.gz
-    
+
     # Identificamos el nombre real de la carpeta (ej. RT-STPS_7.0)
     REAL_DIR=$(ls -d RT-STPS_7.0*)
-    
+
     # Creamos el enlace simbólico 'rt-stps' ANTES del parche
     ln -s "$REAL_DIR" rt-stps
 
@@ -45,8 +42,8 @@ From: quay.io/rockylinux/rockylinux:8.10
     # Como el parche contiene una carpeta 'rt-stps/', sobrescribirá el enlace simbólico 
     # o entrará a través de él a la carpeta real.
     tar -zxf RT-STPS_7.0_PATCH_1.tar.gz -C /opt/
-    
-    # 4. Limpieza y Permisos
+
+    # Limpieza y Permisos
     rm -f *.tar.gz
     chmod +x /opt/rt-stps/bin/*.sh
     chmod +x /opt/rt-stps/jsw/bin/*
@@ -59,4 +56,4 @@ From: quay.io/rockylinux/rockylinux:8.10
 
 %runscript
     exec "$@"
-    
+

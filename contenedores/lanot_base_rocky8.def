@@ -1,0 +1,62 @@
+Bootstrap: docker
+# Base común de los contenedores de LANOT sobre Rocky 8.
+#
+# La serie 8 se conserva porque es el entorno en el que SSEC valida CSPP SDR y
+# el que usa RT-STPS; 8.10 es su última versión menor. Se toma de Quay porque
+# la imagen de Docker Hub quedó congelada en 8.9.
+From: quay.io/rockylinux/rockylinux:8.10
+
+%labels
+    Base quay.io/rockylinux/rockylinux:8.10
+    Author LANOT - Laboratorio Nacional de Observación de la Tierra, UNAM
+    Description Base común para los contenedores CSPP y RT-STPS de la serie 8
+    Version 1.0
+
+%help
+    Imagen base de la que parten los contenedores de LANOT construidos sobre
+    Rocky 8 (RT-STPS, CSPP SDR y Polar2Grid v3.1).
+
+    Para usarla, una receta empieza con:
+
+        Bootstrap: localimage
+        From: lanot_base_rocky8.sif
+
+    y el .sif debe estar en el directorio desde donde se ejecuta
+    'apptainer build'. Primero la base, después los demás; construir.sh se
+    encarga del orden.
+
+    Qué trae:
+      - Repositorios EPEL y PowerTools habilitados
+      - Utilidades: bash tar gzip wget which sed findutils procps-ng
+      - Cómputo científico: libgfortran hdf5 python3
+
+    Lo específico de cada paquete (Java para RT-STPS, mesa-libGL para
+    Polar2Grid v3.1) se instala en la receta que lo necesita.
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    # Sin 'dnf update', por la misma razón que en la base de la serie 9: la
+    # versión menor ya está fijada y actualizar la movería a la del día.
+    dnf install -y --setopt=install_weak_deps=False epel-release dnf-plugins-core
+    dnf config-manager --set-enabled powertools
+
+    dnf install -y --setopt=install_weak_deps=False \
+                   bash tar gzip wget which sed findutils procps-ng \
+                   libgfortran hdf5 python3
+
+    dnf clean all && rm -rf /var/cache/dnf
+
+%environment
+    export LC_ALL=C
+
+%test
+    set -e
+    echo "Base:"; cat /etc/rocky-release
+    echo "Python:"; python3 --version
+    for p in tar gzip wget find; do
+        command -v $p > /dev/null
+    done
+    echo "  OK utilidades"

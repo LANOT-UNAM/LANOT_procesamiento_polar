@@ -1,0 +1,72 @@
+Bootstrap: docker
+# Base común de los contenedores de LANOT sobre Rocky 9.
+#
+# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
+# mantiene sus imágenes: la de Docker Hub quedó congelada en 9.3 (mayo de 2024),
+# así que se partía de una base de dos años atrás y el 'dnf update' la subía
+# hasta la versión del día de la compilación. Eso hizo que un contenedor
+# creciera 600 MB de un mes a otro sin que nadie tocara su receta.
+From: quay.io/rockylinux/rockylinux:9.8
+
+%labels
+    Base quay.io/rockylinux/rockylinux:9.8
+    Author LANOT - Laboratorio Nacional de Observación de la Tierra, UNAM
+    Description Base común para los contenedores CSPP y Polar2Grid de la serie 9
+    Version 1.0
+
+%help
+    Imagen base de la que parten los contenedores de LANOT construidos sobre
+    Rocky 9. Aquí viven las decisiones que antes estaban repetidas en cada
+    receta: de qué registro sale la base, en qué versión menor está fijada, qué
+    repositorios se habilitan y qué utilidades comparten todos.
+
+    Para usarla, una receta empieza con:
+
+        Bootstrap: localimage
+        From: lanot_base_rocky9.sif
+
+    y el .sif debe estar en el directorio desde donde se ejecuta
+    'apptainer build'. El orden importa: primero la base, después los demás.
+    El script construir.sh se encarga de eso.
+
+    Qué trae:
+      - Repositorios EPEL y CRB habilitados
+      - Utilidades: bash tar gzip wget which sed findutils procps-ng
+      - Cómputo científico: libgfortran hdf5 python3
+      - Tipografías para Satpy y matplotlib: fontconfig freetype
+
+    Lo específico de cada paquete (perl, GDAL, Java, mesa-libGL) se instala en
+    la receta que lo necesita, para no cargar a todos con lo de uno.
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    # Sin 'dnf update': la base ya viene en la versión menor fijada arriba, y
+    # actualizarla la movería a la del día de la compilación.
+    #
+    # --setopt=install_weak_deps=False evita las dependencias recomendadas, que
+    # son las que metieron 709 MB de rejillas de datum de PROJ en el contenedor
+    # de mapdrawer sin que nadie las pidiera.
+    dnf install -y --setopt=install_weak_deps=False epel-release dnf-plugins-core
+    dnf config-manager --set-enabled crb
+
+    dnf install -y --setopt=install_weak_deps=False \
+                   bash tar gzip wget which sed findutils procps-ng \
+                   libgfortran hdf5 python3 \
+                   fontconfig freetype
+
+    dnf clean all && rm -rf /var/cache/dnf
+
+%environment
+    export LC_ALL=C
+
+%test
+    set -e
+    echo "Base:"; cat /etc/rocky-release
+    echo "Python:"; python3 --version
+    for p in tar gzip wget find; do
+        command -v $p > /dev/null
+    done
+    echo "  OK utilidades"

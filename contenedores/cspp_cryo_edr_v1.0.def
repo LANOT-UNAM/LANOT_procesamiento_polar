@@ -1,12 +1,10 @@
-Bootstrap: docker
-# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
-# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
-# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
-# del día de la compilación. Eso hacía que el contenido cambiara solo.
-From: quay.io/rockylinux/rockylinux:9.8
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
 
 %labels
-    Base quay.io/rockylinux/rockylinux:9.8
+    Base lanot_base_rocky9.sif
     Author Alejandro Aguilar Sierra - LANOT UNAM
     Description CSPP VIIRS Cryosphere EDR Software Version 1.0
     Version 1.0
@@ -20,22 +18,14 @@ From: quay.io/rockylinux/rockylinux:9.8
     # Apptainer se queda con el código de la ÚLTIMA orden.
     set -e
 
-    # 1. Repositorios y Dependencias
-    dnf install -y --setopt=install_weak_deps=False epel-release
-    dnf config-manager --set-enabled crb
-    
-    # Instalación de dependencias comunes para el procesamiento de datos satelitales
-    dnf install -y --setopt=install_weak_deps=False wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
-    dnf clean all && rm -rf /var/cache/dnf
-
-    # 2. Instalación de los Binarios
+    # Instalación de los Binarios
     cd /opt
     echo "--- Descomprimiendo Binarios de VIIRS Cryosphere ---"
     # Al descomprimir se crea automáticamente la carpeta CSPP_CRYO_1_0 [cite: 285, 289]
     tar -zxf CSPP_VIIRS_CRYO_V1.0.tar.gz
-    
+
     REAL_FOLDER="CSPP_CRYO_1_0"
-    
+
     if [ -d "$REAL_FOLDER" ]; then
         echo "Carpeta detectada: $REAL_FOLDER"
         # Creamos un enlace simbólico para simplificar la gestión de rutas
