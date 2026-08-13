@@ -227,6 +227,28 @@ lector `omps_edr`, pero sus patrones son para los productos operativos de NASA/N
 (`OMPS-NPP_NMTO3-L2*`, `TC_EDR_TO3*.h5`), no para los `V8TOZ-EDR_v4r5*.nc` de CSPP, así
 que habría que escribir el lector — y tirarlo el día que salga el 3.3.
 
+### 10. El README está una generación atrás
+Es la puerta de entrada del repositorio y describe la primera fase de la migración. Lo
+concreto que hay que corregir:
+
+- Dice que el orquestador es `procesar_cadena_completa.sh`, que **no está en uso**.
+- El diagrama Mermaid muestra tres contenedores y termina en Polar2Grid **v3.1**; hoy son
+  doce recetas, la cadena llega a Level 2 y las vistas salen de
+  `polar2grid_v3.2-mapdrawer`.
+- Las instrucciones de compilación listan tarballs viejos (`CSPP_SDR_V4.1.tar.gz`,
+  `CSPP_POLAR2GRID_V3.1.tar.gz`) y mandan a `apptainer build` a mano, sin mencionar las
+  imágenes base ni `contenedores/construir.sh`, que resuelve el orden.
+- No menciona `referencia/`, `config/grid.yaml`, el árbol de salida
+  (`level0/1/2`, `geotiff/`, `vistas/`, `state/`, `/data/tmp`) ni los once `run_*.sh`.
+- Trae una nota del propio autor: *"Falta actualizar con el paso Level1 -> Level2"*.
+- La regla de "no hagas commits directos a `main`" sigue escrita pero hoy no se cumple, a
+  propósito, porque tahan todavía es servidor de prueba y se trabaja contra él con `git
+  pull`. Decidir si se documenta la excepción o se vuelve a la regla cuando tahan pase a
+  producción.
+
+Lo que sí está al día es este documento y `CLAUDE.md`; el README debería remitir a ellos
+en vez de repetir su contenido.
+
 ### 9. Recorte y encuadre de las vistas
 En el `true_color` de la pasada de prueba, más de la mitad del cuadro es negro: la rejilla
 dinámica cubre el rectángulo que envuelve un swath diagonal y el resto es relleno. Hoy
