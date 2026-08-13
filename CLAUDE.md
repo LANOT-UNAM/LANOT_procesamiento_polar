@@ -113,4 +113,6 @@ Cada `.def` crea un symlink genérico (`/opt/cspp_sdr` → `SDR_4_1`, `/opt/pola
 
 **Se trabaja directo sobre `main`, sin ramas ni PR.** `tahan` es servidor de desarrollo, no el que está conectado a la antena, así que la ceremonia de rama + PR solo estorba: el ciclo real es editar aquí, `git push`, `git pull` en tahan y correr el script.
 
+**El `push` lo hace siempre Alejandro, nunca Claude.** No es una formalidad: revisar lo que sale es como se mantiene al tanto de por dónde va el proyecto. Commitear está bien; empujar, no — dejarlo commiteado y avisar.
+
 El README (sección "Contribución") todavía pide lo contrario —rama nueva y PR, porque describe `main` como "la versión operativa conectada a la antena"—. Esa restricción quedó atrás; si algún día `main` vuelve a alimentar la antena, hay que revisarla.
