@@ -1,0 +1,86 @@
+Bootstrap: docker
+# Se fija la versión menor y se usa el registro de Quay, que es donde Rocky
+# mantiene sus imágenes: las de Docker Hub quedaron congeladas (9 en 9.3, 8 en
+# 8.9), así que se partía de una base vieja y el 'dnf update' la subía hasta la
+# del día de la compilación. Eso hacía que el contenido cambiara solo.
+#
+# El manual (§2.1) da como referencia Rocky 8.10 y añade que también se probó
+# en Rocky 9, que es la base del resto de los contenedores de Level 2.
+From: quay.io/rockylinux/rockylinux:9.8
+
+%labels
+    Base quay.io/rockylinux/rockylinux:9.8
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP VIIRS Flood Detection v2.0 (Rocky 9)
+    Version 2.0-LANOT
+
+%help
+    Detección de inundaciones a 375 m a partir de SDR de banda I.
+
+    Entradas: GITCO*.h5 y SVI01-05*.h5 de una sola pasada.
+    Salida:   NetCDF4 por gránulo con el arreglo WaterDetection, reproyectado
+              a WGS84.
+
+    Solo procesa gránulos DIURNOS (N_Day_Night_Flag "Day" o "Both"), así que
+    una pasada nocturna no produce nada y eso no es un error.
+
+    Todo el ancillary estático (cobertura de suelo, DEM, máscaras de agua,
+    climatologías, árboles de decisión) viene dentro del propio paquete: este
+    contenedor no necesita red ni datos externos en tiempo de ejecución.
+
+%files
+    # El archivo debe estar en la misma carpeta que este .def al compilar
+    cspp-viirs-flood_2.0.tar.gz /opt/
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    # 1. Repositorios y Dependencias
+    dnf install -y --setopt=install_weak_deps=False epel-release dnf-plugins-core
+    dnf config-manager --set-enabled crb
+    dnf install -y --setopt=install_weak_deps=False \
+                   wget tar gzip libgfortran which python3 findutils hdf5 bash procps-ng
+    dnf clean all && rm -rf /var/cache/dnf
+
+    # 2. Instalación de los Binarios
+    cd /opt
+    echo "--- Descomprimiendo CSPP VIIRS Flood v2.0 ---"
+    tar -zxf cspp-viirs-flood_2.0.tar.gz
+
+    # El manual (§2.2) indica que la extracción crea cspp_viirs_flood_detection_2.0
+    REAL_FOLDER="cspp_viirs_flood_detection_2.0"
+
+    if [ ! -d "$REAL_FOLDER" ]; then
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Enlace simbólico genérico, para que los scripts no dependan de la versión
+    ln -s "$REAL_FOLDER" cspp_flood
+    rm -f cspp-viirs-flood_2.0.tar.gz
+
+    # 3. Verificación: que el driver arranque y encuentre su entorno
+    export CSPP_VIIRS_FLOOD_HOME=/opt/cspp_flood
+    . $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
+    $CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood.sh -h > /dev/null
+
+    echo "--- Contenedor listo ---"
+
+%environment
+    export CSPP_VIIRS_FLOOD_HOME=/opt/cspp_flood
+    if [ -f $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh ]; then
+        . $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
+    fi
+    export PATH=$CSPP_VIIRS_FLOOD_HOME/bin:$PATH
+
+%test
+    # apptainer test cspp_flood_v2.0.sif
+    set -e
+    echo "Driver:"
+    $CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood.sh -h > /dev/null
+    echo "  OK"
+    echo "Versión:"
+    $CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood.sh -V
