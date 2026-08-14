@@ -475,6 +475,27 @@ los dos están bloqueados por falta de lector, no por falta de trabajo:
   `{aoi:3s}` de la segunda variante corresponde a la bandera `FLOOD_AOI` de
   `run_flood_edr.sh`, que sobrevivió entre versiones aunque el formato de salida cambiara.
 
+  **Pero la pregunta estaba mal planteada.** `referencia/cspp_6_flood.sh`, que es lo que
+  corre hoy en producción, confirma dos cosas: que el servidor viejo usa
+  `CSPP_FLOOD_HOME=…/CSPP_FLOOD_1_1` —la v1.1, justo la que el lector soporta— y que **las
+  vistas de inundaciones nunca salieron de Polar2Grid**. Salen de
+  `$CSPP_FLOOD_HOME/scripts/flood2tif.sh *.hdf`, un convertidor que viene dentro del propio
+  bundle de CSPP Flood. El script exporta `POLAR2GRID_HOME` y lo mete al `PATH`, pero nunca
+  llama a `polar2grid.sh`: es código heredado de copiar otro script.
+
+  Así que lo que hay que averiguar no es si P2G puede leer flood, sino **si CSPP Flood v2.0
+  trae su propio convertidor**:
+
+  ```bash
+  apptainer exec /opt/containers/cspp_flood_v2.0.sif sh -c \
+    '. $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh; \
+     ls $CSPP_VIIRS_FLOOD_HOME/bin $CSPP_VIIRS_FLOOD_HOME/scripts 2>/dev/null | grep -iE "tif|png|image|quicklook|ql"'
+  ```
+
+  Si lo trae, el trabajo es una segunda llamada dentro del mismo contenedor en
+  `run_flood_edr.sh` y luego vestir el `.tif` con `geotiff2view`, sin tocar el renderizador
+  de Level 2. Si no lo trae, entonces sí hay que esperar un lector.
+
   Lo que sí está listo para cuando haya lector: esos nombres usan la convención de los
   `JRR-*` (`s` + fecha + hora + décimas), así que `sello_de_archivo()` ya los reconoce sin
   cambios, y `de_otro_satelite()` ya contempla el `n20` que traen. Faltaría solo el CPT —
