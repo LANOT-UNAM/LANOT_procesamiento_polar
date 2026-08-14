@@ -65,10 +65,11 @@ falta cotejar contra un `crontab -l` en tahan.
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
 | Limpieza de productos | por definir | Los `JRR-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
 
-Los `run_*.sh` **no van en cron**: se disparan por pasada. Hoy se invocan a mano; cuando
-todos corran solos, el encadenamiento se hará desde `recibe.sh` con
-`procesar_cadena_completa.sh` como plantilla, que es lo que se dispara al recibir un RAW
-de la antena.
+Los `run_*.sh` **no van en cron**: se disparan por pasada. Hoy se invocan a mano; el
+encadenamiento automático está diseñado y falta escribirlo — ver **`plan_orquestacion.md`**,
+que reemplaza la idea de usar `procesar_cadena_completa.sh` como plantilla. Ese plan agrega
+además una tarea de cron: `barrer_pendientes.sh` cada 15 minutos, que es lo que hace que una
+pasada fallida se reintente sola.
 
 Las tareas de despliegue —`setup_ambiente_rt_stps.sh`, `deploy_static_data_sdr.sh`— se
 ejecutan una sola vez al preparar un servidor, nunca en cron.
