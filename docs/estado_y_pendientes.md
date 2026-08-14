@@ -156,6 +156,38 @@ temperaturas, sobre un arreglo estirado a 0-255. Ahora sale `float32` y `geotiff
 colorea sobre los valores físicos. `run_acspo_edr.sh` ya solo produce `.nc` y perdió su
 bandera `--no-render`.
 
+### 4. HEAP (rama ATMS/CrIS)
+El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
+`docs/manuals/`. Antes hay que validar la rama que nunca se ha ejercitado:
+
+```bash
+scripts/run_sdr.sh --sensor atms
+scripts/run_sdr.sh --sensor cris
+```
+
+HEAP descarga su propio ancillary dinámico (con `lftp`), así que repite el patrón de
+ATMOS: caché propio, modo local y descargador en cron.
+
+### 5. Productos duplicados
+`/data/output/jpss/level2/atmosphere` crece con cada reproceso: los `JRR-*` llevan campo
+de creación en el nombre, así que una segunda corrida agrega en vez de sobrescribir. El
+staging ya se protege enlazando solo la versión más reciente, pero falta decidir la
+política de limpieza. La propuesta sobre la mesa es un `limpiar_productos.sh` en cron que
+conserve la versión más reciente de cada producto y borre lo que pase de N días.
+
+### 6. Recompilar con la base común
+Las recetas ahora parten de `lanot_base_rocky8.sif` / `lanot_base_rocky9.sif`. Ninguna
+imagen se ha recompilado con eso. Orden sugerido: primero las de Rocky 9 (menor riesgo,
+ya validadas hoy), y al final RT-STPS y CSPP SDR, que sostienen los dos primeros eslabones
+y pasan de 8.9 a 8.10. Conservar el `.sif` viejo hasta comprobar los conteos.
+
+### 7. Polar2Grid v3.1 — cerrado
+`contenedores/polar2grid_v3.1.def` ya no está en el repositorio; la nota que pedía
+decidir sobre él quedó obsoleta. Lo único que sigue apuntando a esa imagen es
+`scripts/procesar_cadena_completa.sh`, que no está en uso y se conserva a propósito.
+
+---
+
 ### 8. OMPS — probado el 2026-08-13; falta la vista
 Los RDR **ya estaban llegando** a `level0` desde enero sin que nadie los procesara
 (`RNSCA-ROTCS*` y `RNSCA-RONPS*`, incluida la pasada de prueba `d20260811`). El camino
@@ -227,6 +259,19 @@ lector `omps_edr`, pero sus patrones son para los productos operativos de NASA/N
 (`OMPS-NPP_NMTO3-L2*`, `TC_EDR_TO3*.h5`), no para los `V8TOZ-EDR_v4r5*.nc` de CSPP, así
 que habría que escribir el lector — y tirarlo el día que salga el 3.3.
 
+### 9. Recorte y encuadre de las vistas
+En el `true_color` de la pasada de prueba, más de la mitad del cuadro es negro: la rejilla
+dinámica cubre el rectángulo que envuelve un swath diagonal y el resto es relleno. Hoy
+solo se recorta por abajo, con `--lat-south 11`.
+
+`geotiff2view` acepta `--clip` con cuatro coordenadas o con el **nombre de una región**,
+que resuelve contra `/usr/local/share/lanot/docs/recortes_coordenadas.csv` (ya viene en el
+contenedor). Falta decidir qué región usar por producto — probablemente una para México y
+otra más amplia para los productos oceánicos como la SST.
+
+Pendiente menor del mismo tema: confirmar si el logo se está cortando en el borde
+izquierdo o si el diseño es así. Se ve como "LAN" seguido de dos iconos.
+
 ### 10. El README está una generación atrás
 Es la puerta de entrada del repositorio y describe la primera fase de la migración. Lo
 concreto que hay que corregir:
@@ -248,51 +293,6 @@ concreto que hay que corregir:
 
 Lo que sí está al día es este documento y `CLAUDE.md`; el README debería remitir a ellos
 en vez de repetir su contenido.
-
-### 9. Recorte y encuadre de las vistas
-En el `true_color` de la pasada de prueba, más de la mitad del cuadro es negro: la rejilla
-dinámica cubre el rectángulo que envuelve un swath diagonal y el resto es relleno. Hoy
-solo se recorta por abajo, con `--lat-south 11`.
-
-`geotiff2view` acepta `--clip` con cuatro coordenadas o con el **nombre de una región**,
-que resuelve contra `/usr/local/share/lanot/docs/recortes_coordenadas.csv` (ya viene en el
-contenedor). Falta decidir qué región usar por producto — probablemente una para México y
-otra más amplia para los productos oceánicos como la SST.
-
-Pendiente menor del mismo tema: confirmar si el logo se está cortando en el borde
-izquierdo o si el diseño es así. Se ve como "LAN" seguido de dos iconos.
-
-### 4. HEAP (rama ATMS/CrIS)
-El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
-`docs/manuals/`. Antes hay que validar la rama que nunca se ha ejercitado:
-
-```bash
-scripts/run_sdr.sh --sensor atms
-scripts/run_sdr.sh --sensor cris
-```
-
-HEAP descarga su propio ancillary dinámico (con `lftp`), así que repite el patrón de
-ATMOS: caché propio, modo local y descargador en cron.
-
-### 5. Productos duplicados
-`/data/output/jpss/level2/atmosphere` crece con cada reproceso: los `JRR-*` llevan campo
-de creación en el nombre, así que una segunda corrida agrega en vez de sobrescribir. El
-staging ya se protege enlazando solo la versión más reciente, pero falta decidir la
-política de limpieza. La propuesta sobre la mesa es un `limpiar_productos.sh` en cron que
-conserve la versión más reciente de cada producto y borre lo que pase de N días.
-
-### 6. Recompilar con la base común
-Las recetas ahora parten de `lanot_base_rocky8.sif` / `lanot_base_rocky9.sif`. Ninguna
-imagen se ha recompilado con eso. Orden sugerido: primero las de Rocky 9 (menor riesgo,
-ya validadas hoy), y al final RT-STPS y CSPP SDR, que sostienen los dos primeros eslabones
-y pasan de 8.9 a 8.10. Conservar el `.sif` viejo hasta comprobar los conteos.
-
-### 7. Polar2Grid v3.1 — cerrado
-`contenedores/polar2grid_v3.1.def` ya no está en el repositorio; la nota que pedía
-decidir sobre él quedó obsoleta. Lo único que sigue apuntando a esa imagen es
-`scripts/procesar_cadena_completa.sh`, que no está en uso y se conserva a propósito.
-
----
 
 ## Hallazgos que conviene no volver a descubrir
 
