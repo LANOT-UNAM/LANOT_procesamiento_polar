@@ -60,8 +60,9 @@ RAW (CCSDS de antena)
 
   Los productos de Level 2 los renderiza run_polar2grid_edr.sh, con
   polar2grid_v3.2-mapdrawer.sif ► geotiff/{atmos,lsr,acspo,fire} + vistas/…
-  Sin renderizar todavía: cryosphere (no hay lector en P2G 3.2), flood
-  (viirs_edr_flood existe, falta escribir el bloque) y omps (exige P2G 3.3).
+  Sin renderizar: cryosphere y omps (no hay lector; omps llega en P2G 3.3) y
+  flood (el lector viirs_edr_flood es para el producto v1.x en GeoTIFF, no
+  para el NetCDF de CSPP Flood v2.0 que generamos).
 ```
 
 `run_polar2grid_edr.sh` es el **renderizador único de Level 2**: ningún `run_*_edr.sh` debe llamar a Polar2Grid por su cuenta. Los scripts de EDR producen `.nc` y nada más; ahí están las rejillas, las paletas y la separación `geotiff/` ÷ `vistas/`.

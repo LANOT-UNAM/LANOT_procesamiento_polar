@@ -451,12 +451,22 @@ extensión fija todo quedaría alineado y el enmascarado sería álgebra de rás
 que habilitaría el pendiente 9: los dos problemas tienen esa raíz.
 
 ### 13. Level 2 sin renderizar: flood y cryosphere
-Incendios se resolvió el 2026-08-14 (bloque nuevo en `run_polar2grid_edr.sh`). Quedan dos:
+Incendios se resolvió el 2026-08-14 (bloque nuevo en `run_polar2grid_edr.sh`). Quedan dos, y
+los dos están bloqueados por falta de lector, no por falta de trabajo:
 
-- **flood**: `viirs_edr_flood` **existe** en Polar2Grid 3.2, así que es alcanzable. Falta
-  correr `--list-products` sobre los productos de `run_flood_edr.sh` para saber qué entrega,
-  ver si necesita SDR o se basta solo como los AFIMG, y hacerle CPT — no hay ninguno para
-  inundaciones en `LANOT_tools/colortables`. El bloque sería calcado al de incendios.
+- **flood**: el lector `viirs_edr_flood` existe pero **no sirve**. Probado el 2026-08-14:
+  `--list-products` sobre nuestros diez `.nc` responde `No filenames found for reader` y
+  `Don't know how to open the following files`. La causa casi seguro es que ese lector es
+  para el producto **v1.x**, que salía como GeoTIFF `WATER_VIIRS_Prj_SVI_*.tif`, mientras
+  que CSPP Flood v2.0 entrega NetCDF con la convención Enterprise
+  (`VIIRS-Flood_v2r0_n20_s202608131911067_e…_c….nc`). No es un problema de nombres que se
+  arregle renombrando: es otro formato. Confirmarlo mirando `file_patterns` en
+  `viirs_edr_flood.yaml` dentro del contenedor; si dice `_water.tif`, es eso.
+
+  Lo que sí está listo para cuando haya lector: esos nombres usan la convención de los
+  `JRR-*` (`s` + fecha + hora + décimas), así que `sello_de_archivo()` ya los reconoce sin
+  cambios, y `de_otro_satelite()` ya contempla el `n20` que traen. Faltaría solo el CPT —
+  no hay ninguno de inundaciones en `LANOT_tools/colortables`.
 - **cryosphere**: no aparece ningún lector de criósfera en la lista de P2G 3.2. Está en la
   misma situación que el ozono (pendiente 8): el producto se genera y no hay forma de
   remallarlo con lo que tenemos.
