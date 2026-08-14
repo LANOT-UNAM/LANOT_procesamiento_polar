@@ -492,9 +492,32 @@ los dos están bloqueados por falta de lector, no por falta de trabajo:
      ls $CSPP_VIIRS_FLOOD_HOME/bin $CSPP_VIIRS_FLOOD_HOME/scripts 2>/dev/null | grep -iE "tif|png|image|quicklook|ql"'
   ```
 
-  Si lo trae, el trabajo es una segunda llamada dentro del mismo contenedor en
-  `run_flood_edr.sh` y luego vestir el `.tif` con `geotiff2view`, sin tocar el renderizador
-  de Level 2. Si no lo trae, entonces sí hay que esperar un lector.
+  **Sí lo trae** (verificado el 2026-08-14): `cspp_viirs_flood2tif.sh` y
+  `cspp_viirs_tifmerge.sh` están en `$CSPP_VIIRS_FLOOD_HOME/bin`. Flood sale de la lista de
+  bloqueados.
+
+  El diseño, respetando que `run_polar2grid_edr.sh` es el renderizador único de vistas:
+
+  - **`run_flood_edr.sh`** gana una segunda llamada dentro de su propio contenedor —el
+    convertidor vive ahí, no en el de Polar2Grid— y deja el `.tif` en `geotiff/flood`. Es
+    generación de producto, igual que el `.nc`.
+  - **`run_polar2grid_edr.sh`** gana solo un `vestir … mapdrawer` sobre `geotiff/flood`, sin
+    llamada a Polar2Grid. En producción el `.tif` de `flood2tif` se copia a las vistas **sin
+    decorar** (`referencia/cspp_6_flood.sh`), o sea que ya es imagen y no dato: le toca
+    `mapdrawer`, que es la rama de `vestir()` que se quedó sin usuarios al retirar los RGB
+    de superficie.
+
+  Falta una verificación antes de escribirlo — la interfaz del convertidor:
+
+  ```bash
+  apptainer exec /opt/containers/cspp_flood_v2.0.sif sh -c \
+    '. $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
+     $CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood2tif.sh --help'
+  ```
+
+  Hace falta saber si toma los `.nc` de v2.0 (en v1.1 tomaba `*.hdf`), si escribe en el
+  `pwd` o acepta destino, y si el `.tif` sale RGB o de una banda. Lo último decide
+  `mapdrawer` contra `geotiff2view` con CPT.
 
   Lo que sí está listo para cuando haya lector: esos nombres usan la convención de los
   `JRR-*` (`s` + fecha + hora + décimas), así que `sello_de_archivo()` ya los reconoce sin
