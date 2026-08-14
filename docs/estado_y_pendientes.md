@@ -450,6 +450,29 @@ da una extensión distinta —atmos 3177×4017 y lsr 3178×4017 en la misma pasa
 extensión fija todo quedaría alineado y el enmascarado sería álgebra de rásters. Es lo mismo
 que habilitaría el pendiente 9: los dos problemas tienen esa raíz.
 
+### 13. Level 2 sin renderizar: flood y cryosphere
+Incendios se resolvió el 2026-08-14 (bloque nuevo en `run_polar2grid_edr.sh`). Quedan dos:
+
+- **flood**: `viirs_edr_flood` **existe** en Polar2Grid 3.2, así que es alcanzable. Falta
+  correr `--list-products` sobre los productos de `run_flood_edr.sh` para saber qué entrega,
+  ver si necesita SDR o se basta solo como los AFIMG, y hacerle CPT — no hay ninguno para
+  inundaciones en `LANOT_tools/colortables`. El bloque sería calcado al de incendios.
+- **cryosphere**: no aparece ningún lector de criósfera en la lista de P2G 3.2. Está en la
+  misma situación que el ozono (pendiente 8): el producto se genera y no hay forma de
+  remallarlo con lo que tenemos.
+
+Lo que dejó el caso de incendios, y que aplica a flood:
+
+- Los `AFIMG` **se bastan solos**: `--list-products` corrió con `-f AFIMG_*.nc` y nada más.
+  Por eso no aplicó nada de lo que complicaba `referencia/test_render_fires.sh` — ni quitar
+  `_cspp_dev` (que además rompe el lector `viirs_sdr`) ni pasar `j01` a `J01`. Ese script
+  metía `viirs_sdr` en la misma llamada y de ahí venían sus problemas.
+- **La órbita cambia a media pasada** en los nombres de los AFIMG: `b45264` en el primer
+  gránulo del 2026-08-13 y `b45265` en los siguientes. Enlazar por órbita, que es como se
+  hace con los SDR, dejaría fuera gránulos; hay que emparejar por ventana temporal.
+- De los tres productos disponibles (`confidence_cat`, `T4`, `power`) solo el primero tiene
+  paleta. Los otros dos salen como GeoTIFF sin vista, que es el comportamiento correcto.
+
 ## Hallazgos que conviene no volver a descubrir
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:
@@ -471,7 +494,11 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
 - **Las imágenes de Rocky en Docker Hub están congeladas** (9 en 9.3 de mayo de 2024, 8 en
   8.9). Rocky mantiene las suyas en Quay. Partir de Docker Hub y actualizar con `dnf` hacía
   que el contenido dependiera del día de compilación.
-- **Los productos de Level 2 usan dos convenciones de sello temporal**: `s202608111947330`
+- **Los productos de Level 2 usan cuatro convenciones de sello temporal**, y `sello_de_archivo()`
+  de `run_polar2grid_edr.sh` tiene que reconocerlas todas para emparejarlos por ventana:
+  `s202608111947330` en los `JRR-*`, `2026223_1947_33` (día juliano) en los `*_VIIRS_750M*`,
+  catorce dígitos al inicio en los de ACSPO, y `d20260813_t1911067` —la misma de los SDR— en
+  los `AFIMG` de Active Fire. Antes decía dos:: `s202608111947330`
   (fecha y hora) en los `JRR-*`, y `2026223_1947_33` (año y día juliano) en los
   `*_VIIRS_750M*`.
 - **El mismo satélite aparece con tres nombres** según el producto: `j01` en los SDR,

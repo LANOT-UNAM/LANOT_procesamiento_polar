@@ -3,14 +3,14 @@
 # LANOT - UNAM | Visualización de productos Nivel 2 con Polar2Grid v3.2
 # ==============================================================================
 #
-# Level 2 (atmosphere, LSR) → GeoTIFF de datos + vistas decoradas
+# Level 2 (atmosphere, LSR, ACSPO, Active Fire) → GeoTIFF de datos + vistas
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue renderizada con éxito, avisa y no hace nada. Una pasada se
 # identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
 #
-# Cada conjunto (ATMOS, LSR) es independiente: si uno falla, se reporta y el
-# otro sigue. Basta con que alguno produzca imágenes para dar la pasada por
+# Cada conjunto (ATMOS, LSR, ACSPO, FIRE) es independiente: si uno falla, se
+# reporta y los otros siguen. Basta con que alguno produzca imágenes para dar la pasada por
 # renderizada.
 #
 # Dos etapas por conjunto, según la regla de la cadena: Polar2Grid remuestrea
@@ -41,12 +41,14 @@
 #   P2G_EDR_IN      Entrada atmosphere(def. /data/output/jpss/level2/atmosphere)
 #   P2G_LSR_IN      Entrada LSR       (def. /data/output/jpss/level2/lsr)
 #   P2G_ACSPO_IN    Entrada ACSPO/SST (def. /data/output/jpss/level2/acspo)
+#   P2G_FIRE_IN     Entrada incendios (def. /data/output/jpss/level2/fires)
 #   P2G_GEOTIFF     Raíz de GeoTIFF   (def. /data/output/jpss/geotiff)
 #   P2G_VISTAS      Raíz de vistas    (def. /data/output/jpss/vistas)
 #   P2G_STATE_DIR   Marcadores .done  (def. /data/output/jpss/state/polar2grid)
 #   P2G_CONTAINER   Imagen .sif       (def. …/polar2grid_v3.2-mapdrawer.sif)
 #   P2G_GRID_CONFIG Rejillas propias  (def. <repo>/config/grid.yaml)
 #   P2G_GRID        Rejilla a usar    (def. wgs84_geo_750m)
+#   P2G_GRID_375    Rejilla incendios (def. wgs84_geo_375m)
 #   P2G_WORK_BASE   Raíz de staging   (def. /data/tmp)
 #   P2G_COLORTABLES Paletas del host  (def. /usr/local/share/lanot/colortables)
 #   P2G_LOG_BASE    Raíz de logs      (def. /var/log/lanot/polares)
@@ -63,17 +65,20 @@ HOST_SDR_IN="${P2G_SDR_IN:-/data/output/jpss/level1/viirs}"
 HOST_EDR_IN="${P2G_EDR_IN:-/data/output/jpss/level2/atmosphere}"
 HOST_LSR_IN="${P2G_LSR_IN:-/data/output/jpss/level2/lsr}"
 HOST_ACSPO_IN="${P2G_ACSPO_IN:-/data/output/jpss/level2/acspo}"
+HOST_FIRE_IN="${P2G_FIRE_IN:-/data/output/jpss/level2/fires}"
 
 # Los datos (GeoTIFF) y las vistas (JPG) van en árboles distintos
 GEOTIFF="${P2G_GEOTIFF:-/data/output/jpss/geotiff}"
 HOST_TIF_OUT="$GEOTIFF/atmos"
 HOST_LSR_TIF_OUT="$GEOTIFF/lsr"
 HOST_ACSPO_TIF_OUT="$GEOTIFF/acspo"
+HOST_FIRE_TIF_OUT="$GEOTIFF/fire"
 
 VISTAS="${P2G_VISTAS:-/data/output/jpss/vistas}"
 HOST_IMG_OUT="$VISTAS/atmos"
 HOST_LSR_IMG_OUT="$VISTAS/lsr"
 HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
+HOST_FIRE_IMG_OUT="$VISTAS/fire"
 
 # El contenedor trae la rejilla de fábrica, no las nuestras: hay que pasarle
 # config/grid.yaml con --grid-configs o remuestrearía a una rejilla dinámica
@@ -81,6 +86,8 @@ HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GRID_CONFIG="${P2G_GRID_CONFIG:-$SCRIPT_DIR/../config/grid.yaml}"
 GRID="${P2G_GRID:-wgs84_geo_750m}"
+# Los AFIMG de Active Fire son de banda I: van a 375 m, no a los 750 del resto.
+GRID_375="${P2G_GRID_375:-wgs84_geo_375m}"
 
 # Minutos de tolerancia al emparejar productos con la ventana de la pasada
 MARGEN_MIN="${P2G_MARGEN_MIN:-10}"
@@ -114,6 +121,7 @@ PALETAS=(
     "Total_Cloud_Fraction:cloud_fraction.cpt"
     "NDVI:ndvi.cpt"
     "EVI:evi.cpt"
+    "confidence_cat:viirs_confidence_cat.cpt"
 )
 
 # Las paletas viven dentro de la imagen: install.sh las copia al compilar. Si
@@ -226,10 +234,11 @@ desplazar_sello() {
 }
 
 # Devuelve el sello temporal de un producto como AAAAMMDDHHMMSS, o código 1 si
-# no lo reconoce. En Level 2 conviven tres convenciones:
+# no lo reconoce. En Level 2 conviven cuatro convenciones:
 #   JRR-CloudMask_v3r2_j01_s202608111947330_e...    -> fecha + hora + décimas
 #   NOAA20_VIIRS_750M_2026223_1947_33_NWP_GFS-INTP  -> año + día juliano + HHMM_SS
 #   20260811194733-CSPP-L2P_GHRSST-SSTsubskin-…     -> ACSPO, al principio y sin separadores
+#   AFIMG_j01_d20260813_t1911067_e1912312_b45264_…  -> Active Fire, la de los SDR
 sello_de_archivo() {
     local nombre="$1" s anio doy fecha
 
@@ -246,6 +255,17 @@ sello_de_archivo() {
     s=$(echo "$nombre" | grep -oE "(${FECHA_NUM}|${FECHA_SIG})[0-9]{7}" | head -1 || true)
     if [ -n "$s" ]; then
         echo "${s:0:14}"   # se descartan las décimas de segundo
+        return 0
+    fi
+
+    # Convención de los SDR, que es la que usan también los AFIMG de Active
+    # Fire: fecha tras _d y hora tras _t, con décimas al final. No casa con la
+    # de arriba porque entre la fecha y la hora hay "_t" y no dígitos.
+    s=$(echo "$nombre" | grep -oE "_d(${FECHA_NUM}|${FECHA_SIG})_t[0-9]{7}_" | head -1 || true)
+    if [ -n "$s" ]; then
+        s="${s#_d}"; s="${s%_}"                 # 20260813_t1911067
+        s="${s%%_*}${s#*_t}"                    # 202608131911067
+        echo "${s:0:14}"                        # se descartan las décimas
         return 0
     fi
 
@@ -302,7 +322,9 @@ enlazar_en_ventana() {
         # y luego exige esa misma cantidad de los demás productos. Los duplicados
         # inflan la cuenta y hacen fallar la corrida con un mensaje que culpa a
         # los NWP_GFS-INTP, que no se duplican porque su nombre no lleva _c.
-        clave=$(echo "$nombre" | sed -E 's/_c[0-9]+\./_c./')
+        # El campo de creación va seguido de "." en los JRR-* pero de "_cspp_dev"
+        # en los AFIMG, así que se recorta por los dígitos y no por lo que sigue.
+        clave=$(echo "$nombre" | sed -E 's/_c[0-9]{6,}/_c/')
         if [ -z "${elegido[$clave]:-}" ] || [ "$f" -nt "${elegido[$clave]}" ]; then
             elegido[$clave]="$f"
         fi
@@ -408,10 +430,11 @@ STAGING_SDR="${HOST_WORK}/sdr_links"
 STAGING_EDR="${HOST_WORK}/edr_links"
 STAGING_LSR="${HOST_WORK}/lsr_links"
 STAGING_ACSPO="${HOST_WORK}/acspo_links"
+STAGING_FIRE="${HOST_WORK}/fire_links"
 
-mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" \
-         "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
-         "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" \
+mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" "$STAGING_FIRE" \
+         "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
+         "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" "$HOST_FIRE_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
 
@@ -437,10 +460,15 @@ ventana_de_pasada "$ULTIMO_GMTCO"
 EDR_COUNT=0
 LSR_COUNT=0
 ACSPO_COUNT=0
+FIRE_COUNT=0
 [ -d "$HOST_EDR_IN" ] && EDR_COUNT=$(enlazar_en_ventana "$STAGING_EDR" "$HOST_EDR_IN" "JRR-")
 [ -d "$HOST_LSR_IN" ] && LSR_COUNT=$(enlazar_en_ventana "$STAGING_LSR" "$HOST_LSR_IN" "SurfRefl_")
 # Los .nc de ACSPO empiezan con el sello temporal, no con un prefijo de producto
 [ -d "$HOST_ACSPO_IN" ] && ACSPO_COUNT=$(enlazar_en_ventana "$STAGING_ACSPO" "$HOST_ACSPO_IN" "")
+# Los AFIMG se emparejan por ventana y NO por órbita: la órbita cambia a media
+# pasada (b45264 en el primer gránulo del 2026-08-13 y b45265 en los siguientes),
+# así que un glob por órbita dejaría fuera parte de los gránulos.
+[ -d "$HOST_FIRE_IN" ] && FIRE_COUNT=$(enlazar_en_ventana "$STAGING_FIRE" "$HOST_FIRE_IN" "AFIMG_")
 
 LOG_FILE="$LOG_DIR/p2g_${TIMESTAMP}_${CLAVE}.log"
 
@@ -448,6 +476,7 @@ echo "  SDR:      $SDR_COUNT archivos"                  | tee -a "$LOG_FILE"
 echo "  ATMOS:    $EDR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  LSR:      $LSR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  ACSPO:    $ACSPO_COUNT productos en la ventana"  | tee -a "$LOG_FILE"
+echo "  FIRE:     $FIRE_COUNT productos en la ventana"   | tee -a "$LOG_FILE"
 
 REF_FILE=$(mktemp -t p2g_ref_XXXXXX)
 trap 'rm -rf "$HOST_WORK" "$REF_FILE"' EXIT
@@ -468,17 +497,21 @@ en_contenedor() {
         --bind "$STAGING_EDR:/input_edr" \
         --bind "$STAGING_LSR:/input_lsr" \
         --bind "$STAGING_ACSPO:/input_acspo" \
+        --bind "$STAGING_FIRE:/input_fire" \
         --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
         --bind "$HOST_EDR_IN:$HOST_EDR_IN" \
         --bind "$HOST_LSR_IN:$HOST_LSR_IN" \
         --bind "$HOST_ACSPO_IN:$HOST_ACSPO_IN" \
+        --bind "$HOST_FIRE_IN:$HOST_FIRE_IN" \
         --bind "$GRID_CONFIG:/config/grid.yaml:ro" \
         --bind "$HOST_TIF_OUT:/output_tif" \
         --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif" \
         --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif" \
+        --bind "$HOST_FIRE_TIF_OUT:/output_fire_tif" \
         --bind "$HOST_IMG_OUT:/output_img" \
         --bind "$HOST_LSR_IMG_OUT:/output_lsr_img" \
         --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img" \
+        --bind "$HOST_FIRE_IMG_OUT:/output_fire_img" \
         --bind "$HOST_WORK:/work" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
 
@@ -496,6 +529,12 @@ en_contenedor() {
 # float32 — hoy no se pide ninguno, ver la nota del encabezado.
 P2G_COMUN="--grid-configs /config/grid.yaml -g $GRID --method nearest"
 P2G_DATOS="$P2G_COMUN --dtype float32 --no-enhance"
+# Incendios llevan su propia cadena porque van a otra rejilla: los AFIMG son
+# de banda I. --no-enhance no es opcional aquí — confidence_cat es CATEGÓRICO
+# (los valores literales 7, 8 y 9) y viirs_confidence_cat.cpt es una paleta
+# discreta que los usa como índice; si Polar2Grid los realza a 0-255, la
+# correspondencia se rompe y la leyenda miente.
+P2G_FIRE_DATOS="--grid-configs /config/grid.yaml -g $GRID_375 --method nearest --dtype float32 --no-enhance"
 
 if [ "$EDR_COUNT" -gt 0 ]; then
     en_contenedor "Productos atmosféricos (EDR)" \
@@ -541,6 +580,26 @@ else
     echo "  ⚠ Sin productos de ACSPO para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
 
+if [ "$FIRE_COUNT" -gt 0 ]; then
+    # Los AFIMG se bastan solos: traen su propia geolocalización y no hay que
+    # montarles SDR (verificado con --list-products el 2026-08-14). Por eso
+    # tampoco aplica aquí nada de lo del sufijo _cspp_dev ni del j01/J01:
+    # eso solo estorbaba cuando se metía el lector viirs_sdr en la misma
+    # llamada, que es lo que hacía referencia/test_render_fires.sh.
+    #
+    # --grid-coverage=0.0 por la misma razón que la SST: los píxeles de fuego
+    # cubren una fracción minúscula de la rejilla y el umbral por omisión
+    # descartaría la imagen entera.
+    #
+    # De los tres productos disponibles solo confidence_cat tiene paleta; T4
+    # (temperatura de brillo a 4 um) y power (potencia radiativa, MW) salen
+    # como GeoTIFF sin vista, que es el comportamiento correcto.
+    en_contenedor "Incendios (Active Fire)" \
+        "cd /output_fire_tif && polar2grid.sh -v -r viirs_edr_active_fires -w geotiff -p confidence_cat T4 power --grid-coverage=0.0 $P2G_FIRE_DATOS -f /input_fire/AFIMG_*.nc"
+else
+    echo "  ⚠ Sin productos de Active Fire para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
+fi
+
 # --- Etapa 2: vistas decoradas a partir de los GeoTIFF recién escritos ---
 # Los productos llegan sin paleta, así que recolorea geotiff2view. Un producto
 # sin CPT no genera vista y no es error.
@@ -582,6 +641,8 @@ vestir "Vistas de ATMOS" "$HOST_TIF_OUT"       /output_tif       /output_img
 # reflectancias por banda, o sea dato, igual que las bandas M/I de Level 1.
 vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img geotiff2view 'NDVI|EVI'
 vestir "Vistas de SST"   "$HOST_ACSPO_TIF_OUT" /output_acspo_tif /output_acspo_img
+# De incendios solo se viste confidence_cat: T4 y power son dato y no tienen CPT.
+vestir "Vistas de incendios" "$HOST_FIRE_TIF_OUT" /output_fire_tif /output_fire_img geotiff2view 'confidence_cat'
 
 # ==============================================================================
 # VERIFICACIÓN
@@ -594,18 +655,20 @@ contar_nuevos() {
 # Polar2Grid escribe su propio .log en el pwd, que aquí es el directorio de
 # productos. Lo que dice ya quedó en $LOG_FILE, así que se descarta para no
 # ensuciar el árbol de salida.
-find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
+find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
      -maxdepth 1 -name '*.log' -delete 2>/dev/null || true
 
 TIF_ATMOS=$(contar_nuevos "$HOST_TIF_OUT"       '*.tif')
 TIF_LSR=$(contar_nuevos   "$HOST_LSR_TIF_OUT"   '*.tif')
 TIF_SST=$(contar_nuevos   "$HOST_ACSPO_TIF_OUT" '*.tif')
+TIF_FIRE=$(contar_nuevos  "$HOST_FIRE_TIF_OUT"  '*.tif')
 JPG_ATMOS=$(contar_nuevos "$HOST_IMG_OUT"       '*.jpg')
 JPG_LSR=$(contar_nuevos   "$HOST_LSR_IMG_OUT"   '*.jpg')
 JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
+JPG_FIRE=$(contar_nuevos  "$HOST_FIRE_IMG_OUT"  '*.jpg')
 
-TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST))
-JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST))
+TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE))
+JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE))
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -624,11 +687,12 @@ fi
     echo "atmos:       $TIF_ATMOS geotiff, $JPG_ATMOS vistas"
     echo "lsr:         $TIF_LSR geotiff, $JPG_LSR vistas"
     echo "sst:         $TIF_SST geotiff, $JPG_SST vistas"
+    echo "fire:        $TIF_FIRE geotiff, $JPG_FIRE vistas"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST) en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE) en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"
