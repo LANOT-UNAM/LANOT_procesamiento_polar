@@ -16,7 +16,7 @@
 #
 #   1. bandas M + ángulos + radiancias   float32   wgs84_geo_750m
 #   2. bandas I + ángulos + radiancias   float32   wgs84_geo_375m
-#   3. DNB (cuatro algoritmos) + ángulos float32   wgs84_geo_750m
+#   3. DNB (dynamic_dnb) + ángulos      float32   wgs84_geo_750m
 #   4. RGB true_color / false_color      8 bits    wgs84_geo_750m
 #
 # El script viejo hace cinco llamadas porque remuestrea el DNB dos veces: una en
@@ -316,12 +316,28 @@ en_contenedor "Bandas M (750 m)" \
 en_contenedor "Bandas I (375 m)" \
     "cd /output_i && polar2grid.sh -r viirs_sdr -w geotiff --i-bands --i-angle-products --i-rad-products $DATOS -g $GRID_375 -f /input_sdr/*.h5"
 
-# Los algoritmos DNB en una sola pasada: histogram_dnb solo existía en la
-# segunda llamada del script viejo. dynamic_dnb_saturation viene de ahí también
-# pero NO se pide: Polar2Grid 3.2 no lo genera —la corrida del 2026-08-13 dejó
-# 4 algoritmos, no 5—, así que era un producto de la 3.0.
+# Del DNB se pide UN solo algoritmo, dynamic_dnb. Se pedían los cuatro; la
+# comparación con tres pasadas reales (2026-08-14) dejó esto:
+#
+#   · adaptive_dnb es IDÉNTICO a histogram_dnb, bit a bit, siempre. Satpy solo
+#     ecualiza localmente cuando la escena tiene región de día Y de noche, y
+#     sobre nuestra rejilla eso no pasa nunca: NOAA-20 cruza a las 13:30 y 01:30
+#     locales, el swath abarca ±1 hora y el terminador está a las 06:00/18:00.
+#     Medido con el ángulo cenital solar: las diurnas llegan a SZA 42.9° y las
+#     nocturnas empiezan en 111.2°; el tramo 43°-111° no se muestrea. Pedir los
+#     dos era remuestrear lo mismo dos veces.
+#   · dynamic_dnb es el mejor de los tres restantes: de noche separa luces de
+#     ciudad, nubes y océano; de día empata con los otros. Parecía el peor
+#     porque geotiff2view lo estiraba entre mínimo y máximo y su cola larga
+#     (mediana 0.30, máximo 66.9) dejaba la mediana en el nivel 1 de 255.
+#
+# Para volver a compararlos, agregar los nombres a -p: siguen disponibles.
+#
+# dynamic_dnb_saturation viene del script viejo pero NO se pide: Polar2Grid 3.2
+# no lo genera —la corrida del 2026-08-13 dejó 4 algoritmos, no 5—, así que era
+# un producto de la 3.0.
 en_contenedor "Day/Night Band (750 m)" \
-    "cd /output_dnb && polar2grid.sh -r viirs_sdr -w geotiff -p adaptive_dnb dynamic_dnb histogram_dnb hncc_dnb --dnb-angle-products $DATOS -g $GRID_750 -f /input_sdr/*.h5"
+    "cd /output_dnb && polar2grid.sh -r viirs_sdr -w geotiff -p dynamic_dnb --dnb-angle-products $DATOS -g $GRID_750 -f /input_sdr/*.h5"
 
 # El RGB sale ya como imagen de 8 bits: aquí no van --dtype ni --no-enhance,
 # porque el realce es parte de la composición de Satpy.
@@ -351,12 +367,18 @@ ordenes_de() {
 # El DNB va sin -p: es una imagen en escala de grises, no lleva paleta. El -b
 # pinta de color de fondo los NoData en vez de dejarlos transparentes.
 #
-# Solo se visten los algoritmos. La llamada pide además
-# --dnb-angle-products, que son ángulos solares y lunares: datos útiles como
-# GeoTIFF, pero no imágenes que tenga sentido decorar con logo y timestamp
-# (verificado en tahan el 2026-08-13, cuando salieron 10 vistas en vez de 5).
-DNB_VISTAS='adaptive_dnb|dynamic_dnb|histogram_dnb|hncc_dnb'
-ORDENES_DNB=$(ordenes_de "$OUT_DNB" /output_dnb /vista_dnb "geotiff2view -b" "$DNB_VISTAS")
+# --percentiles 1,99 es indispensable, no un adorno. Sin él geotiff2view estira
+# entre el mínimo y el máximo del dato, y el DNB nocturno tiene cola larga: en
+# la pasada del 2026-08-14 la mediana de dynamic_dnb era 0.30 y el máximo 66.9,
+# así que la imagen entera salía negra. Con el recorte al 1-99 % las luces de
+# ciudad y la estructura de nubes aparecen.
+#
+# Solo se viste el algoritmo. La llamada pide además --dnb-angle-products, que
+# son ángulos solares y lunares: datos útiles como GeoTIFF, pero no imágenes que
+# tenga sentido decorar con logo y timestamp (verificado en tahan el
+# 2026-08-13, cuando salieron 10 vistas en vez de 5).
+DNB_VISTAS='dynamic_dnb'
+ORDENES_DNB=$(ordenes_de "$OUT_DNB" /output_dnb /vista_dnb "geotiff2view -b --percentiles 1,99" "$DNB_VISTAS")
 if [ -n "$ORDENES_DNB" ]; then
     en_contenedor "Vistas de DNB" "$ORDENES_DNB"
 else

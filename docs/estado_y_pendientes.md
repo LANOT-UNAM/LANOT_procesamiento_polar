@@ -41,9 +41,12 @@ sst 1). Los de arriba son los del árbol real de la corrida del 2026-08-13, 17 v
 total.
 
 El 2026-08-14 se revisaron esas 17 vistas y salieron cinco correcciones (ver "Revisión de
-las vistas"). La única que cambia los conteos es el retiro de los RGB de superficie:
-`run_polar2grid_edr.sh` pasa a **22 GeoTIFF y 9 vistas**. Falta volver a correr los dos
-scripts para confirmarlo.
+las vistas"). Dos cambian los conteos, y falta volver a correr los scripts para
+confirmarlos:
+
+- **Level 2**: sin los RGB de superficie, **22 GeoTIFF y 9 vistas**.
+- **Level 1**: del DNB se pide un solo algoritmo en vez de cuatro, así que el bloque pasa
+  de 10 a 7 GeoTIFF (6 son los ángulos) y de 4 a 1 vista: **59 GeoTIFF y 3 vistas**.
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
@@ -74,8 +77,9 @@ ejecutan una sola vez al preparar un servidor, nunca en cron.
 
 ## Revisión de las vistas — 2026-08-14
 
-Se miraron las 17 vistas de `j01_d20260811_b45236`. Cinco problemas, cuatro corregidos y
-uno que necesita otra pasada. Lo que hay que saber de cada uno:
+Se miraron las 17 vistas de `j01_d20260811_b45236`. Cinco problemas, los cinco resueltos —
+el del DNB necesitó además una pasada nocturna, corrida el 2026-08-14. Lo que hay que
+saber de cada uno:
 
 **1. La SST salía con fondo rosa.** No era la paleta: `sst.cpt` ya traía `B 0 0 0`. Era que
 la llamada de ACSPO en `run_polar2grid_edr.sh` usaba `$P2G_COMUN` en vez de `$P2G_DATOS`,
@@ -88,12 +92,8 @@ corregido; el rango 268–310 K se queda como estaba.
 agregaron `false_color`, `cldbasehght`, `cloud_fraction`, `aod550`, `ndvi`, `evi` y los
 cuatro algoritmos de DNB. Ahora las 17 llevan nombre.
 
-**3. DNB: `adaptive` e `histogram` salieron byte-idénticos** (mismo md5). La hipótesis es
-que la pasada es 100 % diurna y Satpy define `adaptive_dnb` con `adaptive_day: multiple`,
-que solo ecualiza localmente cuando hay región de día *y* de noche; con una sola región cae
-a la ecualización global, que es `histogram_dnb`. **No se puede elegir algoritmo con esta
-pasada**: en el día el DNB es solo una banda visible ancha y los cuatro convergen. Ver el
-pendiente 11.
+**3. DNB: resuelto el 2026-08-14 con tres pasadas.** Se queda **solo `dynamic_dnb`**; el
+detalle está abajo, en "El DNB, resuelto".
 
 **4. NDVI y EVI.** Las rampas están bien; el fondo ya estaba arreglado y `evi.cpt` pasó a
 0..1 (pendiente 1). Queda una duda abierta: el manchón beige sobre el norte de México y
@@ -378,26 +378,47 @@ concreto que hay que corregir:
 Lo que sí está al día es este documento y `CLAUDE.md`; el README debería remitir a ellos
 en vez de repetir su contenido.
 
-### 11. Elegir el algoritmo de DNB — hace falta una pasada nocturna
-De los cuatro (`adaptive`, `dynamic`, `histogram`, `hncc`) hoy se generan todos porque no
-hay con qué elegir: la única pasada renderizada es diurna y ahí `adaptive` e `histogram`
-salen **byte-idénticos**. En el día el DNB es una banda visible de banda ancha y los cuatro
-algoritmos convergen; existen para el lado nocturno, así que un veredicto sacado de una
-pasada diurna no se transfiere.
+### 11. El DNB, resuelto — 2026-08-14
+**Se queda solo `dynamic_dnb`.** Se pedían los cuatro a Polar2Grid; con tres pasadas reales
+(diurnas del 0811 y 0813, nocturna del 0814) quedaron dos cosas claras.
 
-Dos mediciones que faltan, ninguna bloquea nada:
+**`adaptive_dnb` es idéntico a `histogram_dnb`, bit a bit, en las tres.** No es que se
+parezcan: mismo hash del arreglo, mismos tags, cero píxeles distintos. La causa es la que se
+sospechaba —Satpy solo ecualiza localmente cuando la escena tiene región de día *y* de
+noche—, pero la consecuencia es más fuerte de lo previsto: **sobre nuestra rejilla esa
+condición no se cumple nunca**. NOAA-20 es heliosincrónico con cruce ecuatorial a las 13:30
+y 01:30 locales, el swath del DNB abarca ±1 hora de hora local, y el terminador está a las
+06:00 y 18:00. Medido con el ángulo cenital solar de las propias pasadas:
 
-```bash
-# ¿los GeoTIFF ya venían iguales, o geotiff2view renderizó dos veces lo mismo?
-md5sum /data/output/jpss/geotiff/dnb/*{adaptive,histogram}_dnb*.tif
-# ¿confirma la receta la hipótesis de adaptive_day: multiple?
-apptainer exec /opt/containers/polar2grid_v3.2-mapdrawer.sif \
-  sh -c 'grep -A6 "^adaptive_dnb" $POLAR2GRID_HOME/etc/composites/viirs.yaml'
-```
+| Pasada | SZA | Composición |
+|---|---|---|
+| 0811 19:47Z | 0–41.9° | 100 % día |
+| 0813 19:11Z | 0–42.9° | 100 % día |
+| 0814 09:23Z | 111.2–147.2° | 100 % noche |
 
-Después, renderizar una pasada nocturna o de terminador y comparar. Para eso hacía falta
-que los cuatro JPG se distinguieran: hasta el 2026-08-14 los cuatro llevaban la misma
-etiqueta, "NOAA-20 DNB".
+El tramo de 43° a 111° no se muestrea jamás. No hay pasada de terminador que buscar: pedir
+los dos era remuestrear lo mismo dos veces.
+
+**`dynamic_dnb` es el mejor de los tres restantes, y el veredicto anterior estaba viciado.**
+Se había anotado que "dynamic sale plano y lavado, hncc oscuro". Era el estirado, no el
+algoritmo: `normalize_band()` de `geotiff2view` escalaba entre el mínimo y el máximo del
+dato, y esos dos traen colas de varios órdenes de magnitud. En la nocturna:
+
+| | mediana | máximo | nivel de la mediana con min-max |
+|---|---|---|---|
+| histogram | 0.617 | 0.999 | 157 de 255 |
+| dynamic | 0.300 | 66.9 | **1** de 255 |
+| hncc | 0.023 | 261 | **0.1** de 255 |
+
+`histogram` se veía bien solo porque la ecualización ya entrega una distribución uniforme en
+[0,1], que es justo lo que el estirado lineal supone. Con recorte al 1-99 % se invierte:
+`dynamic` separa luces de ciudad, nubes y océano; `histogram` sale lavado, con las nubes en
+blanco; `hncc` da las luces más limpias pero pierde terreno y nubes, que es lo esperable de
+un algoritmo que normaliza por luz lunar cuando hay poca luna. De día los tres empatan.
+
+De ahí salió `--percentiles LO,HI` en `geotiff2view`, que es **requisito** del cambio: con
+min-max, `dynamic_dnb` sale negro. Los otros tres algoritmos siguen disponibles agregando
+sus nombres a `-p` en `run_polar2grid_l1.sh`.
 
 ### 12. Nubes sin enmascarar en NDVI y EVI
 En las vistas del 2026-08-11 el manchón beige sobre el norte de México y Texas coincide con
@@ -451,6 +472,20 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   dice `Byte`, es el `--dtype`; si dice `Float32`, es el `B` del CPT. Regla: **todo lo que
   sea dato de una banda va con `$P2G_DATOS`**; `$P2G_COMUN` es solo para los RGB, que no se
   pueden guardar en float32.
+- **Las franjas negras horizontales de las vistas son interferencia de antena, no un
+  problema de procesamiento.** Hay un árbol sin podar en la línea de vista; el efecto varía
+  con la pasada y golpeó mucho más a la nocturna del 2026-08-14 que a las diurnas. Desde el
+  código se ve idéntico a lo que produciría un gránulo truncado descartado por el filtro de
+  tamaño, así que es fácil perseguirlo en los scripts sin razón. Antes de investigar una
+  pasada rayada, preguntar por el estado de la antena.
+- **Estirar entre el mínimo y el máximo solo sirve si el dato llena su rango.**
+  `normalize_band()` de `geotiff2view` lo hacía siempre, y con una cola larga un puñado de
+  píxeles extremos se lleva toda la escala: en la nocturna, `dynamic_dnb` tenía mediana 0.30
+  con máximo 66.9 y `hncc_dnb` mediana 0.023 con máximo 261, así que sus medianas caían en
+  los niveles 1 y 0.1 de 255 y las imágenes salían negras. Parecían algoritmos malos y era
+  el renderizado. De ahí `--percentiles LO,HI`. Cuidado al comparar productos: si uno de
+  ellos ya entrega una distribución uniforme —`histogram_dnb`, por construcción— el estirado
+  lineal lo favorece y la comparación queda amañada.
 - **Un CPT nuevo obliga a tocar dos archivos, no uno.** El `.cpt` da los colores, pero el
   nombre que se quema en la imagen sale de `product_map` en `LANOT_tools/metadata.py`. Si
   falta la entrada, `geotiff2view` cae al nombre del sensor y rotula "NOAA-20 VIIRS" a
