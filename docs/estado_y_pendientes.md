@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-13**
+**Última actualización: 2026-08-14**
 
 **Los once eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -33,6 +33,11 @@ siguiente. Ver el pendiente 8.
 | Vistas de Level 1 | `run_polar2grid_l1.sh` | 62 GeoTIFF (M 36, I 14, DNB 10, RGB 2) y 12 vistas, 4m 8s |
 | Vistas de Level 2 | `run_polar2grid_edr.sh` | 24 GeoTIFF (atmos 7, lsr 14, lsr_rgb 2, sst 1) y 8 vistas, 3m 46s |
 
+Las dos últimas filas son de la corrida del 2026-08-13. El 2026-08-14 se revisaron esas
+17 vistas y salieron cinco correcciones (ver "Revisión de las vistas"): entre ellas,
+`run_polar2grid_edr.sh` dejó de hacer los RGB de superficie, así que pasa a **22 GeoTIFF y
+6 vistas**. Falta volver a correr los dos scripts para confirmar los números.
+
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
 
@@ -60,16 +65,70 @@ ejecutan una sola vez al preparar un servidor, nunca en cron.
 
 ---
 
+## Revisión de las vistas — 2026-08-14
+
+Se miraron las 17 vistas de `j01_d20260811_b45236`. Cinco problemas, cuatro corregidos y
+uno que necesita otra pasada. Lo que hay que saber de cada uno:
+
+**1. La SST salía con fondo rosa.** No era la paleta: `sst.cpt` ya traía `B 0 0 0`. Era que
+la llamada de ACSPO en `run_polar2grid_edr.sh` usaba `$P2G_COMUN` en vez de `$P2G_DATOS`,
+o sea sin `--dtype float32 --no-enhance`, y entregaba una **imagen realzada de 8 bits con
+el sin-dato en un canal alfa** que `geotiff2view` no lee. Detalle en los hallazgos. Ya
+corregido; el rango 268–310 K se queda como estaba.
+
+**2. Nombres de producto en la etiqueta.** Cinco vistas decían "NOAA-20 VIIRS" y dos solo
+"NOAA-20", porque `product_map` de `LANOT_tools/metadata.py` no tenía sus tokens. Se
+agregaron `false_color`, `cldbasehght`, `cloud_fraction`, `aod550`, `ndvi`, `evi` y los
+cuatro algoritmos de DNB. Ahora las 17 llevan nombre.
+
+**3. DNB: `adaptive` e `histogram` salieron byte-idénticos** (mismo md5). La hipótesis es
+que la pasada es 100 % diurna y Satpy define `adaptive_dnb` con `adaptive_day: multiple`,
+que solo ecualiza localmente cuando hay región de día *y* de noche; con una sola región cae
+a la ecualización global, que es `histogram_dnb`. **No se puede elegir algoritmo con esta
+pasada**: en el día el DNB es solo una banda visible ancha y los cuatro convergen. Ver el
+pendiente 11.
+
+**4. NDVI y EVI.** Las rampas están bien; el fondo ya estaba arreglado y `evi.cpt` pasó a
+0..1 (pendiente 1). Queda una duda abierta: el manchón beige sobre el norte de México y
+Texas coincide con nube en el `true_color`, o sea que las nubes se pintan como suelo
+desnudo. Ver el pendiente 12.
+
+**5. `rgb` y `lsr_rgb` no eran duplicados, pero lo parecían.** Son dos composiciones
+distintas —`viirs_sdr` sobre los SDR (TOA + Rayleigh + afilado con I01) y `viirs_edr` sobre
+los `SurfRefl_*` de LSR— que se ven casi iguales porque TOA con Rayleigh ≈ reflectancia de
+superficie, y que además quemaban el mismo texto. **Se decidió quedarse de momento con los
+de Level 1**: `run_polar2grid_edr.sh` ya no hace RGB de superficie. El criterio fue la
+disponibilidad — los de Level 1 salen siempre, los de superficie exigen que corra LSR, que
+a su vez exige ATMOS. El falso color resultó ser el RGB **Day Land Cloud Fire** (M11 SWIR
+2.25 µm / I02 NIR 0.86 µm / I01 rojo 0.64 µm), y ese es el nombre que lleva ahora.
+
+Es reversible y está pensado para serlo: el encabezado de `run_polar2grid_edr.sh` explica
+cómo recuperar la llamada, y `vestir()` conserva su rama de `mapdrawer` aunque hoy no la
+use nadie. Falta comparar los dos con la corrección atmosférica en mente antes de dar la
+decisión por definitiva.
+
+---
+
 ## Pendientes, en orden sugerido
 
-### 1. Paletas — hechas el 2026-08-13, falta verlas con datos
+### 1. Paletas — revisadas con datos el 2026-08-14
 `ndvi.cpt`, `evi.cpt` y `cloud_fraction.cpt` ya están en `LANOT_tools/colortables` y
 registradas en la tabla `PALETAS`. **En el servidor tienen que llegar a
 `/usr/local/share/lanot/colortables`** (con `install.sh` de LANOT_tools), que es el
 directorio que los scripts montan sobre el del contenedor; si solo están en el clon de
 git, el contenedor no las ve.
 
-Falta mirar las tres imágenes y ajustar rangos si hace falta.
+Vistas con datos: las tres rampas están bien y no se tocan. Lo que salió mal fue el fondo,
+y ya estaba corregido antes de mirarlas — las imágenes se renderizaron a las 13:42-13:43 y
+el commit `2a9b2d2` de LANOT_tools, que puso `B 0 0 0` en las tres, es de las 13:58 del
+mismo día. **Lo único que falta es correr `install.sh` en tahan y volver a renderizar.**
+
+Sí cambió `evi.cpt`: pasó de −1..1 a **0..1**. Era byte-idéntico a `ndvi.cpt` y eso volvía
+las dos vistas casi indistinguibles (RMSE 4.7 % entre los JPG), aunque los datos sí
+difieren. El EVI está diseñado para no saturarse en vegetación densa, así que vive entre 0
+y ~0.6; la mitad negativa de la rampa de NDVI se iba en valores que sobre tierra no
+ocurren, y el tramo azul de agua no hace falta porque LSR solo entrega superficie
+terrestre. EVI < 0 satura ahora en el beige del 0.0, que es lo correcto: suelo desnudo.
 
 **`CloudLayer` no lleva vista y no necesita paleta.** Su `long_name` lo dice: *"Cloud
 Layer Flag. Bit1(lowest flight layer); Cloudy (1); Clear(0)"*, con `valid_range 0..62`.
@@ -107,20 +166,34 @@ lo que llega sin paleta, `mapdrawer` para lo que ya es imagen. Está escrita en
 Decisiones tomadas:
 
 - **Dos scripts, uno por nivel.** `run_polar2grid_l1.sh` (nuevo) cubre bandas M, bandas
-  I, DNB y RGB, y sustituye a `referencia/cspp_1_ptog.sh`; `run_polar2grid_edr.sh` se
+  I y DNB, y sustituye a `referencia/cspp_1_ptog.sh`; `run_polar2grid_edr.sh` se
   queda en Level 2. Con esto la cadena nueva **ya produce RGB**.
 - **Los RGB se componen en Polar2Grid**, no apilando bandas con `geotiff2view`: Satpy
   aplica corrección de Rayleigh y afilado por razón con I01, y `geotiff2view.py` solo
   recorta y escala a uint8. Como P2G ya los entrega como imagen, `mapdrawer` solo los
   viste.
+- **Los RGB salen de Level 1, no de Level 2** (decidido el 2026-08-14). Al principio se
+  componían por los dos caminos: `true_color`/`false_color` con el lector `viirs_sdr` sobre
+  los SDR, y `true_color_surf`/`false_color_surf` con `viirs_edr` sobre los `SurfRefl_*`.
+  Salían casi idénticos —TOA con Rayleigh ≈ reflectancia de superficie— y encima quemaban el
+  mismo texto, así que eran indistinguibles al abrirlos. Se conservaron los de Level 1
+  porque están siempre disponibles: los de superficie exigen que corra LSR, y LSR depende de
+  ATMOS, así que una falla de ATMOS dejaba la pasada sin ningún RGB. Es reversible —el
+  encabezado de `run_polar2grid_edr.sh` dice cómo— y falta compararlos con la corrección
+  atmosférica en mente antes de darlo por definitivo.
+- **El falso color es el RGB Day Land Cloud Fire**: M11 (SWIR 2.25 µm), I02 (NIR 0.86 µm),
+  I01 (rojo 0.64 µm). Vegetación verde brillante, agua negra, nubes de hielo cian, nubes de
+  agua blancas. Ese es el nombre que lleva en `product_map`.
 - **El DNB se remuestrea una sola vez**, en float32. `cspp_1_ptog.sh` lo hace dos veces
   (datos y realce) sin necesidad: `adaptive_dnb`, `dynamic_dnb`, `hncc_dnb` e
   `histogram_dnb` son productos que calcula Satpy, así que el algoritmo ya está dentro
   del float32 y lo único que falta es el escalado a 8 bits, que hace `geotiff2view`.
   **Verificar una vez con datos reales**: generar un producto por los dos caminos y
   comparar. Si no coinciden, revisar el realce en `$POLAR2GRID_HOME/etc/enhancements/`.
-- **Datos y vistas en árboles separados**: `geotiff/{m_bands,i_bands,dnb,rgb,atmos,lsr}`
-  para los `.tif`, `vistas/{dnb,rgb,atmos,lsr}` para los `.jpg`.
+- **Datos y vistas en árboles separados**: `geotiff/{m_bands,i_bands,dnb,rgb,atmos,lsr,acspo}`
+  para los `.tif`, `vistas/{dnb,rgb,atmos,lsr,acspo}` para los `.jpg`. Los directorios
+  `lsr_rgb` de ambos árboles quedaron huérfanos al retirar los RGB de superficie; se pueden
+  borrar a mano en tahan.
 - **Una sola imagen de Polar2Grid**, la `-mapdrawer`; se retiró
   `contenedores/polar2grid_v3.2.def`. Consecuencia: esa receta solo compila en un host
   con `/usr/local/share/lanot/{gpkg,logos,docs}`.
@@ -132,11 +205,11 @@ Decisiones tomadas:
 
 Preguntas sin responder:
 
-- **Paletas**: ya se conocen los nombres reales. De los 7 productos de ATMOS hacen match
-  4 (`AOD550`, `CldTopHght`, `CldTopTemp`, `CloudPhase`) y se agregó `CldBaseHght`, que
-  comparte unidades con `CldTopHght`. Faltan `CloudLayer` —categórico— y
-  `Total_Cloud_Fraction`, que no tienen CPT: hay que hacerlos, no adivinar con uno
-  existente. Un producto sin paleta no genera vista y no es error.
+- **Paletas**: resuelto. De los 7 productos de ATMOS llevan paleta 6 — los 4 que ya hacían
+  match (`AOD550`, `CldTopHght`, `CldTopTemp`, `CloudPhase`), `CldBaseHght`, que comparte
+  unidades con `CldTopHght`, y `Total_Cloud_Fraction`, con `cloud_fraction.cpt` hecho a
+  propósito. El único sin paleta es `CloudLayer`, y es deliberado: es máscara de bits. Un
+  producto sin paleta no genera vista y no es error.
 - ¿De dónde salen hoy los `.tif` de `acspo` y `fire` que consume `crea_vistas_viirs.sh`?
   Los scripts que los generarían no están en cron.
 - **Lo que Polar2Grid 3.2 NO cubre.** `--list-products` con el lector `viirs_edr` sobre la
@@ -152,9 +225,13 @@ Resuelto de paso: el renderizado de la SST salió de `run_acspo_edr.sh` y ahora 
 bloque más de `run_polar2grid_edr.sh`, que queda como **renderizador único de Level 2**.
 Además de unificar rejillas y decoración, corrige un problema real: ACSPO generaba la
 imagen ya realzada a 8 bits y encima se le aplicaba `sst.cpt`, una paleta definida en
-temperaturas, sobre un arreglo estirado a 0-255. Ahora sale `float32` y `geotiff2view`
-colorea sobre los valores físicos. `run_acspo_edr.sh` ya solo produce `.nc` y perdió su
-bandera `--no-render`.
+temperaturas, sobre un arreglo estirado a 0-255. `run_acspo_edr.sh` ya solo produce `.nc`
+y perdió su bandera `--no-render`.
+
+**La mudanza quedó a medias hasta el 2026-08-14**: se movió la llamada pero con
+`$P2G_COMUN`, sin `--dtype float32 --no-enhance`, así que el realce a 8 bits volvió por la
+puerta de atrás —ahora del lado de Polar2Grid— y la vista salía con fondo rosa. Ya corregido
+a `$P2G_DATOS`; el detalle está en los hallazgos.
 
 ### 4. HEAP (rama ATMS/CrIS)
 El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
@@ -294,6 +371,35 @@ concreto que hay que corregir:
 Lo que sí está al día es este documento y `CLAUDE.md`; el README debería remitir a ellos
 en vez de repetir su contenido.
 
+### 11. Elegir el algoritmo de DNB — hace falta una pasada nocturna
+De los cuatro (`adaptive`, `dynamic`, `histogram`, `hncc`) hoy se generan todos porque no
+hay con qué elegir: la única pasada renderizada es diurna y ahí `adaptive` e `histogram`
+salen **byte-idénticos**. En el día el DNB es una banda visible de banda ancha y los cuatro
+algoritmos convergen; existen para el lado nocturno, así que un veredicto sacado de una
+pasada diurna no se transfiere.
+
+Dos mediciones que faltan, ninguna bloquea nada:
+
+```bash
+# ¿los GeoTIFF ya venían iguales, o geotiff2view renderizó dos veces lo mismo?
+md5sum /data/output/jpss/geotiff/dnb/*{adaptive,histogram}_dnb*.tif
+# ¿confirma la receta la hipótesis de adaptive_day: multiple?
+apptainer exec /opt/containers/polar2grid_v3.2-mapdrawer.sif \
+  sh -c 'grep -A6 "^adaptive_dnb" $POLAR2GRID_HOME/etc/composites/viirs.yaml'
+```
+
+Después, renderizar una pasada nocturna o de terminador y comparar. Para eso hacía falta
+que los cuatro JPG se distinguieran: hasta el 2026-08-14 los cuatro llevaban la misma
+etiqueta, "NOAA-20 DNB".
+
+### 12. Nubes sin enmascarar en NDVI y EVI
+En las vistas del 2026-08-11 el manchón beige sobre el norte de México y Texas coincide con
+nube en el `true_color`: las nubes se están pintando como suelo desnudo (NDVI ≈ 0-0.2), que
+es engañoso. Hay que mirar los `SurfRefl_*.nc` y decidir qué flag de calidad de LSR usar
+para enmascararlas antes de renderizar, o si conviene dejarlo así y confiar en que quien
+mira la vista sepa leerla. No está claro que valga la pena: el recorte tendría que hacerse
+sobre el GeoTIFF, y hoy la cadena no tiene ningún paso que modifique un producto de datos.
+
 ## Hallazgos que conviene no volver a descubrir
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:
@@ -326,6 +432,26 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   paletas nuevas la primera vez— el relleno fuera del swath se confunde con el valor
   mínimo y no se ve dónde miró el satélite. No se puede resolver quitando `-b` para que
   use `N`: `phase.cpt` tiene `N 255 0 0` y pintaría todo el fondo de rojo.
+- **Pero si el fondo sale con el color del extremo bajo *y* el CPT tiene bien su `B`, el
+  problema es el `--dtype`.** Le pasó a la SST: `run_polar2grid_edr.sh` llamaba a ACSPO con
+  `$P2G_COMUN` en vez de `$P2G_DATOS`, así que Polar2Grid entregaba una **imagen realzada
+  de 8 bits con dos bandas** (`Type=Byte` en las dos, sin `NoData Value`) y el sin-dato en
+  la banda 2, que es alfa. `geotiff2view` solo abre la banda 1, y para banda entera sin
+  `nodata` declarado construye **máscara vacía** (`geotiff2view.py:149-158`), así que
+  `img_data[mask] = n_idx` no se ejecuta nunca, la línea `B` no se aplica y todo el relleno
+  satura en el índice 0. Se veía como un fondo rosa —el 268 K de `sst.cpt`— y el `.cpt`
+  estaba perfecto. La forma de distinguir los dos casos es un `gdalinfo | grep Type=`: si
+  dice `Byte`, es el `--dtype`; si dice `Float32`, es el `B` del CPT. Regla: **todo lo que
+  sea dato de una banda va con `$P2G_DATOS`**; `$P2G_COMUN` es solo para los RGB, que no se
+  pueden guardar en float32.
+- **Un CPT nuevo obliga a tocar dos archivos, no uno.** El `.cpt` da los colores, pero el
+  nombre que se quema en la imagen sale de `product_map` en `LANOT_tools/metadata.py`. Si
+  falta la entrada, `geotiff2view` cae al nombre del sensor y rotula "NOAA-20 VIIRS" a
+  secas; `mapdrawer` ni eso, porque no tiene ese respaldo, y deja solo "NOAA-20". Así
+  salieron AOD550, CldBaseHght, Total_Cloud_Fraction, NDVI, EVI y los dos falso color de la
+  corrida del 2026-08-13. El orden de la lista importa: gana la primera subcadena que
+  aparezca, así que lo específico va antes que lo genérico (los cuatro algoritmos de DNB
+  antes de `dnb`, o los cuatro salen rotulados igual).
 - **`_cspp_dev` es obligatorio, no estorbo.** El patrón de `viirs_sdr` termina en
   `_{source:8s}.h5`. Quitarlo —que es lo que hacíamos— tumbó los cuatro renderizados de
   Level 1 con `No filenames found for reader`.

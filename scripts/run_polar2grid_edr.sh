@@ -19,6 +19,16 @@
 # geotiff2view recoloreando con un CPT. El Level 1 (bandas, DNB, RGB) está en
 # run_polar2grid_l1.sh.
 #
+# AQUÍ NO SE HACEN RGB. Se hacían —true_color_surf y false_color_surf, con el
+# lector viirs_edr sobre los SurfRefl_* de LSR— pero salían casi idénticos a los
+# true_color / false_color que run_polar2grid_l1.sh compone con viirs_sdr sobre
+# los SDR, porque TOA con corrección de Rayleigh ≈ reflectancia de superficie. Se
+# decidió el 2026-08-14 quedarse con los de Level 1, que están siempre
+# disponibles: los de superficie dependen de que corra LSR, y LSR depende de
+# ATMOS. Para recuperarlos: polar2grid.sh -r viirs_edr -p true_color_surf
+# false_color_surf, sin --dtype float32 (un RGB no se puede guardar así), y
+# vestirlos con mapdrawer en vez de recolorearlos — vestir() ya sabe hacerlo.
+#
 # Los SDR se enlazan con su nombre original: ver la nota del staging sobre el
 # sufijo _cspp_dev, que Satpy EXIGE y no estorba.
 #
@@ -58,13 +68,11 @@ HOST_ACSPO_IN="${P2G_ACSPO_IN:-/data/output/jpss/level2/acspo}"
 GEOTIFF="${P2G_GEOTIFF:-/data/output/jpss/geotiff}"
 HOST_TIF_OUT="$GEOTIFF/atmos"
 HOST_LSR_TIF_OUT="$GEOTIFF/lsr"
-HOST_LSR_RGB_TIF_OUT="$GEOTIFF/lsr_rgb"
 HOST_ACSPO_TIF_OUT="$GEOTIFF/acspo"
 
 VISTAS="${P2G_VISTAS:-/data/output/jpss/vistas}"
 HOST_IMG_OUT="$VISTAS/atmos"
 HOST_LSR_IMG_OUT="$VISTAS/lsr"
-HOST_LSR_RGB_IMG_OUT="$VISTAS/lsr_rgb"
 HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 
 # El contenedor trae la rejilla de fábrica, no las nuestras: hay que pasarle
@@ -402,8 +410,8 @@ STAGING_LSR="${HOST_WORK}/lsr_links"
 STAGING_ACSPO="${HOST_WORK}/acspo_links"
 
 mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" \
-         "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_LSR_RGB_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
-         "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_LSR_RGB_IMG_OUT" "$HOST_ACSPO_IMG_OUT" \
+         "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
+         "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
 
@@ -467,11 +475,9 @@ en_contenedor() {
         --bind "$GRID_CONFIG:/config/grid.yaml:ro" \
         --bind "$HOST_TIF_OUT:/output_tif" \
         --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif" \
-        --bind "$HOST_LSR_RGB_TIF_OUT:/output_lsr_rgb_tif" \
         --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif" \
         --bind "$HOST_IMG_OUT:/output_img" \
         --bind "$HOST_LSR_IMG_OUT:/output_lsr_img" \
-        --bind "$HOST_LSR_RGB_IMG_OUT:/output_lsr_rgb_img" \
         --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img" \
         --bind "$HOST_WORK:/work" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
@@ -485,6 +491,9 @@ en_contenedor() {
 
 # --- Etapa 1: remuestreo a la rejilla, una sola vez por conjunto ---
 
+# Las tres llamadas van con P2G_DATOS: aquí todo es dato de una banda. P2G_COMUN
+# queda separado porque es lo que necesitaría un RGB, que no se puede guardar en
+# float32 — hoy no se pide ninguno, ver la nota del encabezado.
 P2G_COMUN="--grid-configs /config/grid.yaml -g $GRID --method nearest"
 P2G_DATOS="$P2G_COMUN --dtype float32 --no-enhance"
 
@@ -498,24 +507,19 @@ fi
 if [ "$LSR_COUNT" -gt 0 ]; then
     # Los SurfRefl traen su propia geolocalización, no necesitan GMTCO.
     #
-    # Van en dos llamadas porque el conjunto de LSR mezcla las dos naturalezas
-    # de la regla: catorce productos de una banda —que son datos— y dos
-    # composiciones RGB. Pedirlos juntos con --dtype float32 aborta con
-    # "Image must be in 'L' mode for floating point geotiff saving", y con ello
-    # se pierden también los que ya se habían remuestreado (verificado en tahan
-    # el 2026-08-13: murió tras escribir 3 de 14). Los nombres van explícitos
-    # porque Polar2Grid no tiene forma de excluir productos.
+    # Los catorce nombres van explícitos, y no se pide el conjunto por omisión,
+    # porque ese incluye las dos composiciones RGB de superficie
+    # (true_color_surf / false_color_surf) y un RGB no se puede guardar en
+    # float32: aborta con "Image must be in 'L' mode for floating point geotiff
+    # saving", y con ello se pierden también los que ya se habían remuestreado
+    # (verificado en tahan el 2026-08-13: murió tras escribir 3 de 14).
+    # Polar2Grid no tiene forma de excluir productos, así que hay que enumerar.
     LSR_DATOS="surf_refl_i01 surf_refl_i02 surf_refl_i03"
     LSR_DATOS="$LSR_DATOS surf_refl_m01 surf_refl_m02 surf_refl_m03 surf_refl_m04 surf_refl_m05"
     LSR_DATOS="$LSR_DATOS surf_refl_m07 surf_refl_m08 surf_refl_m10 surf_refl_m11 NDVI EVI"
 
     en_contenedor "Productos de superficie (LSR)" \
         "cd /output_lsr_tif && polar2grid.sh -v -r viirs_edr -w geotiff -p $LSR_DATOS $P2G_DATOS -f /input_lsr/SurfRefl_*.nc"
-
-    # Los RGB de superficie ya salen como imagen: no llevan float32 ni
-    # --no-enhance, y se visten con mapdrawer en vez de recolorearse.
-    en_contenedor "RGB de superficie (LSR)" \
-        "cd /output_lsr_rgb_tif && polar2grid.sh -v -r viirs_edr -w geotiff -p true_color_surf false_color_surf $P2G_COMUN -f /input_lsr/SurfRefl_*.nc"
 else
     echo "  ⚠ Sin productos de LSR para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
@@ -523,8 +527,16 @@ fi
 if [ "$ACSPO_COUNT" -gt 0 ]; then
     # --grid-coverage=0.0 porque la SST solo cubre mar: en una pasada con poco
     # océano dentro de la rejilla, el umbral por omisión descartaría la imagen.
+    #
+    # Va con P2G_DATOS, no con P2G_COMUN: la SST es dato de una banda, como los
+    # JRR-* y los surf_refl_*, no una composición RGB. Con P2G_COMUN salía una
+    # imagen realzada de 8 bits con el sin-dato en un canal alfa que
+    # geotiff2view no lee —solo abre la banda 1—, así que la máscara de NoData
+    # quedaba vacía, la línea B del CPT nunca se aplicaba y todo el relleno caía
+    # al índice 0 de la rampa: el fondo rosa de 268 K (verificado en tahan el
+    # 2026-08-14 con gdalinfo: "Type=Byte" en las dos bandas, sin NoData Value).
     en_contenedor "SST (ACSPO)" \
-        "cd /output_acspo_tif && polar2grid.sh -v -r acspo -w geotiff -p sst --grid-coverage=0.0 $P2G_COMUN -f /input_acspo/*.nc"
+        "cd /output_acspo_tif && polar2grid.sh -v -r acspo -w geotiff -p sst --grid-coverage=0.0 $P2G_DATOS -f /input_acspo/*.nc"
 else
     echo "  ⚠ Sin productos de ACSPO para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
@@ -570,7 +582,6 @@ vestir "Vistas de ATMOS" "$HOST_TIF_OUT"       /output_tif       /output_img
 # reflectancias por banda, o sea dato, igual que las bandas M/I de Level 1.
 vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img geotiff2view 'NDVI|EVI'
 vestir "Vistas de SST"   "$HOST_ACSPO_TIF_OUT" /output_acspo_tif /output_acspo_img
-vestir "Vistas RGB de superficie" "$HOST_LSR_RGB_TIF_OUT" /output_lsr_rgb_tif /output_lsr_rgb_img mapdrawer
 
 # ==============================================================================
 # VERIFICACIÓN
@@ -583,20 +594,18 @@ contar_nuevos() {
 # Polar2Grid escribe su propio .log en el pwd, que aquí es el directorio de
 # productos. Lo que dice ya quedó en $LOG_FILE, así que se descarta para no
 # ensuciar el árbol de salida.
-find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_LSR_RGB_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
+find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" \
      -maxdepth 1 -name '*.log' -delete 2>/dev/null || true
 
 TIF_ATMOS=$(contar_nuevos "$HOST_TIF_OUT"       '*.tif')
 TIF_LSR=$(contar_nuevos   "$HOST_LSR_TIF_OUT"   '*.tif')
-TIF_LSR_RGB=$(contar_nuevos "$HOST_LSR_RGB_TIF_OUT" '*.tif')
 TIF_SST=$(contar_nuevos   "$HOST_ACSPO_TIF_OUT" '*.tif')
 JPG_ATMOS=$(contar_nuevos "$HOST_IMG_OUT"       '*.jpg')
 JPG_LSR=$(contar_nuevos   "$HOST_LSR_IMG_OUT"   '*.jpg')
-JPG_LSR_RGB=$(contar_nuevos "$HOST_LSR_RGB_IMG_OUT" '*.jpg')
 JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
 
-TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_LSR_RGB + TIF_SST))
-JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_LSR_RGB + JPG_SST))
+TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST))
+JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST))
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -614,13 +623,12 @@ fi
     echo "pasada:      $CLAVE"
     echo "atmos:       $TIF_ATMOS geotiff, $JPG_ATMOS vistas"
     echo "lsr:         $TIF_LSR geotiff, $JPG_LSR vistas"
-    echo "lsr rgb:     $TIF_LSR_RGB geotiff, $JPG_LSR_RGB vistas"
     echo "sst:         $TIF_SST geotiff, $JPG_SST vistas"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, lsr_rgb $TIF_LSR_RGB, sst $TIF_SST) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, lsr_rgb $JPG_LSR_RGB, sst $JPG_SST) en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST) en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"
