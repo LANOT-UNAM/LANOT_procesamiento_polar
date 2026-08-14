@@ -241,10 +241,10 @@ concreto que hay que corregir:
 - No menciona `referencia/`, `config/grid.yaml`, el árbol de salida
   (`level0/1/2`, `geotiff/`, `vistas/`, `state/`, `/data/tmp`) ni los once `run_*.sh`.
 - Trae una nota del propio autor: *"Falta actualizar con el paso Level1 -> Level2"*.
-- La regla de "no hagas commits directos a `main`" sigue escrita pero hoy no se cumple, a
-  propósito, porque tahan todavía es servidor de prueba y se trabaja contra él con `git
-  pull`. Decidir si se documenta la excepción o se vuelve a la regla cuando tahan pase a
-  producción.
+- La regla de "no hagas commits directos a `main`" sigue escrita, pero ya se decidió lo
+  contrario: se trabaja directo sobre `main` porque tahan es servidor de desarrollo, no el
+  que alimenta la antena (`CLAUDE.md`, 2026-08-13). El README es lo único que falta
+  corregir; si algún día `main` vuelve a la antena, hay que revisar la decisión.
 
 Lo que sí está al día es este documento y `CLAUDE.md`; el README debería remitir a ellos
 en vez de repetir su contenido.
