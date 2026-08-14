@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
+    LANOT_tools_commit e6c1c0861175281355dc9b8d3dd11bc202ef1360
 
 %help
     Polar2Grid v3.2 con las herramientas de LANOT para adornar las vistas
@@ -48,7 +48,13 @@ From: lanot_base_rocky9.sif
     # Versión de LANOT_tools que queda dentro de la imagen. Se fija el commit
     # porque el repositorio todavía no tiene etiquetas de versión; en cuanto las
     # tenga, sustituir por --branch <etiqueta>.
-    LANOT_TOOLS_COMMIT=e7aa8f5ac8bdd8410ec57791459a23e722eee3f1
+    #
+    # OJO: el clon es de GitHub, no del host. Cambiar LANOT_tools en tahan y
+    # recompilar NO actualiza nada — hay que empujar el commit y mover este pin.
+    # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
+    # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
+    # host encima del de la imagen, así que esas sí basta con instalarlas.
+    LANOT_TOOLS_COMMIT=e6c1c0861175281355dc9b8d3dd11bc202ef1360
 
     # Lo que esta receta necesita además de la base: GDAL y el toolchain para
     # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
