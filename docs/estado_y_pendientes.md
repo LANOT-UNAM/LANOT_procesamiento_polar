@@ -454,14 +454,26 @@ que habilitaría el pendiente 9: los dos problemas tienen esa raíz.
 Incendios se resolvió el 2026-08-14 (bloque nuevo en `run_polar2grid_edr.sh`). Quedan dos, y
 los dos están bloqueados por falta de lector, no por falta de trabajo:
 
-- **flood**: el lector `viirs_edr_flood` existe pero **no sirve**. Probado el 2026-08-14:
-  `--list-products` sobre nuestros diez `.nc` responde `No filenames found for reader` y
-  `Don't know how to open the following files`. La causa casi seguro es que ese lector es
-  para el producto **v1.x**, que salía como GeoTIFF `WATER_VIIRS_Prj_SVI_*.tif`, mientras
-  que CSPP Flood v2.0 entrega NetCDF con la convención Enterprise
+- **flood**: el lector `viirs_edr_flood` existe pero **no sirve**. Verificado el 2026-08-14
+  en dos pasos. `--list-products` sobre nuestros diez `.nc` responde `No filenames found for
+  reader` y `Don't know how to open the following files`; y `file_patterns` de
+  `viirs_edr_flood.yaml` explica por qué — solo lee la salida **HDF de CSPP Flood v1.x**:
+
+  ```
+  WATER_VIIRS_Prj_SVI_{platform}_d{fecha}_t{hora}_e{hora}_b{órbita}_{source:8s}_{dim0}_{dim1}_01.hdf
+  WATER_VIIRS_Prj_SVI_{platform}_d{fecha}_t{hora}_e{hora}_b{órbita}_{source:8s}_{aoi:3s}_{dim0}_{dim1}_01.hdf
+  WATER_COM_VIIRS_Prj_SVI_d{ini}_d{fin}_…_{total_days:3d}day_{tile_num:3d}.hdf
+  ```
+
+  Nosotros generamos NetCDF v2.0 con la convención Enterprise
   (`VIIRS-Flood_v2r0_n20_s202608131911067_e…_c….nc`). No es un problema de nombres que se
-  arregle renombrando: es otro formato. Confirmarlo mirando `file_patterns` en
-  `viirs_edr_flood.yaml` dentro del contenedor; si dice `_water.tif`, es eso.
+  arregle renombrando: es otro formato, y el driver de v2.0 no tiene bandera para emitir el
+  viejo — su línea de comandos es `-W`, `-n`, `-v` y `-a` y nada más.
+
+  Dos detalles de esos patrones que valen para otras cosas: `{source:8s}` es el mismo campo
+  obligatorio de ocho caracteres que exige el lector `viirs_sdr`, o sea `cspp_dev`; y el
+  `{aoi:3s}` de la segunda variante corresponde a la bandera `FLOOD_AOI` de
+  `run_flood_edr.sh`, que sobrevivió entre versiones aunque el formato de salida cambiara.
 
   Lo que sí está listo para cuando haya lector: esos nombres usan la convención de los
   `JRR-*` (`s` + fecha + hora + décimas), así que `sello_de_archivo()` ya los reconoce sin
@@ -470,6 +482,11 @@ los dos están bloqueados por falta de lector, no por falta de trabajo:
 - **cryosphere**: no aparece ningún lector de criósfera en la lista de P2G 3.2. Está en la
   misma situación que el ozono (pendiente 8): el producto se genera y no hay forma de
   remallarlo con lo que tenemos.
+
+Flood y ozono comparten causa raíz: **Polar2Grid va por detrás de CSPP**. El lector de flood
+se quedó en la v1.x y el de ozono llega hasta la 3.3. Al preguntarle a SSEC por la fecha del
+bundle 3.3 (pendiente 8), conviene preguntar de paso si trae lector para `VIIRS-Flood_v2r0`:
+son dos huecos que cerraría la misma actualización.
 
 Lo que dejó el caso de incendios, y que aplica a flood:
 
