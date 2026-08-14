@@ -30,13 +30,20 @@ siguiente. Ver el pendiente 8.
 | Level 2 SST | `run_acspo_edr.sh` | 1 producto, 1m 48s (la imagen ahora la hace Polar2Grid) |
 | Level 2 inundaciones | `run_flood_edr.sh` | 11 productos, 4m 34s |
 | Level 2 ozono | `run_omps_edr.sh` | 39 productos (V8TOz 20, V8PRO 19), 28s — pasada `b45237` |
-| Vistas de Level 1 | `run_polar2grid_l1.sh` | 62 GeoTIFF (M 36, I 14, DNB 10, RGB 2) y 12 vistas, 4m 8s |
-| Vistas de Level 2 | `run_polar2grid_edr.sh` | 24 GeoTIFF (atmos 7, lsr 14, lsr_rgb 2, sst 1) y 8 vistas, 3m 46s |
+| Vistas de Level 1 | `run_polar2grid_l1.sh` | 62 GeoTIFF (M 36, I 14, DNB 10, RGB 2) y 6 vistas (dnb 4, rgb 2), 4m 8s |
+| Vistas de Level 2 | `run_polar2grid_edr.sh` | 24 GeoTIFF (atmos 7, lsr 14, lsr_rgb 2, sst 1) y 11 vistas (atmos 6, lsr 2, lsr_rgb 2, sst 1), 3m 46s |
 
-Las dos últimas filas son de la corrida del 2026-08-13. El 2026-08-14 se revisaron esas
-17 vistas y salieron cinco correcciones (ver "Revisión de las vistas"): entre ellas,
-`run_polar2grid_edr.sh` dejó de hacer los RGB de superficie, así que pasa a **22 GeoTIFF y
-6 vistas**. Falta volver a correr los dos scripts para confirmar los números.
+Los conteos de vistas de esas dos filas estuvieron mal hasta el 2026-08-14, cada uno por su
+lado: el de Level 1 decía 12, que es de antes del filtro ERE, cuando los
+`--dnb-angle-products` también se vestían (10 + 2); el de Level 2 decía 8, que es de antes
+de que existieran `cloud_fraction.cpt`, `ndvi.cpt` y `evi.cpt` (atmos 5 + lsr_rgb 2 +
+sst 1). Los de arriba son los del árbol real de la corrida del 2026-08-13, 17 vistas en
+total.
+
+El 2026-08-14 se revisaron esas 17 vistas y salieron cinco correcciones (ver "Revisión de
+las vistas"). La única que cambia los conteos es el retiro de los RGB de superficie:
+`run_polar2grid_edr.sh` pasa a **22 GeoTIFF y 9 vistas**. Falta volver a correr los dos
+scripts para confirmarlo.
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
