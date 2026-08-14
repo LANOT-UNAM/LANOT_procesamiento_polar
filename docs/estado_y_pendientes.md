@@ -96,9 +96,8 @@ cuatro algoritmos de DNB. Ahora las 17 llevan nombre.
 detalle está abajo, en "El DNB, resuelto".
 
 **4. NDVI y EVI.** Las rampas están bien; el fondo ya estaba arreglado y `evi.cpt` pasó a
-0..1 (pendiente 1). Queda una duda abierta: el manchón beige sobre el norte de México y
-Texas coincide con nube en el `true_color`, o sea que las nubes se pintan como suelo
-desnudo. Ver el pendiente 12.
+0..1 (pendiente 1). Se levantó una duda —que las nubes se pintaran como suelo desnudo— y
+resultó falsa alarma: LSR ya las enmascara. Ver el pendiente 12.
 
 **5. `rgb` y `lsr_rgb` no eran duplicados, pero lo parecían.** Son dos composiciones
 distintas —`viirs_sdr` sobre los SDR (TOA + Rayleigh + afilado con I01) y `viirs_edr` sobre
@@ -420,13 +419,35 @@ De ahí salió `--percentiles LO,HI` en `geotiff2view`, que es **requisito** del
 min-max, `dynamic_dnb` sale negro. Los otros tres algoritmos siguen disponibles agregando
 sus nombres a `-p` en `run_polar2grid_l1.sh`.
 
-### 12. Nubes sin enmascarar en NDVI y EVI
-En las vistas del 2026-08-11 el manchón beige sobre el norte de México y Texas coincide con
-nube en el `true_color`: las nubes se están pintando como suelo desnudo (NDVI ≈ 0-0.2), que
-es engañoso. Hay que mirar los `SurfRefl_*.nc` y decidir qué flag de calidad de LSR usar
-para enmascararlas antes de renderizar, o si conviene dejarlo así y confiar en que quien
-mira la vista sepa leerla. No está claro que valga la pena: el recorte tendría que hacerse
-sobre el GeoTIFF, y hoy la cadena no tiene ningún paso que modifique un producto de datos.
+### 12. Nubes en NDVI y EVI — falsa alarma, cerrado el 2026-08-14
+Se había anotado que las nubes se pintaban como suelo desnudo, por una mancha beige sobre
+el norte de México y Texas en la vista del 2026-08-11. **Es incorrecto: LSR ya enmascara
+las nubes.** Comprobado comparando el NDVI del 2026-08-13 con su `true_color`: el banco de
+nubes del Pacífico y de Centroamérica sale negro en el NDVI, y las nubes dispersas sobre
+Texas aparecen como motas negras dentro de la zona verde. Son NaN, no valores bajos.
+
+La mancha beige es suelo árido de verdad —el desierto chihuahuense en agosto, café en el
+`true_color`, con NDVI de 0 a 0.2, que es lo que le toca—.
+
+Tiene sentido de diseño: **LSR consume `JRR-CloudMask` como entrada** (por eso ATMOS corre
+antes), así que el enmascarado ocurre río arriba, en espacio de swath y con la
+geolocalización nativa, antes de remuestrear. Rehacerlo río abajo sería duplicar trabajo con
+peor información.
+
+De paso quedan aclarados dos límites de Polar2Grid, por si el tema vuelve:
+
+- **`JRR-CloudMask` no se puede remallar**: de los 110 productos de ATMOS en la ventana, P2G
+  3.2 solo entrega 7, y la máscara no está entre ellos.
+- **Las banderas de calidad de LSR tampoco son alcanzables**: el lector `viirs_edr` expone
+  16 productos de los `SurfRefl_*.nc` —los 14 `surf_refl_*` más NDVI y EVI— y las QF no
+  están ahí.
+
+Si algún día hace falta combinar dos productos en malla (enmascarar uno con otro, o comparar
+pasadas), el obstáculo real no es el soporte de P2G sino que **las rejillas de
+`config/grid.yaml` son dinámicas**: solo fijan proyección y resolución, así que cada llamada
+da una extensión distinta —atmos 3177×4017 y lsr 3178×4017 en la misma pasada—. Con
+extensión fija todo quedaría alineado y el enmascarado sería álgebra de rásters. Es lo mismo
+que habilitaría el pendiente 9: los dos problemas tienen esa raíz.
 
 ## Hallazgos que conviene no volver a descubrir
 
