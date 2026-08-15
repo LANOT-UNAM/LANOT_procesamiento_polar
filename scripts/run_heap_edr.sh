@@ -86,7 +86,9 @@ Uso:
 Opciones:
   -f, --force   Ignora el marcador de procesado
   -p, --pasada  Pasada concreta en vez de la más reciente: la clave completa
-                (j01_d20260813_b45264) o cualquier trozo que la identifique
+                (j01_d20260813_b45265) o cualquier trozo que la identifique.
+                Ojo: la órbita es la de CrIS, que NO es la de VIIRS — el mismo
+                sobrevuelo es b45264 en VIIRS y b45265 aquí.
   -h, --help    Muestra esta ayuda
 
 Requiere que run_sdr.sh haya corrido para los DOS sensores:
@@ -187,6 +189,44 @@ intervalo_de() {
     echo "${fecha}${tini:0:6} ${fecha_fin}${tfin:0:6}"
 }
 
+# La ventana de la pasada, en VENTANA_INI y VENTANA_FIN: el inicio más temprano
+# y el fin más tardío de TODOS los GCRSO de la órbita.
+#
+# No se puede sacar de un archivo representativo, que es como estaba y costó la
+# primera corrida en tahan (2026-08-15). El motivo es que en level1/cris
+# conviven las dos convenciones, según cómo haya salido cada corrida de
+# run_sdr.sh:
+#
+#   d20260811  GCRSO t1951389_e1954487   un solo archivo de 3 min   (agregado)
+#   d20260813  GCRSO t1914029_e1914327   15 archivos de 30 s        (por gránulo)
+#
+# Con la pasada por gránulos, la ventana de uno solo salía de 30 segundos y el
+# traslape enganchaba 4 archivos de ATMS en vez de la pasada entera: HEAP recibía
+# 15 gránulos de CrIS y microondas para medio minuto, y terminaba en 0 sin un
+# solo producto. Recorriendo todos, la ventana es correcta en los dos casos.
+ventana_de_pasada() {
+    local f ini fin
+    VENTANA_INI=""
+    VENTANA_FIN=""
+
+    shopt -s nullglob
+    for f in "$HOST_CRIS_IN"/GCRSO_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
+        ini=""; fin=""
+        read -r ini fin < <(intervalo_de "$f") || true
+        [ -n "$ini" ] && [ -n "$fin" ] || continue
+
+        if [ -z "$VENTANA_INI" ] || [ "$ini" -lt "$VENTANA_INI" ]; then
+            VENTANA_INI="$ini"
+        fi
+        if [ -z "$VENTANA_FIN" ] || [ "$fin" -gt "$VENTANA_FIN" ]; then
+            VENTANA_FIN="$fin"
+        fi
+    done
+    shopt -u nullglob
+
+    [ -n "$VENTANA_FIN" ]
+}
+
 # Enlaza un archivo en el staging. Se prefiere el enlace DURO: algunas
 # herramientas recorren la entrada con "find -type f", que no encuentra enlaces
 # simbólicos (son -type l), y entonces reportan que no hay archivos aunque estén
@@ -201,9 +241,13 @@ enlazar() {
 # pasada de CrIS. No sirve emparejar por órbita —el b##### cambia de un
 # instrumento a otro— ni exigir que el sello caiga dentro de la ventana, como
 # hacen run_lsr_edr.sh y run_cryo_edr.sh: allá la entrada son gránulos sueltos,
-# un punto en el tiempo, mientras que aquí los SDR salen AGREGADOS (un archivo
-# por pasada), así que el de ATMS es un intervalo y sus bordes no tienen por qué
-# coincidir con los de CrIS.
+# un punto en el tiempo, mientras que aquí cada SDR cubre un intervalo cuyos
+# bordes no tienen por qué coincidir con los de CrIS. En la pasada del
+# 2026-08-11, por ejemplo, el GCRSO agregado cubre 3 min y el GATMO 11: con el
+# criterio de pertenencia no se habría enlazado ninguno.
+#
+# El traslape ya es inclusivo en los extremos, así que no hace falta margen: un
+# gránulo de ATMS que comparta un solo segundo con la pasada entra.
 #
 # Se buscan tres fechas —la anterior, la de la pasada y la siguiente— porque un
 # archivo de ATMS puede empezar del otro lado de la medianoche.
@@ -417,13 +461,12 @@ if [ "$CRIS_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-# La ventana de la pasada sale del GCRSO agregado; las tres fechas acotan la
+# La ventana abarca todos los GCRSO de la órbita; las tres fechas acotan la
 # búsqueda de los SDR de ATMS, que pueden caer del otro lado de la medianoche.
-VENTANA_INI=""; VENTANA_FIN=""
-read -r VENTANA_INI VENTANA_FIN < <(intervalo_de "$ULTIMO_GCRSO") || true
-
-if [ -z "${VENTANA_FIN:-}" ]; then
-    echo "ERROR: No se pudo derivar la ventana temporal de $(basename "$ULTIMO_GCRSO")" >&2
+if ! ventana_de_pasada; then
+    echo "ERROR: No se pudo derivar la ventana temporal de la pasada $CLAVE" >&2
+    echo "       Ningún GCRSO de $HOST_CRIS_IN tiene la forma esperada" >&2
+    echo "       (GCRSO_<sat>_d<fecha>_t<inicio>_e<fin>_b<órbita>_...)." >&2
     exit 1
 fi
 
