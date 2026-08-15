@@ -619,6 +619,29 @@ if [ "$RECUPERACION" -eq 0 ]; then
     exit 1
 fi
 
+# ------------------------------------------------------------------------------
+# Rescate de los logs propios de HEAP, ANTES de borrar el directorio de trabajo.
+#
+# El manual (§3.3) avisa que además de los NetCDF quedan ahí "other log and text
+# files". La convención de la cadena es conservar el directorio de trabajo solo
+# cuando la etapa falla, y para los demás eslabones está bien. HEAP tiene un caso
+# que ellos no: puede terminar **bien y parcial** —28 productos donde caben 30—
+# y entonces el diagnóstico hace falta justo cuando el criterio dice "éxito,
+# borra todo". Sin esto, una corrida así no se puede investigar después y
+# repetirla no contesta qué pasó en aquella.
+#
+# Pasó el 2026-08-15: la primera corrida buena dejó 14 de 15 gránulos y en el
+# log nuestro —37 líneas— no había una sola mención a gránulos rechazados.
+
+RESCATE="$LOG_DIR/heap_${TIMESTAMP}_${CLAVE}_cspp"
+mapfile -t LOGS_CSPP < <(find "$HOST_WORK" -type f ! -name '*.nc' 2>/dev/null | sort)
+
+if [ "${#LOGS_CSPP[@]}" -gt 0 ]; then
+    mkdir -p "$RESCATE"
+    cp -p "${LOGS_CSPP[@]}" "$RESCATE"/ 2>/dev/null || true
+    echo "  Logs de HEAP: ${#LOGS_CSPP[@]} archivos en $RESCATE" | tee -a "$LOG_FILE"
+fi
+
 mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
 
 {
