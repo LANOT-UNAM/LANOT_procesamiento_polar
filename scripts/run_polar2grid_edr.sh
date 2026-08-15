@@ -694,15 +694,26 @@ fi
 vestir() {
     local etiqueta="$1" dir_tif="$2" montaje_tif="$3" montaje_img="$4"
     local herramienta="${5:-geotiff2view}" filtro="${6:-.}" solo_nuevos="${7:-1}"
-    local tif nombre cpt ordenes=""
+    # Paleta para la barra de color de mapdrawer, opcional. Va como parámetro y
+    # NO en DECORACION, que es compartido: la rama de mapdrawer también se
+    # conserva para los RGB de superficie retirados, y ésos no llevan barra.
+    local cpt_barra="${8:-}"
+    local tif nombre cpt ordenes="" barra=""
     local -a criterio=()
     [ "$solo_nuevos" -eq 1 ] && criterio=(-newer "$REF_FILE")
+
+    # mapdrawer busca la paleta de la barra en tres lugares, por prioridad: el
+    # tag de texto 'colormap' del TIFF, el --cpt externo, y el colormap nativo.
+    # El de flood tiene colormap nativo, así que sin --cpt saldría una barra con
+    # las 256 entradas —70 de ellas negro de relleno—, sin etiquetas y numerada
+    # 0-255. El --cpt gana sobre el nativo, que es justo lo que hace falta.
+    [ -n "$cpt_barra" ] && barra="--cpt '$cpt_barra' --colorbar"
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
         if [ "$herramienta" = "mapdrawer" ]; then
             # Ya es imagen: solo se viste, no se recolorea
-            ordenes+="mapdrawer '$montaje_tif/$nombre' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
+            ordenes+="mapdrawer '$montaje_tif/$nombre' ${DECORACION[*]} $barra -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
             continue
         fi
         if ! cpt=$(paleta_de "$nombre"); then
@@ -734,7 +745,7 @@ vestir "Vistas de incendios" "$HOST_FIRE_TIF_OUT" /output_fire_tif /output_fire_
 # con add_colormap.py, así que solo hay que vestirlo. Es el único usuario que le
 # queda a la rama de mapdrawer desde que se retiraron los RGB de superficie.
 vestir "Vistas de inundaciones" "$HOST_FLOOD_TIF_IN" /output_flood_tif /output_flood_img \
-       mapdrawer "${SAT_VISTA}_viirs_flood_${FECHA#d}_" 0
+       mapdrawer "${SAT_VISTA}_viirs_flood_${FECHA#d}_" 0 flood.cpt
 
 # ==============================================================================
 # VERIFICACIÓN
