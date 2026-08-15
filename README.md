@@ -15,7 +15,7 @@ El objetivo es migrar de scripts monolíticos en servidor ("bare metal") a una a
 * **Soporte Moderno:** Capacidad para procesar NOAA-21 (JPSS-2).
 * **Aislamiento:** Eliminación de conflictos de bibliotecas entre cadenas de procesamiento antiguas y nuevas.
 
-**No contiene software científico ni datos**: solo recetas, scripts, plantillas XML y documentación. Los tarballs oficiales de CIMSS/SSEC y NASA DRL no están versionados; lo que sí está es el manifiesto de cuáles hacen falta, en `contenedores/tarballs.tsv`.
+**No contiene software científico ni datos**: solo recetas, scripts, plantillas XML y documentación. Los tarballs oficiales de CIMSS/SSEC y NASA DRL están listados en el manifiesto `contenedores/tarballs.tsv`.
 
 ### 🛰️ Satélites Soportados
 * **Suomi-NPP**
@@ -56,7 +56,7 @@ Para desplegar este sistema en un servidor nuevo, se requiere:
 
 *   **Sistema Operativo:** Rocky Linux 8/9 o RHEL compatible.
 *   **Motor de Contenedores:** `Apptainer` instalado (`dnf install apptainer`).
-*   **Credenciales:** cuenta en el sitio de descargas de CIMSS/SSEC, y otra en la NASA DRL para RT-STPS. Los dos piden registro.
+*   **Credenciales:** registro en el sitio de descargas de CIMSS/SSEC.
 
 ---
 
@@ -72,7 +72,7 @@ cd LANOT_procesamiento_polar
 ./contenedores/obtener_tarballs.sh --descargar  # qué bajar y de dónde
 ```
 
-Los dos sitios piden registro, así que la descarga es manual: el script dice exactamente qué archivos faltan, de qué sitio salen y dónde dejarlos. `--verificar` confirma después que llegaron completos.
+La descarga es manual: el script dice exactamente qué archivos faltan, de qué sitio salen y dónde dejarlos. `--verificar` confirma después que llegaron completos.
 
 ### 2. Compilar las imágenes
 
