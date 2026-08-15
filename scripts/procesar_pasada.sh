@@ -340,9 +340,17 @@ armar_tarea() {
 # ==============================================================================
 # CANDADO
 #
-# Una pasada a la vez. Si hay otra corriendo, esta se deja pendiente y el
-# barrido la recoge; por eso sale con 0 y no con error.
+# Una pasada a la vez. Si hay otra corriendo, esta se deja pendiente y el barrido
+# la recoge.
+#
+# Sale con 75 (EX_TEMPFAIL), no con 0. No es un fallo, pero tampoco es éxito, y
+# la diferencia importa: barrer_pendientes.sh cuenta intentos y se rinde al
+# tercero. Con salida 0 y sin marcador, "había otra pasada en curso" sería
+# indistinguible de "falló", y bastarían tres choques de candado para marcar
+# .fallido un RAW perfectamente bueno.
 # ==============================================================================
+
+CODIGO_OCUPADO=75
 
 if [ "$DRY_RUN" -eq 0 ]; then
     mkdir -p "$(dirname "$LOCK_FILE")" 2>/dev/null || true
@@ -350,7 +358,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
     if ! flock -n 9; then
         echo "ℹ  Hay otra pasada en curso (candado: $LOCK_FILE)."
         echo "   Esta queda pendiente; la recoge barrer_pendientes.sh."
-        exit 0
+        exit "$CODIGO_OCUPADO"
     fi
 fi
 
