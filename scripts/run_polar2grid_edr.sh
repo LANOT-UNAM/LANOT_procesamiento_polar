@@ -42,6 +42,7 @@
 #   P2G_LSR_IN      Entrada LSR       (def. /data/output/jpss/level2/lsr)
 #   P2G_ACSPO_IN    Entrada ACSPO/SST (def. /data/output/jpss/level2/acspo)
 #   P2G_FIRE_IN     Entrada incendios (def. /data/output/jpss/level2/fires)
+#   P2G_FLOOD_TIF   GeoTIFF de flood  (def. /data/output/jpss/geotiff/flood)
 #   P2G_GEOTIFF     Raíz de GeoTIFF   (def. /data/output/jpss/geotiff)
 #   P2G_VISTAS      Raíz de vistas    (def. /data/output/jpss/vistas)
 #   P2G_STATE_DIR   Marcadores .done  (def. /data/output/jpss/state/polar2grid)
@@ -66,6 +67,10 @@ HOST_EDR_IN="${P2G_EDR_IN:-/data/output/jpss/level2/atmosphere}"
 HOST_LSR_IN="${P2G_LSR_IN:-/data/output/jpss/level2/lsr}"
 HOST_ACSPO_IN="${P2G_ACSPO_IN:-/data/output/jpss/level2/acspo}"
 HOST_FIRE_IN="${P2G_FIRE_IN:-/data/output/jpss/level2/fires}"
+# Flood es el caso raro: su GeoTIFF NO lo hace Polar2Grid sino el convertidor
+# del propio bundle de CSPP, en run_flood_edr.sh, porque el lector
+# viirs_edr_flood es para el formato HDF de la v1.x. Aquí solo se viste.
+HOST_FLOOD_TIF_IN="${P2G_FLOOD_TIF:-/data/output/jpss/geotiff/flood}"
 
 # Los datos (GeoTIFF) y las vistas (JPG) van en árboles distintos
 GEOTIFF="${P2G_GEOTIFF:-/data/output/jpss/geotiff}"
@@ -79,6 +84,7 @@ HOST_IMG_OUT="$VISTAS/atmos"
 HOST_LSR_IMG_OUT="$VISTAS/lsr"
 HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 HOST_FIRE_IMG_OUT="$VISTAS/fire"
+HOST_FLOOD_IMG_OUT="$VISTAS/flood"
 
 # El contenedor trae la rejilla de fábrica, no las nuestras: hay que pasarle
 # config/grid.yaml con --grid-configs o remuestrearía a una rejilla dinámica
@@ -435,6 +441,7 @@ STAGING_FIRE="${HOST_WORK}/fire_links"
 mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" "$STAGING_FIRE" \
          "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
          "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" "$HOST_FIRE_IMG_OUT" \
+         "$HOST_FLOOD_TIF_IN" "$HOST_FLOOD_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
 
@@ -508,10 +515,12 @@ en_contenedor() {
         --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif" \
         --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif" \
         --bind "$HOST_FIRE_TIF_OUT:/output_fire_tif" \
+        --bind "$HOST_FLOOD_TIF_IN:/output_flood_tif" \
         --bind "$HOST_IMG_OUT:/output_img" \
         --bind "$HOST_LSR_IMG_OUT:/output_lsr_img" \
         --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img" \
         --bind "$HOST_FIRE_IMG_OUT:/output_fire_img" \
+        --bind "$HOST_FLOOD_IMG_OUT:/output_flood_img" \
         --bind "$HOST_WORK:/work" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
 
@@ -606,10 +615,17 @@ fi
 
 # $5 herramienta, $6 ERE opcional: solo se viste lo que haga match. Sirve para
 # dejar fuera lo que es dato y no imagen.
+#
+# $7 solo-nuevos (1 por omisión): normalmente se viste únicamente lo que escribió
+# ESTA corrida, contra REF_FILE. Flood es la excepción — su GeoTIFF lo produjo
+# run_flood_edr.sh minutos antes, así que es más viejo que REF_FILE y con el
+# filtro nunca se vestiría. Ahí se pasa 0 y quien acota la pasada es el ERE.
 vestir() {
     local etiqueta="$1" dir_tif="$2" montaje_tif="$3" montaje_img="$4"
-    local herramienta="${5:-geotiff2view}" filtro="${6:-.}"
+    local herramienta="${5:-geotiff2view}" filtro="${6:-.}" solo_nuevos="${7:-1}"
     local tif nombre cpt ordenes=""
+    local -a criterio=()
+    [ "$solo_nuevos" -eq 1 ] && criterio=(-newer "$REF_FILE")
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
@@ -623,7 +639,7 @@ vestir() {
             continue
         fi
         ordenes+="geotiff2view '$montaje_tif/$nombre' -b -p '$cpt' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
-    done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null \
+    done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' "${criterio[@]}" 2>/dev/null \
                   | grep -E "$filtro" | sort)
 
     if [ -z "$ordenes" ]; then
@@ -643,6 +659,11 @@ vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img
 vestir "Vistas de SST"   "$HOST_ACSPO_TIF_OUT" /output_acspo_tif /output_acspo_img
 # De incendios solo se viste confidence_cat: T4 y power son dato y no tienen CPT.
 vestir "Vistas de incendios" "$HOST_FIRE_TIF_OUT" /output_fire_tif /output_fire_img geotiff2view 'confidence_cat'
+# Flood ya viene como imagen: cspp_viirs_flood2tif.sh le pega la paleta flood.ct
+# con add_colormap.py, así que solo hay que vestirlo. Es el único usuario que le
+# queda a la rama de mapdrawer desde que se retiraron los RGB de superficie.
+vestir "Vistas de inundaciones" "$HOST_FLOOD_TIF_IN" /output_flood_tif /output_flood_img \
+       mapdrawer "${SAT}_viirs_flood_${FECHA#d}_" 0
 
 # ==============================================================================
 # VERIFICACIÓN
@@ -666,9 +687,10 @@ JPG_ATMOS=$(contar_nuevos "$HOST_IMG_OUT"       '*.jpg')
 JPG_LSR=$(contar_nuevos   "$HOST_LSR_IMG_OUT"   '*.jpg')
 JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
 JPG_FIRE=$(contar_nuevos  "$HOST_FIRE_IMG_OUT"  '*.jpg')
+JPG_FLOOD=$(contar_nuevos "$HOST_FLOOD_IMG_OUT" '*.jpg')
 
 TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE))
-JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE))
+JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_FLOOD))
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -688,11 +710,12 @@ fi
     echo "lsr:         $TIF_LSR geotiff, $JPG_LSR vistas"
     echo "sst:         $TIF_SST geotiff, $JPG_SST vistas"
     echo "fire:        $TIF_FIRE geotiff, $JPG_FIRE vistas"
+    echo "flood:       $JPG_FLOOD vistas (el geotiff lo hace run_flood_edr.sh)"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE) en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, flood $JPG_FLOOD) en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"

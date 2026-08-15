@@ -454,75 +454,32 @@ que habilitaría el pendiente 9: los dos problemas tienen esa raíz.
 Incendios se resolvió el 2026-08-14 (bloque nuevo en `run_polar2grid_edr.sh`). Quedan dos, y
 los dos están bloqueados por falta de lector, no por falta de trabajo:
 
-- **flood**: el lector `viirs_edr_flood` existe pero **no sirve**. Verificado el 2026-08-14
-  en dos pasos. `--list-products` sobre nuestros diez `.nc` responde `No filenames found for
-  reader` y `Don't know how to open the following files`; y `file_patterns` de
-  `viirs_edr_flood.yaml` explica por qué — solo lee la salida **HDF de CSPP Flood v1.x**:
+- **flood**: resuelto el 2026-08-14, **sin Polar2Grid**. El lector `viirs_edr_flood` existe
+  pero solo lee la salida HDF de CSPP Flood v1.x (`WATER_VIIRS_Prj_SVI_*_01.hdf`), y nosotros
+  generamos NetCDF v2.0. La pregunta estaba mal planteada: `referencia/cspp_6_flood.sh`, que
+  es lo que corre hoy en producción, muestra que **las vistas de inundaciones nunca salieron
+  de Polar2Grid** — las hace `flood2tif.sh`, del propio bundle de CSPP. Ese script exporta
+  `POLAR2GRID_HOME` sin llegar a usarlo nunca, y eso me tuvo buscando en el lugar equivocado.
 
-  ```
-  WATER_VIIRS_Prj_SVI_{platform}_d{fecha}_t{hora}_e{hora}_b{órbita}_{source:8s}_{dim0}_{dim1}_01.hdf
-  WATER_VIIRS_Prj_SVI_{platform}_d{fecha}_t{hora}_e{hora}_b{órbita}_{source:8s}_{aoi:3s}_{dim0}_{dim1}_01.hdf
-  WATER_COM_VIIRS_Prj_SVI_d{ini}_d{fin}_…_{total_days:3d}day_{tile_num:3d}.hdf
-  ```
+  CSPP Flood v2.0 sí trae el convertidor, y toma el NetCDF nuevo: el ejemplo de su propio
+  `usage` es un `VIIRS-Flood_v2r0_n20_s…nc`. Lo que hace es
+  `gdal_translate -a_srs EPSG:4326 -ot Byte -a_ullr …` sobre el dataset `WaterDetection`,
+  tomando las esquinas de los atributos del archivo, y después le pega la paleta con
+  `add_colormap.py … flood.ct`. **El `.tif` sale como imagen con colormap embebido, no como
+  dato**, así que le toca `mapdrawer` y no `geotiff2view` — es el único usuario que le queda
+  a esa rama de `vestir()` desde que se retiraron los RGB de superficie.
 
-  Nosotros generamos NetCDF v2.0 con la convención Enterprise
-  (`VIIRS-Flood_v2r0_n20_s202608131911067_e…_c….nc`). No es un problema de nombres que se
-  arregle renombrando: es otro formato, y el driver de v2.0 no tiene bandera para emitir el
-  viejo — su línea de comandos es `-W`, `-n`, `-v` y `-a` y nada más.
+  El reparto quedó así: `run_flood_edr.sh` convierte y fusiona (`cspp_viirs_tifmerge.sh`, un
+  `.tif` por gránulo no sirve de vista) y deja el resultado en `geotiff/flood`;
+  `run_polar2grid_edr.sh` solo lo viste. Es generación de producto, como el `.nc`, así que no
+  rompe la regla del renderizador único — lo que no se hace fuera de ahí es la *vista*.
 
-  Dos detalles de esos patrones que valen para otras cosas: `{source:8s}` es el mismo campo
-  obligatorio de ocho caracteres que exige el lector `viirs_sdr`, o sea `cspp_dev`; y el
-  `{aoi:3s}` de la segunda variante corresponde a la bandera `FLOOD_AOI` de
-  `run_flood_edr.sh`, que sobrevivió entre versiones aunque el formato de salida cambiara.
+  Dos detalles que costaron: el convertidor escribe **junto a la entrada**
+  (`OUTPUT=${INPUT/.nc/.tif}`), por eso corre sobre `/work` y no sobre la salida en Lustre; y
+  `vestir()` filtraba con `-newer "$REF_FILE"` para vestir solo lo de la corrida actual, lo
+  que dejaba fuera el `.tif` de flood por haberlo escrito otro script antes. De ahí el
+  séptimo parámetro `solo-nuevos`, que en ese caso va en 0 y deja que el ERE acote la pasada.
 
-  **Pero la pregunta estaba mal planteada.** `referencia/cspp_6_flood.sh`, que es lo que
-  corre hoy en producción, confirma dos cosas: que el servidor viejo usa
-  `CSPP_FLOOD_HOME=…/CSPP_FLOOD_1_1` —la v1.1, justo la que el lector soporta— y que **las
-  vistas de inundaciones nunca salieron de Polar2Grid**. Salen de
-  `$CSPP_FLOOD_HOME/scripts/flood2tif.sh *.hdf`, un convertidor que viene dentro del propio
-  bundle de CSPP Flood. El script exporta `POLAR2GRID_HOME` y lo mete al `PATH`, pero nunca
-  llama a `polar2grid.sh`: es código heredado de copiar otro script.
-
-  Así que lo que hay que averiguar no es si P2G puede leer flood, sino **si CSPP Flood v2.0
-  trae su propio convertidor**:
-
-  ```bash
-  apptainer exec /opt/containers/cspp_flood_v2.0.sif sh -c \
-    '. $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh; \
-     ls $CSPP_VIIRS_FLOOD_HOME/bin $CSPP_VIIRS_FLOOD_HOME/scripts 2>/dev/null | grep -iE "tif|png|image|quicklook|ql"'
-  ```
-
-  **Sí lo trae** (verificado el 2026-08-14): `cspp_viirs_flood2tif.sh` y
-  `cspp_viirs_tifmerge.sh` están en `$CSPP_VIIRS_FLOOD_HOME/bin`. Flood sale de la lista de
-  bloqueados.
-
-  El diseño, respetando que `run_polar2grid_edr.sh` es el renderizador único de vistas:
-
-  - **`run_flood_edr.sh`** gana una segunda llamada dentro de su propio contenedor —el
-    convertidor vive ahí, no en el de Polar2Grid— y deja el `.tif` en `geotiff/flood`. Es
-    generación de producto, igual que el `.nc`.
-  - **`run_polar2grid_edr.sh`** gana solo un `vestir … mapdrawer` sobre `geotiff/flood`, sin
-    llamada a Polar2Grid. En producción el `.tif` de `flood2tif` se copia a las vistas **sin
-    decorar** (`referencia/cspp_6_flood.sh`), o sea que ya es imagen y no dato: le toca
-    `mapdrawer`, que es la rama de `vestir()` que se quedó sin usuarios al retirar los RGB
-    de superficie.
-
-  Falta una verificación antes de escribirlo — la interfaz del convertidor:
-
-  ```bash
-  apptainer exec /opt/containers/cspp_flood_v2.0.sif sh -c \
-    '. $CSPP_VIIRS_FLOOD_HOME/cspp_viirs_flood_env.sh
-     $CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood2tif.sh --help'
-  ```
-
-  Hace falta saber si toma los `.nc` de v2.0 (en v1.1 tomaba `*.hdf`), si escribe en el
-  `pwd` o acepta destino, y si el `.tif` sale RGB o de una banda. Lo último decide
-  `mapdrawer` contra `geotiff2view` con CPT.
-
-  Lo que sí está listo para cuando haya lector: esos nombres usan la convención de los
-  `JRR-*` (`s` + fecha + hora + décimas), así que `sello_de_archivo()` ya los reconoce sin
-  cambios, y `de_otro_satelite()` ya contempla el `n20` que traen. Faltaría solo el CPT —
-  no hay ninguno de inundaciones en `LANOT_tools/colortables`.
 - **cryosphere**: no aparece ningún lector de criósfera en la lista de P2G 3.2. Está en la
   misma situación que el ozono (pendiente 8): el producto se genera y no hay forma de
   remallarlo con lo que tenemos.

@@ -34,6 +34,7 @@
 # Variables de entorno (para pruebas o rutas alternas):
 #   FLOOD_SDR_IN     Entrada Level 1  (def. /data/output/jpss/level1/viirs)
 #   FLOOD_OUT        Salida           (def. /data/output/jpss/level2/flood)
+#   FLOOD_GEOTIFF    GeoTIFF de vista (def. /data/output/jpss/geotiff/flood)
 #   FLOOD_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-flood)
 #   FLOOD_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_flood_v2.0.sif)
 #   FLOOD_WORK_BASE  Raíz de staging  (def. /data/tmp)
@@ -48,6 +49,11 @@ SIF_IMAGE="${FLOOD_CONTAINER:-/opt/containers/cspp_flood_v2.0.sif}"
 
 INPUT_SDR_DIR="${FLOOD_SDR_IN:-/data/output/jpss/level1/viirs}"
 OUTPUT_DIR="${FLOOD_OUT:-/data/output/jpss/level2/flood}"
+# El .tif no lo hace Polar2Grid sino el propio CSPP, con el convertidor que trae
+# el bundle. Es formato de salida del producto, como el .nc, así que se genera
+# aquí; lo que NO se hace aquí es la vista — de eso sigue encargándose
+# run_polar2grid_edr.sh, que es el renderizador único de Level 2.
+GEOTIFF_DIR="${FLOOD_GEOTIFF:-/data/output/jpss/geotiff/flood}"
 STATE_DIR="${FLOOD_STATE_DIR:-/data/output/jpss/state/cspp-flood}"
 
 WORK_BASE="${FLOOD_WORK_BASE:-/data/tmp}"
@@ -188,7 +194,7 @@ if [ -n "${FLOOD_AOI:-}" ] && [ ! -f "$FLOOD_AOI" ]; then
     exit 1
 fi
 
-mkdir -p "$STAGING_DIR" "$WORK_DIR" "$OUTPUT_DIR" "$LOG_DIR" "$STATE_DIR"
+mkdir -p "$STAGING_DIR" "$WORK_DIR" "$OUTPUT_DIR" "$GEOTIFF_DIR" "$LOG_DIR" "$STATE_DIR"
 
 limpiar() {
     if [ "$KEEP" -eq 1 ]; then
@@ -242,6 +248,7 @@ fi
 BIND_OPTS=(
     -B "${STAGING_DIR}":/input_data
     -B "${OUTPUT_DIR}":/output_data
+    -B "${GEOTIFF_DIR}":/output_tif
     -B "${WORK_DIR}":/work
     -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}"
 )
@@ -261,6 +268,36 @@ apptainer exec \
         if [ \$RC -ne 0 ]; then
             echo \"--- cspp_viirs_flood.sh terminó con código \$RC ---\"
             exit \$RC
+        fi
+
+        # GeoTIFF para la vista, con el convertidor del propio bundle: Polar2Grid
+        # no puede con esto —su lector viirs_edr_flood es para el formato HDF de
+        # la v1.x— y no hace falta. cspp_viirs_flood2tif.sh saca el dataset
+        # WaterDetection a Byte con EPSG:4326, tomando las esquinas de los
+        # atributos del NetCDF, y le pega la paleta flood.ct. O sea que el .tif
+        # sale ya como IMAGEN con colormap embebido, no como dato: por eso lo
+        # viste mapdrawer y no geotiff2view.
+        #
+        # Va antes del traslado porque el convertidor escribe junto a la entrada
+        # (OUTPUT=\${INPUT/.nc/.tif}) y aquí /work sí es escribible. Los .tif por
+        # gránulo se quedan en /work y se los lleva la limpieza; solo sobrevive
+        # el fusionado.
+        if ls /work/*.nc > /dev/null 2>&1; then
+            echo '--- Convirtiendo a GeoTIFF ---'
+            for f in /work/*.nc; do
+                \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood2tif.sh "\$f"
+            done
+
+            # Un .tif por gránulo no sirve de vista: la pasada son ~10. El sello
+            # del primero da el nombre, en el formato que metadata.py de
+            # LANOT_tools sabe leer (AAAAMMDD_HHMMSS).
+            PRIMERO=\$(ls /work/*.nc | sort | head -1)
+            SELLO=\$(basename "\$PRIMERO" | grep -oE '_s[0-9]{15}' | head -1)
+            SELLO=\${SELLO#_s}
+            SALIDA=/output_tif/${SAT}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
+
+            echo "--- Fusionando gránulos en \$SALIDA ---"
+            \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_tifmerge.sh -W /work -o "\$SALIDA" /work/*.tif
         fi
 
         echo '--- Trasladando resultados (NetCDF) a Lustre ---'
