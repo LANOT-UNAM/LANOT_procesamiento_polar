@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=acspo_p2g
-#SBATCH --output=logs/acspo_p2g_%j.out
-#SBATCH --error=logs/acspo_p2g_%j.err
+#SBATCH --output=/var/log/lanot/polares/cspp-edr/slurm_acspo_%j.out
+#SBATCH --error=/var/log/lanot/polares/cspp-edr/slurm_acspo_%j.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G

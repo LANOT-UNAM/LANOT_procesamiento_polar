@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=cspp_active_fire
-#SBATCH --output=logs/fire_%j.out
-#SBATCH --error=logs/fire_%j.err
+#SBATCH --output=/var/log/lanot/polares/cspp-edr/slurm_fire_%j.out
+#SBATCH --error=/var/log/lanot/polares/cspp-edr/slurm_fire_%j.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=cspp_cryo_edr
-#SBATCH --output=logs/cryo_%j.out
-#SBATCH --error=logs/cryo_%j.err
+#SBATCH --output=/var/log/lanot/polares/cspp-edr/slurm_cryo_%j.out
+#SBATCH --error=/var/log/lanot/polares/cspp-edr/slurm_cryo_%j.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
