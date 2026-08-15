@@ -47,6 +47,25 @@ falló con código 2, y por dos razones encadenadas que conviene separar.
    trasladar de todos modos: flood trabaja con las bandas reflectivas I01–I05. O sea que el
    `.tif` fusionado **sigue sin ejercitarse**, igual que el bloque de incendios.
 
+**Segunda corrida, ya sobre una pasada diurna** (`--pasada d20260813`, opción nueva; la
+autoselección toma la más reciente y esa era la nocturna): **10 productos en 4m 3s**, y por fin
+se ejercitaron `cspp_viirs_flood2tif.sh` y `cspp_viirs_tifmerge.sh`. Los dos funcionan. Lo que
+falló fue el destino: **`cspp_viirs_tifmerge.sh` no acepta `-o`**. No protesta, pero tampoco
+escribe en la ruta pedida: nombra él la salida —sello de inicio del primer gránulo, de fin del
+último, su propia marca de creación y sufijo `_merged`— y la deja junto a la entrada. O sea que
+la fusión **sí se había hecho** y estaba en `/data/tmp/flood_work_479021`, mientras
+`geotiff/flood` quedaba vacío; sin `-k` se habría borrado sin dejar rastro. Ahora el script
+busca el `*_merged.tif` y lo renombra al nombre que el renderizador filtra
+(`SAT_viirs_flood_FECHA_HORA`), y el resumen distingue "hay `.nc`" de "hay `.nc` y GeoTIFF" —
+antes decía `✅ ÉXITO` sin haber mirado nunca el `.tif`.
+
+Lo que sí quedó confirmado del nombre: los `.nc` de v2.0 llevan `_s<15 dígitos>`
+(`VIIRS-Flood_v2r0_n20_s202608131911067_e…_c….nc`), que es de donde sale el `AAAAMMDD_HHMMSS`.
+
+**A vigilar**: el fusionado pesa **211 MB** por pasada, sin comprimir. Es un Byte con paleta,
+así que un `-co COMPRESS=DEFLATE` lo bajaría muchísimo; hoy son ~400 MB diarios en
+`geotiff/flood` si hay dos pasadas diurnas.
+
 De paso salió que la verificación de "cero productos" estaba mal: usaba `successful_runs`,
 que aquí venía lleno pese a no haber generado nada, así que la pasada nocturna habría dado un
 error falso. Ahora se decide con `VIIRS Flood output files = [...]` (ver "Hallazgos"), y `-k`
@@ -572,6 +591,9 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   únicos que no se duplican.
 - **ATMOS con `-l` no descarga ancillary**, y sin CMCSST cada gránulo aborta y la corrida
   entrega "0 products of 132" con código de salida 0.
+- **`cspp_viirs_tifmerge.sh` no acepta destino.** Ignora `-o` sin protestar, nombra él la
+  salida (`…_s<inicio>_e<fin>_c<creación>_merged.tif`) y la deja junto a la entrada. Hay
+  que buscar el `*_merged.tif` y renombrarlo. Verificado en tahan el 2026-08-14.
 - **`successful_runs` de CSPP Flood no significa que haya productos.** Ahí entra todo
   gránulo cuyo binario terminó en 0, produzca o no: en la pasada nocturna del 2026-08-14
   los cinco aparecieron a la vez en `successful_runs` y en `failed_aoi_runs`, con

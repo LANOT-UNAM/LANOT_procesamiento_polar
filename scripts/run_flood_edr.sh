@@ -363,10 +363,29 @@ apptainer exec \
                 echo \"AVISO: no se pudo derivar el sello temporal de \$PRIMERO\"
                 echo \"       No se fusiona el GeoTIFF; los .nc sí se conservan.\"
             else
-                SALIDA=/output_tif/${SAT}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
+                echo '--- Fusionando gránulos ---'
+                \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_tifmerge.sh -W /work /work/*.tif
+                RC_MERGE=\$?
 
-                echo \"--- Fusionando gránulos en \$SALIDA ---\"
-                \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_tifmerge.sh -W /work -o \"\$SALIDA\" /work/*.tif
+                # tifmerge NO acepta destino: nombra él la salida —el sello de
+                # inicio del primer gránulo, el de fin del último y su propia
+                # marca de creación, con sufijo _merged— y la deja junto a la
+                # entrada, en /work. Pasarle -o no da error y tampoco escribe
+                # nada en la ruta pedida (verificado en tahan el 2026-08-14: la
+                # fusión de los 10 gránulos apareció como
+                # VIIRS-Flood_v2r0_n20_s…_e…_c…_merged.tif dentro de /work, y
+                # geotiff/flood quedó vacío). Así que se busca y se renombra al
+                # nombre que el renderizador filtra: SAT_viirs_flood_FECHA_HORA.
+                FUSIONADO=\$(ls -t /work/*_merged.tif 2>/dev/null | head -1)
+
+                if [ \$RC_MERGE -ne 0 ] || [ -z \"\$FUSIONADO\" ]; then
+                    echo \"AVISO: la fusión no dejó ningún *_merged.tif (código \$RC_MERGE)\"
+                    echo \"       Los .nc sí se conservan; la vista se queda sin GeoTIFF.\"
+                else
+                    SALIDA=/output_tif/${SAT}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
+                    echo \"--- Fusionado \$(basename \"\$FUSIONADO\") -> \$SALIDA ---\"
+                    mv \"\$FUSIONADO\" \"\$SALIDA\"
+                fi
             fi
         fi
 
@@ -383,6 +402,7 @@ if [ $EXIT_CODE -ne 0 ]; then
 fi
 
 NC_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" 2>/dev/null | wc -l)
+TIF_COUNT=$(find "$GEOTIFF_DIR" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null | wc -l)
 
 # ==============================================================================
 # VERIFICACIÓN
@@ -424,6 +444,7 @@ fi
     echo "pasada:    $CLAVE"
     echo "sdr:       $SDR_COUNT archivos de entrada"
     echo "productos: $NC_COUNT archivos .nc"
+    echo "geotiff:   $TIF_COUNT fusionado en $GEOTIFF_DIR"
     echo "duracion:  $DURACION"
     echo "salida:    $OUTPUT_DIR"
     echo "log:       $LOG_FILE"
@@ -442,5 +463,21 @@ if [ "$NC_COUNT" -eq 0 ]; then
     exit 0
 fi
 
+# El .nc es el producto y el .tif fusionado es lo que el renderizador viste. Que
+# falte el segundo no invalida al primero, así que no se cae la etapa ni se borra
+# el marcador — pero tiene que decirse: sin ese archivo, run_polar2grid_edr.sh
+# genera cero vistas de inundaciones y no se queja, porque ahí flood es solo un
+# filtro que no encuentra nada. Así se perdió la fusión del 2026-08-14, que sí se
+# había hecho pero quedó en el directorio de trabajo.
+if [ "$TIF_COUNT" -eq 0 ]; then
+    echo "⚠  $NC_COUNT productos de la pasada $CLAVE en $OUTPUT_DIR ($DURACION)," | tee -a "$LOG_FILE"
+    echo "   pero SIN el GeoTIFF fusionado en $GEOTIFF_DIR."                      | tee -a "$LOG_FILE"
+    echo "   La vista de inundaciones no va a salir. Busca la fusión en el log:"  | tee -a "$LOG_FILE"
+    echo "   grep -i 'fusion' $LOG_FILE"                                          | tee -a "$LOG_FILE"
+    echo "   Marcador: $MARKER"                                                   | tee -a "$LOG_FILE"
+    exit 0
+fi
+
 echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE en $OUTPUT_DIR ($DURACION)" | tee -a "$LOG_FILE"
+echo "   GeoTIFF fusionado: $GEOTIFF_DIR ($TIF_COUNT)"                             | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER" | tee -a "$LOG_FILE"
