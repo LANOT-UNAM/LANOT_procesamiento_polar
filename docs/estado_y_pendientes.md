@@ -12,7 +12,77 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
-## Dónde quedó el 2026-08-15
+## Dónde quedó el 2026-08-15 (cierre de la sesión)
+
+**Nada está empujado.** Quedan **once commits** en la cadena (de `1e5b74f` a `0de1b1b`) y
+**uno** en LANOT_tools (`af02825`, que solo toca comentarios del `.cpt`).
+
+La sesión hizo dos cosas: cerró el tipo de nube, y escribió la orquestación entera junto con
+la instalación. Todo lo nuevo está probado en bucéfalo con eslabones y tarballs simulados;
+**nada de esto ha corrido en tahan todavía**.
+
+### Al retomar el lunes, en orden
+
+**1. `git push` de los dos repositorios**, y `git pull` en tahan.
+
+**2. `obtener_tarballs.sh --registrar`, y va PRIMERO.** Es lo que llena los sha1 del
+manifiesto a partir de los tarballs buenos que ya están en tahan; nacen en `-` porque no se
+inventan. **Registrar antes de limpiar nada**: de un tarball ya borrado no se puede sacar el
+sha1, y esa fila se queda apoyada solo en el destino. Aprovechar para confirmar que el
+estático de ATMOS se llama `CSPP_VIIRS_ATMOS_V1.0_STATIC.tar.gz`, que salió del manual y no
+de haberlo visto en el disco.
+
+Ojo con una limitación conocida: los siete estáticos de SDR se extraen todos sobre `SDR_4_1/`,
+así que `--registrar` guarda un archivo de dentro de cada tarball para distinguirlos. Si dos
+comparten archivo, `--verificar` avisa de la comprobación repetida y hay que corregirla a
+mano. Ese aviso está probado.
+
+**3. `preparar_servidor.sh --verificar` sobre tahan, ANTES de tocar nada.** No cuesta nada y
+es la prueba de que la fase 1 del script viejo estaba incompleta: debería reportar como
+faltantes los ocho `state/` que nunca creó, `vistas/`, `cspp-edr`, `orquestador` y
+`/data/ancillary/atmos`.
+
+**4. `instalar.sh`**, y comprobar que un `run_*.sh` corre desde `/opt/lanot/polares/scripts/`
+sin el clon de por medio. Después, el enlace que ve la antena:
+`ln -sf /opt/lanot/polares/scripts/recibe.sh /home/lanotadm/bin/recibe.sh`.
+
+**5. La cadena de verdad**: `procesar_pasada.sh --clave j01_d20260811_b45236 --force`, contra
+los conteos registrados —22 GeoTIFF y 9 vistas de Level 2— y con dos cosas que mirar en el
+resumen: que las etapas que no tenían nada que hacer salgan como "ya estaba" y no como "ok"
+(se distingue por el sello del marcador, no por el código de salida), y qué pasa con OMPS,
+cuya clave truncada puede resultar ambigua si ese día hubo dos pasadas.
+
+**6. Montar el cron**: `barrer_pendientes.sh` cada 15 minutos y `--novedades` mensual, con las
+rutas de `/opt/lanot/polares/scripts/`. Y de paso cotejar contra un `crontab -l`, porque
+ninguna de las tareas de la tabla de más abajo está confirmada como activa.
+
+### Lo que se cerró hoy
+
+- **El tipo de nube**, con la enumeración del ATBD y la comparación contra CLAVR-x. Ver abajo.
+- **La orquestación**: `procesar_pasada.sh`, `barrer_pendientes.sh` y `recibe.sh` corregido.
+  `plan_orquestacion.md` queda como registro del diseño, con las cuatro cosas que salieron
+  distintas anotadas.
+- **La instalación**: `/opt/lanot/polares` con `instalar.sh`, y `preparar_servidor.sh` en
+  lugar de los dos scripts de despliegue, que se borraron.
+- **El manifiesto de tarballs**, que no existía completo en ningún lado.
+- **`procesar_cadena_completa.sh` se borró**, y con él el árbol `/data/products/*` y la última
+  referencia a `polar2grid_v3.1.sif`. Cierra el pendiente 7.
+
+### Lo que sigue abierto, sin orden
+
+- Confirmar los **59 GeoTIFF y 3 vistas** de Level 1 con una pasada **diurna**. Con la
+  nocturna la cuenta cuadra por aritmética (43 + 14 bandas reflectivas + 2 RGB), no de frente.
+- Las **dos asperezas de la barra de color** (el recuadro negro sobre negro, y `--lat-south`,
+  que casi nunca reserva espacio con rejillas dinámicas). Van con el pendiente 9.
+- **Qué más se pide de ATMOS** (pendiente 14): hay que enseñarle la lista de
+  `--list-products-all` a los colegas. Es decisión de producto, no técnica.
+- **Cómo llega un RAW a tahan.** `recibe.sh` está listo para cuando exista ese camino, pero
+  hoy tahan no está conectado a la antena y el camino —copia, montaje, `rsync`— no está en el
+  repositorio. No bloquea nada: la cadena se prueba con `--clave`.
+- **Criósfera** sigue dándose por bloqueada por la misma clase de argumento que resultó falso
+  en inundaciones. Ver la advertencia sobre `referencia/` en `CLAUDE.md`.
+
+---
 
 ### El DNB nocturno salió bien: `--percentiles` funciona con datos reales
 
