@@ -66,8 +66,13 @@ Uso:
 
 Opciones:
   -f, --force     Ignora el marcador de procesado
+  -p, --pasada    Pasada concreta en vez de la más reciente: la clave completa
+                  (j01_d20260813_b45264) o cualquier trozo que la identifique
       --download  Quita '-l': CSPP baja el ancillary que falte (requiere red)
   -h, --help      Muestra esta ayuda
+
+Pasadas disponibles en $HOST_SDR_IN:
+$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
 EOF
 }
 
@@ -84,6 +89,51 @@ clave_de_pasada() {
     fi
 
     echo "${sat}_${fecha}_${orbita}"
+}
+
+# Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
+claves_disponibles() {
+    find "$HOST_SDR_IN" -maxdepth 1 -name 'GMTCO*.h5' -printf '%f\n' 2>/dev/null |
+        while IFS= read -r nombre; do
+            clave_de_pasada "$nombre" || true
+        done | sort -u
+}
+
+# Deja en ULTIMO_GMTCO un archivo representativo de la pasada: el más reciente si
+# no se pidió ninguna, o el primer gránulo de la que se pida con --pasada. De ahí
+# salen la clave y, donde aplica, la ventana temporal con la que se emparejan los
+# productos que no llevan órbita en el nombre.
+resolver_pasada() {
+    local coinciden sat fecha orbita
+
+    if [ -z "$PASADA" ]; then
+        ULTIMO_GMTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name 'GMTCO*.h5' \
+                            -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+        return 0
+    fi
+
+    # --pasada acepta la clave completa o cualquier trozo que la identifique:
+    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
+    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
+    # inexistente se caza aquí y no a media corrida.
+    mapfile -t coinciden < <(claves_disponibles | grep -F -- "$PASADA" || true)
+
+    if [ "${#coinciden[@]}" -eq 0 ]; then
+        echo "ERROR: Ninguna pasada de $HOST_SDR_IN coincide con '$PASADA'" >&2
+        echo "       Disponibles:" >&2
+        claves_disponibles | sed 's/^/         /' >&2
+        return 1
+    fi
+
+    if [ "${#coinciden[@]}" -gt 1 ]; then
+        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
+        printf '         %s\n' "${coinciden[@]}" >&2
+        return 1
+    fi
+
+    IFS='_' read -r sat fecha orbita <<< "${coinciden[0]}"
+    ULTIMO_GMTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name "GMTCO_${sat}_${fecha}_*_${orbita}_*.h5" \
+                        | sort | head -1)
 }
 
 formato_duracion() {
@@ -103,12 +153,21 @@ formato_duracion() {
 
 FORCE=0
 DOWNLOAD=0
+PASADA=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
         -f|--force)  FORCE=1 ;;
         --download)  DOWNLOAD=1 ;;
         -h|--help)   uso; exit 0 ;;
+        -p|--pasada)
+            if [ $# -lt 2 ]; then
+                echo "ERROR: --pasada necesita un valor" >&2
+                exit 1
+            fi
+            PASADA="$2"
+            shift
+            ;;
         *)
             echo "ERROR: Argumento no reconocido: $1" >&2
             uso >&2
@@ -132,8 +191,7 @@ if [ ! -d "$HOST_SDR_IN" ]; then
 fi
 
 # El GMTCO más reciente define la pasada a procesar
-ULTIMO_GMTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name 'GMTCO*.h5' \
-                    -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+resolver_pasada || exit 1
 
 if [ -z "$ULTIMO_GMTCO" ]; then
     echo "No hay SDR que procesar en $HOST_SDR_IN (no se ven archivos GMTCO*)."
