@@ -120,8 +120,17 @@ From: lanot_base_rocky8.sif
 
     # La ayuda del driver. Se comprueba la SALIDA y no el código: varios
     # ejecutables de CSPP terminan -h con código distinto de 0.
+    #
+    # En una variable y NO en un archivo temporal. La primera versión escribía a
+    # /tmp/heap_help.txt, y Apptainer monta el /tmp del HOST dentro del
+    # contenedor: `sudo apptainer build` dejaba ese archivo de root y el
+    # `apptainer test` posterior, que corre como el usuario, no podía
+    # sobrescribirlo pero sí leerlo. Resultado: el redirect fallaba con
+    # "Permission denied", el `|| true` se tragaba el error y los dos grep
+    # pasaban contra la salida de una corrida ANTERIOR. La prueba decía OK sin
+    # haber ejecutado nada (visto en tahan el 2026-08-15).
     . /opt/cspp_heap/scripts/cspp_heap_env.sh
-    run_heap.bash --help > /tmp/heap_help.txt 2>&1 || true
-    grep -q -- '--sat' /tmp/heap_help.txt
-    grep -q -- '--input' /tmp/heap_help.txt
+    AYUDA=$(run_heap.bash --help 2>&1 || true)
+    echo "$AYUDA" | grep -q -- '--sat'
+    echo "$AYUDA" | grep -q -- '--input'
     echo "  OK run_heap.bash --help"
