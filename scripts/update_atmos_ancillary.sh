@@ -14,7 +14,7 @@
 # cuatro corridas diarias (00z, 06z, 12z, 18z) y el manual (§2.4) pide juntar
 # las cuatro:
 #
-#   17 2,8,14,20 * * * /home/lanotadm/bin/update_atmos_ancillary.sh
+#   17 2,8,14,20 * * * /opt/lanot/polares/scripts/update_atmos_ancillary.sh
 #
 # El podado va incluido en cada corrida: delete_old_anc.sh solo borra lo que
 # pasa de 14 días, así que es idempotente y no hace falta un cron aparte.

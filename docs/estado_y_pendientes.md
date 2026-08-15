@@ -486,7 +486,7 @@ montarlo en cron **cuatro veces al día** (el manual §2.4 lo pide por las cuatr
 del GFS):
 
 ```
-17 2,8,14,20 * * * /home/lanotadm/bin/update_atmos_ancillary.sh
+17 2,8,14,20 * * * /opt/lanot/polares/scripts/update_atmos_ancillary.sh
 ```
 
 Mientras no exista ese cron, `run_atmos_edr.sh` fallará con una fecha nueva, porque usa
