@@ -28,6 +28,29 @@ también quedó ejercitada.
 Las franjas negras horizontales de la mitad norte son la interferencia de antena de siempre
 (ver "Hallazgos"), no un problema del renderizado.
 
+La corrida (`j01_d20260814_b45273`, 1m 18s) dejó **43 GeoTIFF y 1 vista**: M 25, I 11, DNB 7,
+RGB 0. No son los 59 GeoTIFF y 3 vistas que esperaba la nota anterior, y la diferencia se
+explica sola: **de noche no hay bandas reflectivas ni RGB**.
+
+```
+M  25 + 11 reflectivas (M01–M11) = 36
+I  11 +  3 reflectivas (I01–I03) = 14
+DNB 7                            =  7
+RGB 0 +  2                       =  2
+                                   --
+                                   59
+```
+
+O sea que la cuenta de 59, que llevaba sin confirmarse desde que se pasó a un solo algoritmo
+de DNB, **queda verificada por la vía indirecta**: es exactamente lo que sale al sumarle a esta
+pasada las 14 bandas reflectivas y los dos RGB que la noche se lleva. Falta confirmarla
+directamente con una pasada diurna, que es trámite.
+
+Lo importante es **quién filtra los RGB**: los filtra Polar2Grid, que directamente no los
+produce. No salen en negro, así que el código 3 de `geotiff2view` ni tuvo que actuar. La cadena
+de Level 1 se comporta bien de noche sin que nadie lo hubiera previsto explícitamente, y con
+7 GeoTIFF de DNB (6 son ángulos) sale la única vista, que es la que se quería.
+
 ### El tipo de nube: la enumeración autoritativa, y no era ninguna de las dos hipótesis
 
 La comparación con la vista de CLAVR-x de la misma pasada (`j01_d20260813_b45264`) había
