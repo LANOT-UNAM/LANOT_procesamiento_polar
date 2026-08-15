@@ -71,6 +71,35 @@ que aquí venía lleno pese a no haber generado nada, así que la pasada nocturn
 error falso. Ahora se decide con `VIIRS Flood output files = [...]` (ver "Hallazgos"), y `-k`
 conserva también el directorio de trabajo, que es donde quedan los logs por gránulo.
 
+**Y con eso se cerró el renderizado de Level 2**: `run_polar2grid_edr.sh --pasada d20260813`
+entregó 25 GeoTIFF y 11 vistas en 3m 24s, incluidas por primera vez la de incendios y la de
+inundaciones. Las dos se revisaron a ojo:
+
+- **Inundaciones**: correcta. El rótulo dice "NOAA-20 Flood", que es la prueba de que
+  `product_map` tiene su entrada — sin ella `mapdrawer` no tiene respaldo y habría salido
+  "NOAA-20" a secas. La paleta viene embebida en el `.tif`, así que quedó validada la rama de
+  `mapdrawer` de `vestir()`, que se había quedado sin usuarios al retirar los RGB de
+  superficie.
+- **Incendios**: la barra de confianza y el rótulo salen bien, pero los detectados son
+  píxeles sueltos de 375 m sobre fondo negro, así que a pantalla completa la vista se lee
+  como una imagen negra con motas. Habría que dilatar los puntos o componerlos sobre el
+  `true_color` de la misma pasada; es trabajo de `geotiff2view`, no de estos scripts.
+
+**Pendiente que dejó esta revisión**: la vista de inundaciones es **la única en otro marco**.
+Su `.tif` sale de `gdal_translate` del bundle de CSPP y nunca pasa por el remuestreo de
+Polar2Grid, así que es el swath crudo en EPSG:4326 — el log lo dice con números,
+`límites detectados: (-116.353, 48.314, -71.279, -5.020)`, o sea de 48°N a 5°S. No se puede
+superponer con las demás vistas de la pasada y se extiende muy fuera del dominio;
+`--lat-south 11` no lo recorta. Se arreglaría con un `gdalwarp` a `wgs84_geo_375m` —flood es
+banda I— dentro de `run_flood_edr.sh`, antes de dejar el `.tif`. Va con el pendiente 9, que
+es el mismo problema de encuadre.
+
+También quedó una inconsistencia de nombres: la vista de flood es `j01_viirs_flood_…` y el
+resto `noaa20_viirs_…_wgs84_geo_375m`, porque el prefijo de flood lo ponemos nosotros y el del
+resto lo pone Polar2Grid. En `vistas/` el archivo de inundaciones queda ordenado aparte de
+todo lo demás de su pasada. Uniformarlo es cambiar el nombre en `run_flood_edr.sh` y su ERE en
+el renderizador, pero antes hay que revisar que nada en producción dependa del nombre actual.
+
 **Lo que cambió en la cadena**, por si el resumen no cuadra con lo esperado:
 
 | Script | Antes | Ahora |
@@ -118,12 +147,22 @@ sst 1). Los de arriba son los del árbol real de la corrida del 2026-08-13, 17 v
 total.
 
 El 2026-08-14 se revisaron esas 17 vistas y salieron cinco correcciones (ver "Revisión de
-las vistas"). Dos cambian los conteos, y falta volver a correr los scripts para
-confirmarlos:
+las vistas"). Dos cambian los conteos:
 
-- **Level 2**: sin los RGB de superficie, **22 GeoTIFF y 9 vistas**.
+- **Level 2**: **medido el 2026-08-14** sobre `j01_d20260813_b45264`, ya con incendios e
+  inundaciones: **25 GeoTIFF (atmos 7, lsr 14, sst 1, fire 3) y 11 vistas (atmos 6, lsr 2,
+  sst 1, fire 1, flood 1)** en 3m 24s. La predicción de 22 y 9 era de antes de incendios;
+  incendios aporta 3 GeoTIFF y **una sola** vista, porque de sus tres productos solo
+  `confidence_cat` tiene paleta, y flood aporta una vista sin GeoTIFF propio en este script
+  —el suyo lo hizo `run_flood_edr.sh`—.
 - **Level 1**: del DNB se pide un solo algoritmo en vez de cuatro, así que el bloque pasa
-  de 10 a 7 GeoTIFF (6 son los ángulos) y de 4 a 1 vista: **59 GeoTIFF y 3 vistas**.
+  de 10 a 7 GeoTIFF (6 son los ángulos) y de 4 a 1 vista: **59 GeoTIFF y 3 vistas**. Falta
+  volver a correrlo para confirmarlo.
+
+De esa misma corrida salió confirmada **la trampa de la órbita en los incendios**: los
+AFIMG de la pasada se repartieron `b45264` (el primer gránulo) y `b45265` (los otros
+nueve), y el staging por ventana temporal enlazó los diez. Enlazar por órbita, que es como
+se hace con los SDR, habría perdido nueve.
 
 Cada eslabón sabe qué le toca procesar, no repite trabajo y distingue "terminó sin error"
 de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
