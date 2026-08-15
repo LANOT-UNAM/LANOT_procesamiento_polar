@@ -1,0 +1,58 @@
+# tarballs.tsv — manifiesto de los tarballs que necesita la cadena polar.
+#
+# Los tarballs NO se versionan (.gitignore excluye *.tar.gz): pesan decenas de GB y
+# vienen de sitios con registro. Lo que sí se versiona es esta lista, que hasta ahora
+# no existía completa en ningún lado: estaba partida entre los %files de los diez .def
+# y una lista embebida en el difunto deploy_static_data_sdr.sh, y el estático de ATMOS
+# no aparecía en ninguno de los dos.
+#
+# Lo lee contenedores/obtener_tarballs.sh. Formato TSV, una fila por archivo:
+#
+#   rol          bundle   = entrada de `apptainer build`; SE CONSERVA mientras la
+#                           imagen esté viva, porque recompilar es frecuente y volver
+#                           a bajarlo exige pasar por el login del sitio.
+#                estatico = puebla el host una sola vez; SE BORRA tras extraerlo y
+#                           comprobar el destino. Conservarlo duplica en /opt lo que
+#                           ya vive en /data/opt.
+#   slug         Identificador del paquete en la portada de CSPP, que enlaza cada uno
+#                como <slug>_v<version>.shtml. La versión va en la URL, así que el par
+#                (slug, version) es lo que --novedades compara: es clave estable, no
+#                un texto descriptivo que puedan reescribir.
+#   version      La que tenemos instalada, con el formato de esa URL.
+#   archivo      Nombre exacto del tarball.
+#   origen       cimss = https://cimss.ssec.wisc.edu/cspp/download/  (registro)
+#                drl   = https://directreadout.sci.gsfc.nasa.gov/    (otro registro).
+#                RT-STPS se baja de la DRL de la NASA aunque CSPP lo anuncie.
+#   receta       El .def que lo consume, o '-' si no lo consume ninguno.
+#   destino      Dónde se extrae (solo estáticos).
+#   comprobacion Ruta que debe existir y no estar vacía después de extraer. Es lo que
+#                --verificar mira en vez del tarball, una vez borrado. Mejor prueba que
+#                la del .tar.gz: comprueba el estado del que dependen los run_*.sh.
+#   sha1         Se llena con --registrar sobre los tarballs buenos que ya están en
+#                tahan; NO se inventa. '-' significa sin registrar todavía.
+#
+# --registrar llena sha1 y, si está en '-', comprobacion (del primer componente que
+# lista `tar tzf`). Registrar ANTES de borrar nada: de un tarball ya borrado no se
+# puede sacar el sha1, y esa fila se queda apoyada solo en el destino.
+#
+#rol	slug	version	archivo	origen	receta	destino	comprobacion	sha1
+bundle	jpss_sdr	4.1.1	CSPP_SDR_V4.1.tar.gz	cimss	cspp_sdr_v4.1.1	-	-	-
+bundle	jpss_sdr	4.1.1	CSPP_SDR_V4.1.1_patch.tar.gz	cimss	cspp_sdr_v4.1.1	-	-	-
+bundle	rt_stps	7.0_patch1	RT-STPS_7.0.tar.gz	drl	rt_stps_7.0	-	-	-
+bundle	rt_stps	7.0_patch1	RT-STPS_7.0_PATCH_1.tar.gz	drl	rt_stps_7.0	-	-	-
+bundle	polar2grid	3.2	CSPP_POLAR2GRID_V3.2.tar.gz	cimss	polar2grid_v3.2-mapdrawer	-	-	-
+bundle	viirs_atmos	1.0	CSPP_VIIRS_ATMOS_V1.0.tar.gz	cimss	cspp_atmos_edr_v1.0	-	-	-
+bundle	viirs_cryo	1.0	CSPP_VIIRS_CRYO_V1.0.tar.gz	cimss	cspp_cryo_edr_v1.0	-	-	-
+bundle	viirs_lsr	2.0	CSPP_VIIRS_SURFACE_REFLECTANCE_V2.0.tar.gz	cimss	cspp_lsr_v2.0	-	-	-
+bundle	acspo	3.0	CSPP_ACSPO_V3.0.tar.gz	cimss	cspp_acspo_v3.0	-	-	-
+bundle	viirs_fire	2.1	cspp-active-fire-noaa_2.1.tar.gz	cimss	cspp_active_fire_v2.1	-	-	-
+bundle	viirs_flood	2.0	cspp-viirs-flood_2.0.tar.gz	cimss	cspp_flood_v2.0	-	-	-
+bundle	omps_edr	1.0	cspp_omps_l2-1.0.tar.gz	cimss	cspp_omps_l2_v1.0	-	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_npp.tar.gz	cimss	-	/data/opt	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j01.tar.gz	cimss	-	/data/opt	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j02.tar.gz	cimss	-	/data/opt	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_tiles.tar.gz	cimss	-	/data/opt	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_npp.tar.gz	cimss	-	/data/opt	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_j01.tar.gz	cimss	-	/data/opt	-	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_j02.tar.gz	cimss	-	/data/opt	-	-
+estatico	viirs_atmos	1.0	CSPP_VIIRS_ATMOS_V1.0_STATIC.tar.gz	cimss	-	/data/opt	/data/opt/CSPP_ATMOS_1_0/anc/static/Config	-
