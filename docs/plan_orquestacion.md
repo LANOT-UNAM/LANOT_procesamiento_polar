@@ -1,6 +1,9 @@
 # Plan de orquestación
 
-**Escrito el 2026-08-14. Decisiones tomadas, implementación pendiente.**
+**Escrito el 2026-08-14. IMPLEMENTADO el 2026-08-15.** Se conserva como registro del
+diseño; lo que corre está en `scripts/procesar_pasada.sh`, `scripts/barrer_pendientes.sh` y
+`scripts/recibe.sh`. Cuatro cosas salieron distintas de como se planearon, y están anotadas
+donde corresponde con el prefijo **AL IMPLEMENTAR**.
 
 Cómo encadenar los once `run_*.sh` en una cadena automática por pasada. Las decisiones de
 diseño de este documento ya están acordadas; lo que falta es escribirlo. El estado general de
@@ -45,14 +48,22 @@ vez, con reintento automático de lo que falle y un resumen legible por corrida.
   todas las pasadas nocturnas —no hay reflectancia de superficie sin sol— y eso no puede
   detener nada.
 - **Candado global y barrido en cron**, para que la cadena se autorrepare.
-- **El orquestador se ejecuta desde el clon de git**, no desde una copia en
-  `/home/lanotadm/bin`.
+- ~~**El orquestador se ejecuta desde el clon de git**, no desde una copia en
+  `/home/lanotadm/bin`.~~ **AL IMPLEMENTAR: revertido.** El clon mezcla el árbol de trabajo
+  con producción —un `git pull` a media pasada cambia el script en ejecución— así que la
+  cadena se instala en `/opt/lanot/polares` con `scripts/instalar.sh`. `~lanotadm/bin`
+  tampoco: ata la cadena a una cuenta de usuario.
 - **`procesar_cadena_completa.sh` se borra** al entrar el nuevo: su papel declarado era ser la
   plantilla para reunificar la cadena, y eso es justo lo que hace el orquestador.
 
 ---
 
 ## 1. Argumento de pasada en los nueve `run_*.sh`
+
+> **AL IMPLEMENTAR — esto ya estaba hecho.** Entre que se escribió el plan y que se fue a
+> implementar, los nueve ganaron `-p`/`--pasada`, y mejor de como se diseñó aquí: en vez de
+> exigir la clave exacta, resuelven el valor contra `claves_disponibles()`, o sea que aceptan
+> la clave completa o cualquier trozo que la identifique. Eso resolvió solo el caso de OMPS.
 
 Mismo cambio en los nueve, siempre en el mismo sitio: donde hoy se busca el ancla más
 reciente. La clave es la que ya usan internamente, `sat_dfecha_borbita`
@@ -90,9 +101,14 @@ Nuevo. Un archivo RAW como argumento, o `--clave <clave>` para reprocesar una pa
 ingerida. `--force` se propaga a todas las etapas. `--dry-run` imprime el grafo y los comandos
 sin ejecutar nada, que es lo que permite probarlo fuera de tahan.
 
-**Candado.** `flock -n` sobre `/data/tmp/lanot_polares.lock`. Si está tomado, sale con 0 y lo
-anota: la pasada queda pendiente y el barrido la recoge. Es lo que hace que "una pasada a la
-vez" sea cierto y elimina de raíz la ambigüedad de la autoselección.
+**Candado.** `flock -n` sobre `/data/tmp/lanot_polares.lock`. Si está tomado, la pasada queda
+pendiente y el barrido la recoge. Es lo que hace que "una pasada a la vez" sea cierto y
+elimina de raíz la ambigüedad de la autoselección.
+
+> **AL IMPLEMENTAR — sale con 75, no con 0.** Con salida 0 y sin marcador, "había otra pasada
+> en curso" es indistinguible de "falló", y el barrido cuenta intentos: tres choques de
+> candado bastarían para marcar `.fallido` un RAW perfectamente bueno. 75 es `EX_TEMPFAIL`.
+> El barrido además toma su propio candado, para no solaparse consigo mismo.
 
 **Grafo.** Barreras entre niveles, hasta tres etapas simultáneas dentro de cada uno:
 
@@ -105,11 +121,21 @@ RT-STPS(raw)
        └─ OMPS                                                   (desde SDR omps)
 ```
 
+> **AL IMPLEMENTAR — al nivel 4 le faltaban dos entradas.** `run_polar2grid_edr.sh` también
+> consume FIRE y FLOOD (`P2G_FIRE_IN`, `P2G_FLOOD_TIF`). Y OMPS entró al nivel 2, que es
+> donde encaja sin cambiar nada.
+
 Camino crítico ≈ RT-STPS + SDR + 13 min. En serie serían ~26 min después del SDR.
 
 La clave de la pasada sale del GMTCO más reciente en `level1/viirs` **después** de que
 `run_sdr.sh --sensor viirs` termine; de ahí en adelante se le pasa explícita a todas las
 etapas. Los RDR que produjo RT-STPS se descubren en `level0` para saber qué sensores lanzar.
+
+> **AL IMPLEMENTAR — a los RDR hay que NOMBRARLOS, no autoseleccionarlos.** `run_sdr.sh`
+> filtra por edad mínima de 1 minuto al autoseleccionar, así que recién salido de RT-STPS no
+> vería nada y saldría en 0 sin hacer nada: la cadena se cortaría en silencio. El argumento
+> posicional se salta ese filtro. Y hay que saltarse el `RNSCA` suelto, que es el spacecraft
+> diary y no un sensor.
 
 **Errores.** Cada etapa se invoca con `|| codigo=$?` —la forma correcta bajo `set -euo
 pipefail`, que ya usan los once (`run_acspo_edr.sh:226` y equivalentes)— y ninguna aborta a
@@ -152,7 +178,7 @@ cadena.
 **Paso manual, una vez**: la antena invoca una ruta fija. Hay que apuntarla al clon o dejar
 `/home/lanotadm/bin/recibe.sh` como enlace simbólico. Es lo único que no queda en el repo.
 
-## 5. Limpieza que entra con el cambio
+## 5. Limpieza que entra con el cambio  ✅ hecha
 
 - **Borrar `scripts/procesar_cadena_completa.sh`.** Además de estar desactualizado —apunta a
   `cspp_nucaps_v1.0.sif`, que nunca existió, y al árbol `/data/products/*`— tiene siete
@@ -165,7 +191,7 @@ cadena.
   declaran `procesar_cadena_completa.sh` como plantilla a conservar, y actualizar la sección de
   tareas programadas con el barrido.
 
-## Archivos
+## Archivos  ✅ todos escritos
 
 **Nuevos**: `scripts/procesar_pasada.sh`, `scripts/barrer_pendientes.sh`.
 **Modificados**: `scripts/recibe.sh`; los nueve `run_*.sh` sin posicional (`atmos`, `lsr`,
@@ -174,6 +200,16 @@ cadena.
 **Borrado**: `scripts/procesar_cadena_completa.sh`.
 
 ## Verificación
+
+> **AL IMPLEMENTAR.** Los pasos 1 a 3 se hicieron en bucéfalo con once eslabones simulados:
+> los tres desenlaces del resumen (ok con conteos, "ya estaba", "fallo" siguiendo adelante),
+> el paralelismo visible en los tiempos, el candado, el `RNSCA` suelto que no se lanza, la
+> clave truncada de OMPS, el barrido en orden cronológico, el `.fallido` al tercer intento,
+> la contención que no gasta intento, y `recibe.sh` a través del enlace simbólico. Los pasos
+> 4 a 7, los de tahan, siguen pendientes. Ojo con el punto 4: los conteos de Level 1 son
+> **59 y 3 en pasada diurna, 43 y 1 en nocturna** — de noche faltan las 14 bandas
+> reflectivas y los 2 RGB.
+
 
 1. `bash -n` sobre todo lo tocado.
 2. **En la máquina de desarrollo**: `procesar_pasada.sh --dry-run` sobre un nombre de RAW

@@ -389,17 +389,18 @@ falta cotejar contra un `crontab -l` en tahan.
 |---|---|---|---|
 | `update_sdr_daily.sh` | diaria | LUTs de calibración y TLE/GFS de CSPP SDR. Sin esto, la calibración se degrada con los días. | Existe desde antes; **verificar si está en cron** |
 | `update_atmos_ancillary.sh` | 4× al día (`17 2,8,14,20 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Pendiente de montar** |
+| `barrer_pendientes.sh` | cada 15 min (`*/15 * * * *`) | Recoge los RAW que se quedaron atrás: los `run_*.sh` no miran hacia atrás, y una pasada que llegue con el candado tomado se descarta. | **Escrito el 2026-08-15; pendiente de montar** |
+| `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **Escrito el 2026-08-15; pendiente de montar** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
 | Limpieza de productos | por definir | Los `JRR-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
 
-Los `run_*.sh` **no van en cron**: se disparan por pasada. Hoy se invocan a mano; el
-encadenamiento automático está diseñado y falta escribirlo — ver **`plan_orquestacion.md`**,
-que reemplaza la idea de usar `procesar_cadena_completa.sh` como plantilla. Ese plan agrega
-además una tarea de cron: `barrer_pendientes.sh` cada 15 minutos, que es lo que hace que una
-pasada fallida se reintente sola.
+Los `run_*.sh` **no van en cron**: los encadena `procesar_pasada.sh`, que a su vez lo dispara
+`recibe.sh` cuando llega un RAW. Lo único periódico de la cadena es el barrido.
 
-Las tareas de despliegue —`setup_ambiente_rt_stps.sh`, `deploy_static_data_sdr.sh`— se
-ejecutan una sola vez al preparar un servidor, nunca en cron.
+Las rutas del cron son las de la instalación, `/opt/lanot/polares/scripts/`, no las del clon.
+
+La preparación del servidor —`preparar_servidor.sh`— se ejecuta una sola vez, nunca en cron.
+`instalar.sh` va en cada despliegue, a mano.
 
 ---
 
