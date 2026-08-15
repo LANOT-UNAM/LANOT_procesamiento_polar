@@ -316,7 +316,7 @@ fi
 for dir in "$HOST_DYNAMIC" "$HOST_STATIC_BASE/anc" "$HOST_STATIC_BASE/$SENSOR/luts"; do
     if [ ! -d "$dir" ]; then
         echo "ERROR: Directorio de datos auxiliares no encontrado: $dir" >&2
-        echo "       Revisa deploy_static_data_sdr.sh y update_sdr_daily.sh" >&2
+        echo "       Revisa preparar_servidor.sh --verificar y update_sdr_daily.sh" >&2
         exit 1
     fi
 done

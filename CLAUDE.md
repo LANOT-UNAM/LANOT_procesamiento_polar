@@ -36,8 +36,18 @@ bash -n scripts/run_sdr.sh
 # Regenerar config/jpss1.xml (escribe rutas relativas: ejecutar desde la raíz del repo)
 python3 scripts/generar_xml.py
 
-# Preparar el ambiente en un servidor nuevo (crea /data/..., /var/log/lanot/..., extrae XMLs)
-sudo ./scripts/setup_ambiente_rt_stps.sh
+# Inventario de tarballs: qué falta, qué sobra, qué no cuadra (sin red)
+./contenedores/obtener_tarballs.sh
+./contenedores/obtener_tarballs.sh --novedades   # ¿hay versión nueva arriba?
+
+# Preparar un servidor nuevo: directorios, estáticos, XMLs, leapsec, cachés.
+# Una vez por servidor, desde el clon (necesita contenedores/tarballs.tsv).
+./scripts/preparar_servidor.sh --verificar       # audita sin tocar nada
+sudo ./scripts/preparar_servidor.sh              # las seis fases
+sudo ./scripts/preparar_servidor.sh --solo 4     # solo una
+
+# Instalar el código de operación en /opt/lanot/polares. En cada despliegue.
+sudo ./scripts/instalar.sh
 ```
 
 **Estado y pendientes**: `docs/estado_y_pendientes.md` es el documento vivo — qué eslabón se ha probado con datos reales, qué falta y qué preguntas siguen abiertas. Los otros dos documentos de `docs/` describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
@@ -81,7 +91,7 @@ Al tocar rutas o versiones de contenedor, confirmar en qué generación se está
 
 Los `.def` instalan **solo binarios**. Todo lo que cambia con el tiempo o pesa mucho vive en el host y se monta con `--bind`:
 
-- **Estático por software**: `/data/opt/SDR_4_1/{anc,<sensor>/luts}`, `/data/opt/CSPP_ATMOS_1_0/anc/static`, `/data/opt/RT-STPS/rt-stps/config` → se montan sobre la ruta interna equivalente (`/opt/SDR_4_1/...`, etc.). Se despliegan una vez con `scripts/deploy_static_data_sdr.sh`.
+- **Estático por software**: `/data/opt/SDR_4_1/{anc,<sensor>/luts}`, `/data/opt/CSPP_ATMOS_1_0/anc/static`, `/data/opt/RT-STPS/rt-stps/config` → se montan sobre la ruta interna equivalente (`/opt/SDR_4_1/...`, etc.). Se despliegan una vez con `scripts/preparar_servidor.sh` (fases 2 y 3), que extrae los tarballs del manifiesto `contenedores/tarballs.tsv` y **los borra** después de comprobar que el destino quedó poblado: conservarlos duplicaría en `/opt` decenas de GB que ya viven en `/data/opt`. Los bundles de software sí se conservan, porque son la entrada de `apptainer build`.
 - **Paletas**: `/usr/local/share/lanot/colortables` del host se monta sobre el del contenedor cuando existe. `install.sh` de LANOT_tools las copia dentro de la imagen al compilar, así que sin ese montaje **cada CPT nuevo obligaría a recompilar** `polar2grid_v3.2-mapdrawer.sif`. Override: `P2G_COLORTABLES` / `L1G_COLORTABLES`.
 - **El código de LANOT_tools NO se monta: viaja en el `.sif`.** `polar2grid_v3.2-mapdrawer.def` clona de **GitHub** y hace `git checkout` de un commit fijo (`LANOT_TOOLS_COMMIT`), así que cambiar LANOT_tools en el servidor y recompilar **no actualiza nada**, y recompilar sin mover el pin tampoco. La secuencia completa es: commitear, **empujar**, subir el pin en el `.def`, y recompilar. Esto ya costó dos compilaciones perdidas el 2026-08-14. La única excepción son las colortables, que sí entran por el montaje de arriba. Para no volver a descubrirlo hasta producción, el `%post` y el `%test` del `.def` comprueban que existan las banderas que la cadena usa (`--percentiles`, `--lat-south`, `--timestamp-pos`): con `set -e`, un pin viejo tumba la compilación. **Al agregar una bandera nueva en LANOT_tools que use algún `run_*.sh`, agrégala también a esa lista.**
 - **Dinámico**: `/data/ancillary` (LUTs de calibración, TLE, GFS, `common/leapsec.dat`) → refrescado por `scripts/update_sdr_daily.sh` (cron diario, ejecuta `sdr_luts.sh` y `sdr_ancillary.sh` dentro del SIF).
