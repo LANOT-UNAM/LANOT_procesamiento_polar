@@ -138,8 +138,16 @@ Las dos se ven en la vista de inundaciones y no valen una corrida por sí solas:
 3. **Recompilar** `polar2grid_v3.2-mapdrawer.sif` con el pin `f1d0c60`, para que
    `metadata.py` entre a la imagen y la vista deje de rotularse "NOAA-20 VIIRS" a secas.
 4. **Volver a generar la vista de tipo de nube de `j01_d20260813_b45264` y compararla contra
-   la de CLAVR-x de la misma pasada.** Deben coincidir clase por clase, no solo parecerse.
-   Es la prueba que cierra el asunto; hasta entonces la enumeración es lectura del ATBD.
+   la de CLAVR-x de la misma pasada.** Es la prueba que cierra el asunto; hasta entonces la
+   enumeración es lectura del ATBD.
+
+   Y hay que comparar **por significado, no por color**. `referencia/cspp_7_clavrx.sh`, que se
+   trajo el 2026-08-15, muestra que la imagen contra la que comparamos no la hace Polar2Grid
+   —que ahí solo produce GeoTIFF `float32` sobre la misma rejilla `wgs84_geo_750m`— sino
+   `ql_clavrx.sh`, el quicklook del propio bundle de CLAVR-x, con su paleta. Es el mismo
+   patrón de flood. Así que lo que debe coincidir es *dónde* cae cada clase, no el tono: son
+   dos algoritmos, dos listas de clases y dos paletas. Donde CLAVR-x diga Cirrus, la nuestra
+   debe decir hielo delgado; donde diga Water, agua.
 
 ---
 
