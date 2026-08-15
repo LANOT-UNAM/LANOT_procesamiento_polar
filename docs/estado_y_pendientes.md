@@ -85,14 +85,20 @@ inundaciones. Las dos se revisaron a ojo:
   como una imagen negra con motas. Habría que dilatar los puntos o componerlos sobre el
   `true_color` de la misma pasada; es trabajo de `geotiff2view`, no de estos scripts.
 
-**Pendiente que dejó esta revisión**: la vista de inundaciones es **la única en otro marco**.
-Su `.tif` sale de `gdal_translate` del bundle de CSPP y nunca pasa por el remuestreo de
-Polar2Grid, así que es el swath crudo en EPSG:4326 — el log lo dice con números,
-`límites detectados: (-116.353, 48.314, -71.279, -5.020)`, o sea de 48°N a 5°S. No se puede
-superponer con las demás vistas de la pasada y se extiende muy fuera del dominio;
-`--lat-south 11` no lo recorta. Se arreglaría con un `gdalwarp` a `wgs84_geo_375m` —flood es
-banda I— dentro de `run_flood_edr.sh`, antes de dejar el `.tif`. Va con el pendiente 9, que
-es el mismo problema de encuadre.
+**La vista de inundaciones NO está en otro marco**, aunque lo parezca. Se anotó primero que sí
+—su `.tif` sale de `gdal_translate` del bundle de CSPP y nunca pasa por el remuestreo de
+Polar2Grid, y la imagen muestra el swath como un paralelogramo rotado sobre negro— pero los
+números dicen lo contrario. El log de flood reporta
+`límites detectados: (-116.353, 48.314, -71.279, -5.020)` y el GeoTIFF de NDVI de la misma
+pasada, que sí pasó por Polar2Grid en `wgs84_geo_750m`, va de `(-116.3074, 48.3209)` a
+`(-71.2726, -5.0304)`: **la misma extensión, con diferencias de centésimas de grado**. El
+paralelogramo es el swath dibujado dentro del mismo rectángulo que usan todas.
+
+Lo que sí es cierto es que ese rectángulo llega de 48°N a 5°S, muy fuera del dominio — pero
+eso le pasa a **todas** las vistas de la pasada, no a flood: las rejillas de `config/grid.yaml`
+son **dinámicas**, fijan proyección y resolución pero no extensión, así que cada pasada
+enmarca lo que abarque su swath. Es el pendiente 9, y flood no necesita ningún `gdalwarp`
+propio: se arregla cuando se arreglen todas.
 
 También quedó una inconsistencia de nombres: la vista de flood es `j01_viirs_flood_…` y el
 resto `noaa20_viirs_…_wgs84_geo_375m`, porque el prefijo de flood lo ponemos nosotros y el del
