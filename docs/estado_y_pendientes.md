@@ -12,6 +12,47 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## Dónde quedó el 2026-08-14 (cierre de la sesión)
+
+**Lo primero al retomar**: en el repositorio quedaron **cuatro commits sin empujar**
+(`3a29383`, `dd2a5ce`, `59619d7`, `16f933a`). Sin ese `push`, un `git pull` en tahan no trae
+nada. `LANOT_tools` sí quedó al día en el remoto, en `a5d8d98`.
+
+**Secuencia de despliegue, y el orden importa:**
+
+1. `git push` del repositorio (LANOT_tools ya está).
+2. `git pull` de los dos en tahan.
+3. **Recompilar `polar2grid_v3.2-mapdrawer.sif`.** El pin subió a `a5d8d98`, que es donde vive
+   `--percentiles`; sin recompilar, `run_polar2grid_l1.sh` le pasa a `geotiff2view` una
+   bandera que su contenedor no conoce.
+4. Correr la **cadena de Level 2 completa** antes de los renderizadores. Ya no basta con los
+   dos `run_polar2grid_*.sh`: `run_flood_edr.sh` es ahora quien produce el `.tif` de
+   inundaciones que el renderizador viste.
+
+**Qué se probó y qué no.** Con datos reales: la SST corregida (verificada en la pasada
+nocturna del 0814), las paletas, los nombres de producto, y la comparación de los cuatro
+algoritmos de DNB sobre tres pasadas. **Solo con un `apptainer` simulado**, o sea sin
+ejercitar nunca: el bloque de **incendios**, el de **inundaciones**, y el `--percentiles` del
+DNB. Esos tres son lo primero que hay que mirar en la próxima corrida.
+
+**Lo que cambió en la cadena**, por si el resumen no cuadra con lo esperado:
+
+| Script | Antes | Ahora |
+|---|---|---|
+| `run_polar2grid_l1.sh` | 62 GeoTIFF, 6 vistas | 59 y 3 — un solo algoritmo de DNB |
+| `run_polar2grid_edr.sh` | 24 GeoTIFF, 11 vistas | + incendios, + vista de flood, − RGB de superficie |
+| `run_flood_edr.sh` | solo `.nc` | `.nc` + el `.tif` fusionado en `geotiff/flood` |
+
+**Decisiones que quedaron tomadas y no hay que rediscutir**: los RGB salen de Level 1 y no de
+Level 2; del DNB se pide solo `dynamic_dnb`; `evi.cpt` va de 0 a 1; el falso color se llama
+Day Land Cloud Fire. El razonamiento de cada una está en "Revisión de las vistas".
+
+**Lo siguiente, en orden**: la orquestación (`plan_orquestacion.md`, diseñado y sin escribir),
+y criósfera — que hoy se da por bloqueada por falta de lector, pero con el antecedente de
+flood conviene revisar antes si CSPP Cryosphere trae su propio convertidor.
+
+---
+
 ## Lo que corre hoy de punta a punta
 
 Probado en tahan con datos reales, todo sobre la misma pasada: **`j01_d20260811_b45236`**

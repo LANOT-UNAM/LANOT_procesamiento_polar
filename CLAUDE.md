@@ -83,6 +83,7 @@ Los `.def` instalan **solo binarios**. Todo lo que cambia con el tiempo o pesa m
 
 - **Estático por software**: `/data/opt/SDR_4_1/{anc,<sensor>/luts}`, `/data/opt/CSPP_ATMOS_1_0/anc/static`, `/data/opt/RT-STPS/rt-stps/config` → se montan sobre la ruta interna equivalente (`/opt/SDR_4_1/...`, etc.). Se despliegan una vez con `scripts/deploy_static_data_sdr.sh`.
 - **Paletas**: `/usr/local/share/lanot/colortables` del host se monta sobre el del contenedor cuando existe. `install.sh` de LANOT_tools las copia dentro de la imagen al compilar, así que sin ese montaje **cada CPT nuevo obligaría a recompilar** `polar2grid_v3.2-mapdrawer.sif`. Override: `P2G_COLORTABLES` / `L1G_COLORTABLES`.
+- **El código de LANOT_tools NO se monta: viaja en el `.sif`.** `polar2grid_v3.2-mapdrawer.def` clona de **GitHub** y hace `git checkout` de un commit fijo (`LANOT_TOOLS_COMMIT`), así que cambiar LANOT_tools en el servidor y recompilar **no actualiza nada**, y recompilar sin mover el pin tampoco. La secuencia completa es: commitear, **empujar**, subir el pin en el `.def`, y recompilar. Esto ya costó dos compilaciones perdidas el 2026-08-14. La única excepción son las colortables, que sí entran por el montaje de arriba. Para no volver a descubrirlo hasta producción, el `%post` y el `%test` del `.def` comprueban que existan las banderas que la cadena usa (`--percentiles`, `--lat-south`, `--timestamp-pos`): con `set -e`, un pin viejo tumba la compilación. **Al agregar una bandera nueva en LANOT_tools que use algún `run_*.sh`, agrégala también a esa lista.**
 - **Dinámico**: `/data/ancillary` (LUTs de calibración, TLE, GFS, `common/leapsec.dat`) → refrescado por `scripts/update_sdr_daily.sh` (cron diario, ejecuta `sdr_luts.sh` y `sdr_ancillary.sh` dentro del SIF).
 - **Datos**: entradas y salidas se montan en puntos genéricos (`/input`, `/input_sdr`, `/output`, `/output_data`, `/work`) para que el script del contenedor no vea rutas del host.
 
@@ -93,6 +94,19 @@ Cada `run_*.sh` sigue el mismo patrón: `apptainer exec` con los binds, y dentro
 Cada `.def` crea un symlink genérico (`/opt/cspp_sdr` → `SDR_4_1`, `/opt/polar2grid` → `polar2grid_v_3_2`, …) para que los scripts no dependan del nombre exacto de la carpeta que produce el tarball.
 
 `polar2grid_v3.2-mapdrawer.def` es especial: además de Polar2Grid clona `github.com/asierra/LANOT_tools` (mapdrawer/geotiff2view, para logos y timestamps sobre las imágenes) y copia `/usr/local/share/lanot/{colortables,gpkg,logos,docs}` **desde el host de compilación**, así que solo se puede construir en una máquina que ya tenga esos recursos instalados.
+
+### Cuando un eslabón no encuentra camino, mirar primero `referencia/`
+
+Antes de concluir que a la cadena nueva le falta una herramienta, revisar cómo lo resuelve
+hoy el servidor viejo. El 2026-08-14 se dio por bloqueado el renderizado de inundaciones
+—"no hay lector en Polar2Grid"— cuando `referencia/cspp_6_flood.sh` mostraba que **las
+vistas de flood nunca salieron de Polar2Grid**: las hace `flood2tif.sh`, del propio bundle
+de CSPP. Ese script exporta `POLAR2GRID_HOME` sin llegar a usarlo nunca, lo que refuerza la
+pista falsa. En sentido contrario, `referencia/test_render_fires.sh` es un intento fallido
+y sus trucos (quitar `_cspp_dev`, pasar `j01` a `J01`) resultaron innecesarios y uno de
+ellos dañino. O sea: `referencia/` sirve tanto para encontrar la solución como para
+descartar callejones, pero hay que leerlo entero antes de copiarlo. Queda pendiente
+aplicar esto a **criósfera**, que hoy se da por bloqueada por la misma clase de argumento.
 
 ### Convenciones específicas del dominio
 
