@@ -343,6 +343,18 @@ sello_de_archivo() {
 #
 # El mismo satélite aparece con varios nombres según el producto: j01 en los
 # SDR, NOAA20 en los VIIRS_750M de ATMOS, n20 en los de Flood y N20 en ACSPO.
+# El código de satélite tal como lo escribe Polar2Grid en sus salidas: noaa20 y
+# no j01. run_flood_edr.sh nombra su .tif con esta misma forma —comparten árbol y
+# filtro—, así que las dos definiciones tienen que moverse juntas.
+sat_polar2grid() {
+    case "$1" in
+        npp) echo npp    ;;
+        j01) echo noaa20 ;;
+        j02) echo noaa21 ;;
+        *)   echo "$1"   ;;
+    esac
+}
+
 de_otro_satelite() {
     case "$SAT" in
         j01) echo "$1" | grep -qiE "j02|noaa21|n21|npp" ;;
@@ -449,6 +461,7 @@ if ! CLAVE=$(clave_de_pasada "$ULTIMO_GMTCO"); then
 fi
 
 IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
+SAT_VISTA=$(sat_polar2grid "$SAT")
 
 echo "=== POLAR2GRID v3.2 | pasada $CLAVE ==="
 
@@ -721,7 +734,7 @@ vestir "Vistas de incendios" "$HOST_FIRE_TIF_OUT" /output_fire_tif /output_fire_
 # con add_colormap.py, así que solo hay que vestirlo. Es el único usuario que le
 # queda a la rama de mapdrawer desde que se retiraron los RGB de superficie.
 vestir "Vistas de inundaciones" "$HOST_FLOOD_TIF_IN" /output_flood_tif /output_flood_img \
-       mapdrawer "${SAT}_viirs_flood_${FECHA#d}_" 0
+       mapdrawer "${SAT_VISTA}_viirs_flood_${FECHA#d}_" 0
 
 # ==============================================================================
 # VERIFICACIÓN

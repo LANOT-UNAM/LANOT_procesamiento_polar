@@ -100,11 +100,20 @@ son **dinámicas**, fijan proyección y resolución pero no extensión, así que
 enmarca lo que abarque su swath. Es el pendiente 9, y flood no necesita ningún `gdalwarp`
 propio: se arregla cuando se arreglen todas.
 
-También quedó una inconsistencia de nombres: la vista de flood es `j01_viirs_flood_…` y el
-resto `noaa20_viirs_…_wgs84_geo_375m`, porque el prefijo de flood lo ponemos nosotros y el del
-resto lo pone Polar2Grid. En `vistas/` el archivo de inundaciones queda ordenado aparte de
-todo lo demás de su pasada. Uniformarlo es cambiar el nombre en `run_flood_edr.sh` y su ERE en
-el renderizador, pero antes hay que revisar que nada en producción dependa del nombre actual.
+También quedó una inconsistencia de nombres, **resuelta el 2026-08-14**: la vista de flood
+salía como `j01_viirs_flood_…` y el resto como `noaa20_viirs_…`, porque el prefijo de flood lo
+ponemos nosotros y el del resto lo pone Polar2Grid, así que en `vistas/` el archivo de
+inundaciones quedaba ordenado aparte de todo lo demás de su pasada. Ahora los dos scripts
+traducen el código con la misma función `sat_polar2grid()` (`j01`→`noaa20`, `j02`→`noaa21`,
+`npp`→`npp`): `run_flood_edr.sh` la usa para nombrar el `.tif` y `run_polar2grid_edr.sh` para
+construir el ERE con que lo busca. **Las dos definiciones tienen que moverse juntas**; están
+duplicadas a propósito, como el resto de los ayudantes, porque cada `run_*.sh` es autónomo.
+
+El código de los SDR (`j01`) se sigue usando para todo lo demás: leer nombres de entrada,
+armar la clave de la pasada y nombrar el marcador. Lo que cambia de forma es solo la salida
+que comparte árbol con Polar2Grid. Los archivos ya generados con el nombre viejo **no se
+renombran solos**: hay un `j01_viirs_flood_20260813_191106.tif` de 211 MB en `geotiff/flood` y
+su JPG en `vistas/flood` que hay que mover o borrar a mano.
 
 **Lo que cambió en la cadena**, por si el resumen no cuadra con lo esperado:
 

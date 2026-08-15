@@ -102,6 +102,20 @@ clave_de_pasada() {
     echo "${sat}_${fecha}_${orbita}"
 }
 
+# El código de satélite de los SDR (j01) no es el que usa Polar2Grid en los
+# nombres de sus salidas (noaa20). El .tif de flood cae en el mismo árbol que
+# esas salidas y lo filtra el mismo renderizador, así que se nombra como ellas;
+# si no, en vistas/ queda ordenado aparte de todo lo demás de su propia pasada.
+# El código de los SDR se sigue usando para leer los nombres de ENTRADA.
+sat_polar2grid() {
+    case "$1" in
+        npp) echo npp    ;;
+        j01) echo noaa20 ;;
+        j02) echo noaa21 ;;
+        *)   echo "$1"   ;;
+    esac
+}
+
 # Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
 claves_disponibles() {
     find "$INPUT_SDR_DIR" -maxdepth 1 -name 'GITCO*.h5' -printf '%f\n' 2>/dev/null |
@@ -221,6 +235,7 @@ if ! CLAVE=$(clave_de_pasada "$ULTIMO_GITCO"); then
 fi
 
 IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
+SAT_VISTA=$(sat_polar2grid "$SAT")
 
 echo "=== CSPP VIIRS Flood v2.0 | pasada $CLAVE ==="
 
@@ -395,7 +410,7 @@ apptainer exec \
                     echo \"AVISO: la fusión no dejó ningún *_merged.tif (código \$RC_MERGE)\"
                     echo \"       Los .nc sí se conservan; la vista se queda sin GeoTIFF.\"
                 else
-                    SALIDA=/output_tif/${SAT}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
+                    SALIDA=/output_tif/${SAT_VISTA}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
                     echo \"--- Fusionado \$(basename \"\$FUSIONADO\") -> \$SALIDA ---\"
                     mv \"\$FUSIONADO\" \"\$SALIDA\"
                 fi
