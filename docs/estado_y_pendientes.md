@@ -616,8 +616,20 @@ peor información.
 
 De paso quedan aclarados dos límites de Polar2Grid, por si el tema vuelve:
 
-- **`JRR-CloudMask` no se puede remallar**: de los 110 productos de ATMOS en la ventana, P2G
-  3.2 solo entrega 7, y la máscara no está entre ellos.
+- ~~**`JRR-CloudMask` no se puede remallar**: de los 110 productos de ATMOS en la ventana, P2G
+  3.2 solo entrega 7, y la máscara no está entre ellos.~~ **FALSO, corregido el 2026-08-15.**
+  Sí se puede: `CloudMask` está disponible, junto con `CloudMaskBinary`, `CloudProbability`,
+  `CloudType`, `CldOptDpth`, `CldTopPres`, la microfísica (`CloudMicroEffRad`, `IWP`, `LWP`),
+  `Dust`, `Smoke`, `SnowIce`, `Fire_Mask`, `Shadow_Mask` y un centenar más. El error vino de
+  usar `--list-products`, que **oculta** una sección: `_print_list_products()` imprime tres
+  listas —las de P2G, las de usuario y las de Satpy— y la de Satpy solo sale con
+  **`--list-products-all`**, con un `*` delante que es marca y no parte del nombre. Los 7 que
+  veíamos son el catálogo curado de P2G para ese lector, no el límite de lo que se puede leer.
+  Verificado además de punta a punta: `-p CloudType` produce su GeoTIFF sin problema.
+
+  Lo que **no** cambia es el obstáculo de fondo para combinar dos productos en malla: las
+  rejillas de `config/grid.yaml` siguen siendo dinámicas y cada llamada da una extensión
+  distinta (ver el párrafo de más abajo). Se destrabó el insumo, no el enmascarado.
 - **Las banderas de calidad de LSR tampoco son alcanzables**: el lector `viirs_edr` expone
   16 productos de los `SurfRefl_*.nc` —los 14 `surf_refl_*` más NDVI y EVI— y las QF no
   están ahí.
@@ -708,10 +720,23 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   NetCDF con mínimo −199 y máximo 201, y 9.9 % dentro de −1..1 en el GeoTIFF. Los porcentajes
   de los dos no son comparables — pero un 0 % en el NetCDF sí es concluyente, porque ahí no
   hay ni siquiera algo que enmascarar.
+- **`--list-products` de Polar2Grid oculta la mitad de lo disponible.** `_print_list_products()`
+  (`polar2grid/glue.py:162`) imprime tres listas —productos de P2G, de usuario y de Satpy— y
+  **la de Satpy solo aparece con `--list-products-all`**. Los nombres salen con un `*` delante,
+  que es marca de "no estándar" y no parte del nombre: a `-p` va el nombre pelón. Son pedibles
+  y funcionan; lo único que les falta es estar en el catálogo curado de P2G, que es lo que
+  determina la lista por omisión. Esta confusión hizo dar por imposible el remallado de
+  `JRR-CloudMask` (pendiente 12).
+- **`-p` reemplaza la lista por omisión, no la extiende.** Al pedir un producto que no está en
+  el catálogo hay que enumerar también los que ya salían, o se pierden.
 - **`gdalinfo` está en el host, no hace falta contenedor**; y si se usa uno, hay que montar
   `/data` con `--bind`, porque `apptainer exec` a secas no lo monta y GDAL contesta
   `not recognized as being in a supported file format`, que parece un archivo corrupto y no
-  lo es.
+  lo es. **Lo mismo vale para cualquier ruta fuera de los montajes**: una prueba a mano de
+  `polar2grid.sh` con `--grid-configs` apuntando al `grid.yaml` del repositorio en `$HOME`
+  murió con `FileNotFoundError` y un `ERROR: Unexpected error` que no decía nada. Los
+  `run_*.sh` no tropiezan con esto porque montan el YAML explícitamente
+  (`--bind "$GRID_CONFIG:/config/grid.yaml:ro"`); es un riesgo de las pruebas ad hoc.
 - **`cspp_viirs_tifmerge.sh` no acepta destino.** Ignora `-o` sin protestar, nombra él la
   salida (`…_s<inicio>_e<fin>_c<creación>_merged.tif`) y la deja junto a la entrada. Hay
   que buscar el `*_merged.tif` y renombrarlo. Verificado en tahan el 2026-08-14.

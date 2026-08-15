@@ -122,7 +122,11 @@ PALETAS=(
     "CldTopPres:cld_top_press.cpt"
     "CldEmiss:cld_emiss.cpt"
     "CloudPhase:phase.cpt"
-    "CloudType:cloud_type.cpt"
+    # cloud_type_jrr.cpt y no cloud_type.cpt: el producto JRR declara
+    # valid_range 0-8 y el de CLAVR-x llega a 12, así que la paleta de trece
+    # clases anunciaría cuatro categorías que aquí no pueden ocurrir. La de
+    # CLAVR-x se conserva intacta porque la usa la cadena vieja.
+    "CloudType:cloud_type_jrr.cpt"
     "AOD550:aod550.cpt"
     "Total_Cloud_Fraction:cloud_fraction.cpt"
     "NDVI:ndvi.cpt"
@@ -644,8 +648,24 @@ P2G_DATOS="$P2G_COMUN --dtype float32 --no-enhance"
 P2G_FIRE_DATOS="--grid-configs /config/grid.yaml -g $GRID_375 --method nearest --dtype float32 --no-enhance"
 
 if [ "$EDR_COUNT" -gt 0 ]; then
+    # Los siete primeros son los que entregaba la lista por omisión, o sea que
+    # enumerarlos no cambia nada; el octavo es la ganancia.
+    #
+    # CloudType NO está en el catálogo de Polar2Grid para este lector: es un
+    # "producto no estándar de Satpy", de los que `--list-products` **oculta** y
+    # solo enseña `--list-products-all` (con un `*` delante, que es marca y no
+    # parte del nombre). Se pide igual y funciona — verificado en tahan el
+    # 2026-08-14—, pero como no está en el catálogo no entra por omisión, y por
+    # eso hay que enumerar: pasar -p reemplaza la lista por omisión, no la
+    # extiende.
+    #
+    # Si resulta que la vista de tipo de nube no la usa nadie, basta quitar
+    # CloudType de esta línea; lo demás sigue igual.
+    ATMOS_DATOS="AOD550 CldBaseHght CldTopHght CldTopTemp CloudLayer CloudPhase"
+    ATMOS_DATOS="$ATMOS_DATOS Total_Cloud_Fraction CloudType"
+
     en_contenedor "Productos atmosféricos (EDR)" \
-        "cd /output_tif && polar2grid.sh -v -r viirs_edr -w geotiff $P2G_DATOS -f /input_edr/JRR-*.nc /input_sdr/GMTCO*.h5"
+        "cd /output_tif && polar2grid.sh -v -r viirs_edr -w geotiff -p $ATMOS_DATOS $P2G_DATOS -f /input_edr/JRR-*.nc /input_sdr/GMTCO*.h5"
 else
     echo "  ⚠ Sin productos de ATMOS para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
