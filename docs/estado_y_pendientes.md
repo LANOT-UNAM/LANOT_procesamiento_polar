@@ -1,11 +1,15 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-14**
+**Última actualización: 2026-08-15**
 
 **Los once eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
 que faltaba. Del ozono queda pendiente solo la vista, que exige Polar2Grid 3.3
 (pendiente 8).
+
+El **doceavo**, HEAP, se escribió el 2026-08-15 y **no ha corrido**: es la rama de sondeos
+de CrIS+ATMS, que va más allá de lo que hace el servidor viejo desde este repositorio. Ver
+el pendiente 4.
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
@@ -58,6 +62,9 @@ ninguna de las tareas de la tabla de más abajo está confirmada como activa.
 
 ### Lo que se cerró hoy
 
+- **HEAP escrito** (pendiente 4): receta, `run_heap_edr.sh`, podador de caché y cableado.
+  Probado solo con contenedor y árbol simulados; en tahan no ha corrido nada. Es el único
+  eslabón que **no** tiene equivalente en el servidor viejo corriendo desde este repositorio.
 - **El tipo de nube**, con la enumeración del ATBD y la comparación contra CLAVR-x. Ver abajo.
 - **La orquestación**: `procesar_pasada.sh`, `barrer_pendientes.sh` y `recibe.sh` corregido.
   `plan_orquestacion.md` queda como registro del diseño, con las cuatro cosas que salieron
@@ -459,6 +466,7 @@ falta cotejar contra un `crontab -l` en tahan.
 |---|---|---|---|
 | `update_sdr_daily.sh` | diaria | LUTs de calibración y TLE/GFS de CSPP SDR. Sin esto, la calibración se degrada con los días. | Existe desde antes; **verificar si está en cron** |
 | `update_atmos_ancillary.sh` | 4× al día (`17 2,8,14,20 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Pendiente de montar** |
+| `update_heap_ancillary.sh` | semanal (`40 3 * * 0`) | **Solo poda.** HEAP baja su GFS por su cuenta al correr, pero el manual (§1.6.3) avisa que no lo borra nunca. Sin esto, `/data/ancillary/heap` crece indefinidamente. | **Escrito el 2026-08-15; pendiente de montar** |
 | `barrer_pendientes.sh` | cada 15 min (`*/15 * * * *`) | Recoge los RAW que se quedaron atrás: los `run_*.sh` no miran hacia atrás, y una pasada que llegue con el candado tomado se descarta. | **Escrito el 2026-08-15; pendiente de montar** |
 | `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **Escrito el 2026-08-15; pendiente de montar** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
@@ -638,17 +646,48 @@ y perdió su bandera `--no-render`.
 puerta de atrás —ahora del lado de Polar2Grid— y la vista salía con fondo rosa. Ya corregido
 a `$P2G_DATOS`; el detalle está en los hallazgos.
 
-### 4. HEAP (rama ATMS/CrIS)
-El tarball está en `/opt/contenedores/CSPP_HEAP_V3.0.tar.gz` y el manual en
-`docs/manuals/`. Antes hay que validar la rama que nunca se ha ejercitado:
+### 4. HEAP (rama ATMS/CrIS) — escrito el 2026-08-15, sin probar
+
+`contenedores/cspp_heap_v3.0.def`, `scripts/run_heap_edr.sh` y
+`scripts/update_heap_ancillary.sh` ya existen y están cableados (manifiesto,
+`preparar_servidor.sh` y nivel 2 de `procesar_pasada.sh`). **Nada de esto ha corrido**: ni la
+compilación, ni el script, ni los dos eslabones de Level 1 de los que depende.
+
+Al retomarlo, en este orden:
 
 ```bash
-scripts/run_sdr.sh --sensor atms
-scripts/run_sdr.sh --sensor cris
+./contenedores/construir.sh cspp_heap_v3.0       # y apptainer test
+# la prueba del propio manual (§3.3), antes que la nuestra: 48 NetCDF
+scripts/run_sdr.sh --sensor cris                  # nunca se ha ejercitado
+scripts/run_sdr.sh --sensor atms                  # tampoco
+scripts/run_heap_edr.sh
 ```
 
-HEAP descarga su propio ancillary dinámico (con `lftp`), así que repite el patrón de
-ATMOS: caché propio, modo local y descargador en cron.
+La prueba del manual va primero a propósito: si falla, el problema es el contenedor y no el
+script, y separarlos ahorra el rato de no saber cuál de los dos mirar.
+
+Cinco cosas del diseño que conviene tener presentes al depurar:
+
+- **NPP quedó fuera.** HEAP 3.0 retiró el soporte a S-NPP (§1.2). El script sale en 0 con un
+  aviso, no en 1: es trabajo imposible, no un fallo, y el orquestador no debe contarlo como
+  error en cada sobrevuelo de NPP. Si algún día hace falta NPP, la única vía es un HEAP 2.x
+  aparte.
+- **El nombre de misión no es el del archivo**: `-s n21` para lo que los SDR llaman `j02`.
+- **CrIS y ATMS se emparejan por tiempo**, con traslape de intervalos, porque la órbita no se
+  cruza entre instrumentos y porque los dos SDR salen agregados: sus bordes no coinciden.
+  La pasada la fija CrIS (`GCRSO*`).
+- **El ancillary va al revés que en ATMOS.** HEAP baja su GFS solo, al correr; lo que no hace
+  es borrarlo (§1.6.3). Por eso `update_heap_ancillary.sh` solo poda, y `run_heap_edr.sh`
+  corre **con** red. Si una pasada sale sin productos, la primera sospecha es el GFS: sin dos
+  pronósticos que acoten la ventana, HEAP avisa y salta esos gránulos.
+- **Es el único contenedor de EDR sobre Rocky 8**, porque §1.3 declara 8.10 como SO destino y
+  el paquete es binario puro. No "uniformarlo" a la 9 sin probar.
+
+Sin resolver: **la vista**. Los NUCAPS-EDR son retrievals por FOR —puntos dispersos de unos
+50 km—, no un swath de imagen, así que la rejilla de 750 m no viene al caso. Antes de decidir
+nada hay que ver qué expone el lector `nucaps` de Polar2Grid 3.2 con `--list-products` sobre
+una pasada real. Mientras tanto `run_heap_edr.sh` produce `.nc` y nada más, como el resto de
+los `run_*_edr.sh`.
 
 ### 5. Productos duplicados
 `/data/output/jpss/level2/atmosphere` crece con cada reproceso: los `JRR-*` llevan campo

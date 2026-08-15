@@ -77,6 +77,7 @@ DIRS_775=(
     /data/output/jpss/level2/fires
     /data/output/jpss/level2/flood
     /data/output/jpss/level2/omps
+    /data/output/jpss/level2/sounder
     /data/output/jpss/geotiff/m_bands
     /data/output/jpss/geotiff/i_bands
     /data/output/jpss/geotiff/dnb
@@ -102,6 +103,7 @@ DIRS_775=(
     /data/output/jpss/state/cspp-active-fire
     /data/output/jpss/state/cspp-flood
     /data/output/jpss/state/cspp-omps
+    /data/output/jpss/state/cspp-heap
     /data/output/jpss/state/polar2grid
     /data/output/jpss/state/polar2grid_l1
     /data/tmp
@@ -118,6 +120,7 @@ DIRS_775=(
     /data/ancillary/atmos
     /data/ancillary/acspo
     /data/ancillary/active_fire_cache
+    /data/ancillary/heap
 )
 
 DIRS_755=(
@@ -458,7 +461,10 @@ verificar() {
 
     echo ""
     echo "Cachés de ancillary:"
-    for d in /data/ancillary /data/ancillary/atmos; do
+    # El de HEAP no lo llena la fase 6 ni ningún cron: lo puebla el propio
+    # driver la primera vez que corre una pasada, así que vacío es lo normal
+    # hasta entonces.
+    for d in /data/ancillary /data/ancillary/atmos /data/ancillary/heap; do
         if [ -d "$RAIZ$d" ] && [ -n "$(ls -A "$RAIZ$d" 2>/dev/null)" ]; then
             echo "  ✓ $d con contenido"
         else

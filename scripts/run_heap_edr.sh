@@ -1,0 +1,544 @@
+#!/bin/bash
+#SBATCH --job-name=heap_edr
+#SBATCH --cpus-per-task=4
+#SBATCH --output=/var/log/lanot/polares/cspp-edr/slurm_heap_%j.log
+# ==============================================================================
+# LANOT - UNAM | CSPP HEAP v3.0 (Level 1 → Level 2, sondeos NUCAPS)
+# ==============================================================================
+#
+# SDR de CrIS y ATMS → perfiles atmosféricos de temperatura, humedad, ozono y
+# gases traza en 100 niveles de presión, más parámetros de estabilidad (CAPE,
+# CIN, índice de levantamiento), radiancias limpiadas de nube (CCR) y radiación
+# de onda larga saliente (OLR).
+#
+# Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR de
+# CrIS y, si ya fue procesada con éxito, avisa y no hace nada. Una pasada se
+# identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
+#
+# Las cuatro entradas van al MISMO directorio (manual §1.6, Tabla 1):
+#   CrIS  SCRIF*.h5 + GCRSO*.h5
+#   ATMS  TATMS*.h5 + GATMO*.h5
+# Los dos instrumentos son obligatorios: el modo HR_IRMW combina infrarrojo y
+# microondas, y sin ATMS no hay recuperación que hacer.
+#
+# DOS TRAMPAS que esta versión trae y conviene no redescubrir:
+#
+#   1. La 3.0 RETIRÓ el soporte a S-NPP (§1.2): solo n21, j01, m03 y m01. Una
+#      pasada de NPP sale con un aviso y código 0 —no es un fallo, es que no hay
+#      trabajo posible—, para que el orquestador no la cuente como error.
+#
+#   2. El nombre del satélite NO es el de los SDR: HEAP pide 'n21' donde CSPP
+#      SDR escribe 'j02'. NOAA-20 sí coincide en los dos lados.
+#
+# La órbita NO se cruza entre instrumentos: el mismo sobrevuelo lleva un b#####
+# distinto según el sensor (verificado con VIIRS ÷ OMPS el 2026-08-13). Por eso
+# la pasada la fija CrIS y los SDR de ATMS se emparejan por TIEMPO, enlazando
+# los que se traslapan con la ventana de la pasada.
+#
+# El ancillary dinámico (GFS 0.5° en GRIB2) lo baja el propio driver a
+# /data/ancillary/heap, que se monta en /anc. Ese caché NO se purga solo
+# (§1.6.3): de eso se encarga update_heap_ancillary.sh, en cron.
+#
+# Uso:
+#   ./run_heap_edr.sh                     # la pasada más reciente pendiente
+#   ./run_heap_edr.sh --force             # reprocesa aunque ya tenga marcador
+#   ./run_heap_edr.sh -p j01_d20260811    # una pasada concreta
+#
+# Variables de entorno (para pruebas o rutas alternas):
+#   HEAP_CRIS_IN     Entrada CrIS     (def. /data/output/jpss/level1/cris)
+#   HEAP_ATMS_IN     Entrada ATMS     (def. /data/output/jpss/level1/atms)
+#   HEAP_OUT         Salida .nc       (def. /data/output/jpss/level2/sounder)
+#   HEAP_STATE_DIR   Marcadores .done (def. /data/output/jpss/state/cspp-heap)
+#   HEAP_CONTAINER   Imagen .sif      (def. /opt/containers/cspp_heap_v3.0.sif)
+#   HEAP_CACHE       Caché dinámico   (def. /data/ancillary/heap)
+#   HEAP_WORK_BASE   Raíz de trabajo  (def. /data/tmp)
+#   HEAP_LOG_BASE    Raíz de logs     (def. /var/log/lanot/polares)
+#   HEAP_OPTS        Banderas extra para run_heap.bash
+#
+# ==============================================================================
+
+set -euo pipefail
+
+SIF_HEAP="${HEAP_CONTAINER:-/opt/containers/cspp_heap_v3.0.sif}"
+
+HOST_CRIS_IN="${HEAP_CRIS_IN:-/data/output/jpss/level1/cris}"
+HOST_ATMS_IN="${HEAP_ATMS_IN:-/data/output/jpss/level1/atms}"
+HOST_EDR_OUT="${HEAP_OUT:-/data/output/jpss/level2/sounder}"
+STATE_DIR="${HEAP_STATE_DIR:-/data/output/jpss/state/cspp-heap}"
+HOST_CACHE="${HEAP_CACHE:-/data/ancillary/heap}"
+
+WORK_BASE="${HEAP_WORK_BASE:-/data/tmp}"
+LOG_DIR="${HEAP_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
+
+CORES="${SLURM_CPUS_PER_TASK:-4}"
+JOB_ID="${SLURM_JOB_ID:-$$}"
+
+# ==============================================================================
+# FUNCIONES
+# ==============================================================================
+
+uso() {
+    cat <<EOF
+Uso:
+  $0             Procesa la pasada más reciente de $HOST_CRIS_IN
+  $0 --force     Reprocesa aunque ya exista el marcador
+
+Opciones:
+  -f, --force   Ignora el marcador de procesado
+  -p, --pasada  Pasada concreta en vez de la más reciente: la clave completa
+                (j01_d20260813_b45264) o cualquier trozo que la identifique
+  -h, --help    Muestra esta ayuda
+
+Requiere que run_sdr.sh haya corrido para los DOS sensores:
+  scripts/run_sdr.sh --sensor cris
+  scripts/run_sdr.sh --sensor atms
+
+HEAP 3.0 no procesa S-NPP (manual §1.2): solo NOAA-20 y NOAA-21.
+
+Pasadas disponibles en $HOST_CRIS_IN:
+$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
+EOF
+}
+
+# GCRSO_j01_d20260811_t1947330_e2003097_b45236_c2026...h5 -> j01_d20260811_b45236
+clave_de_pasada() {
+    local nombre sat fecha orbita
+    nombre=$(basename "$1")
+    IFS='_' read -r _ sat fecha _ _ orbita _ <<< "$nombre"
+    if [[ "$fecha" != d* ]] || [[ "$orbita" != b* ]]; then
+        return 1
+    fi
+    echo "${sat}_${fecha}_${orbita}"
+}
+
+# Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
+claves_disponibles() {
+    find "$HOST_CRIS_IN" -maxdepth 1 -name 'GCRSO*.h5' -printf '%f\n' 2>/dev/null |
+        while IFS= read -r nombre; do
+            clave_de_pasada "$nombre" || true
+        done | sort -u
+}
+
+# Deja en ULTIMO_GCRSO un archivo representativo de la pasada: el más reciente
+# si no se pidió ninguna, o el primer gránulo de la que se pida con --pasada. De
+# ahí salen la clave y la ventana temporal con la que se emparejan los SDR de
+# ATMS, que llevan otra órbita.
+resolver_pasada() {
+    local coinciden sat fecha orbita
+
+    if [ -z "$PASADA" ]; then
+        ULTIMO_GCRSO=$(find "$HOST_CRIS_IN" -maxdepth 1 -name 'GCRSO*.h5' \
+                            -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+        return 0
+    fi
+
+    # --pasada acepta la clave completa o cualquier trozo que la identifique:
+    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
+    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
+    # inexistente se caza aquí y no a media corrida.
+    mapfile -t coinciden < <(claves_disponibles | grep -F -- "$PASADA" || true)
+
+    if [ "${#coinciden[@]}" -eq 0 ]; then
+        echo "ERROR: Ninguna pasada de $HOST_CRIS_IN coincide con '$PASADA'" >&2
+        echo "       Disponibles:" >&2
+        claves_disponibles | sed 's/^/         /' >&2
+        return 1
+    fi
+
+    if [ "${#coinciden[@]}" -gt 1 ]; then
+        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
+        printf '         %s\n' "${coinciden[@]}" >&2
+        return 1
+    fi
+
+    IFS='_' read -r sat fecha orbita <<< "${coinciden[0]}"
+    ULTIMO_GCRSO=$(find "$HOST_CRIS_IN" -maxdepth 1 -name "GCRSO_${sat}_${fecha}_*_${orbita}_*.h5" \
+                        | sort | head -1)
+}
+
+# Del nombre de un SDR saca su intervalo como "AAAAMMDDHHMMSS AAAAMMDDHHMMSS".
+# Código 1 si el nombre no tiene la forma esperada.
+#   GCRSO_j01_d20260811_t1947330_e2003097_b45236_... -> 20260811194733 20260812200309
+#
+# Los campos t/e traen décimas de segundo (7 dígitos), que se descartan. Si la
+# hora final es menor que la inicial, el archivo cruzó la medianoche.
+#
+# Las comparaciones numéricas van con [ ] y no con [[ ]] a propósito: los sellos
+# de antes de las 10:00 UTC empiezan con cero (t0947330) y [[ ]] los interpreta
+# como octal, con lo que aborta con "value too great for base". [ ] los lee en
+# base 10 siempre.
+intervalo_de() {
+    local nombre fecha tini tfin fecha_fin
+    nombre=$(basename "$1")
+    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
+
+    if [[ "$fecha" != d* ]] || [[ "$tini" != t* ]] || [[ "$tfin" != e* ]]; then
+        return 1
+    fi
+
+    fecha="${fecha#d}"; tini="${tini#t}"; tfin="${tfin#e}"
+
+    if [ "$tfin" -lt "$tini" ]; then
+        fecha_fin=$(date -u -d "${fecha} +1 day" +%Y%m%d)
+    else
+        fecha_fin="$fecha"
+    fi
+
+    echo "${fecha}${tini:0:6} ${fecha_fin}${tfin:0:6}"
+}
+
+# Enlaza un archivo en el staging. Se prefiere el enlace DURO: algunas
+# herramientas recorren la entrada con "find -type f", que no encuentra enlaces
+# simbólicos (son -type l), y entonces reportan que no hay archivos aunque estén
+# a la vista. El enlace duro es indistinguible de un archivo normal y no cuesta
+# espacio. Si origen y destino están en sistemas de archivos distintos, no se
+# puede, y se recurre al simbólico.
+enlazar() {
+    ln -f "$1" "$2" 2>/dev/null || ln -sf "$1" "$2"
+}
+
+# Enlaza en el staging los SDR de ATMS que se TRASLAPAN con la ventana de la
+# pasada de CrIS. No sirve emparejar por órbita —el b##### cambia de un
+# instrumento a otro— ni exigir que el sello caiga dentro de la ventana, como
+# hacen run_lsr_edr.sh y run_cryo_edr.sh: allá la entrada son gránulos sueltos,
+# un punto en el tiempo, mientras que aquí los SDR salen AGREGADOS (un archivo
+# por pasada), así que el de ATMS es un intervalo y sus bordes no tienen por qué
+# coincidir con los de CrIS.
+#
+# Se buscan tres fechas —la anterior, la de la pasada y la siguiente— porque un
+# archivo de ATMS puede empezar del otro lado de la medianoche.
+#
+# Deduplicación por el campo de creación (_c<sello>): reprocesar en Level 1 deja
+# dos archivos del mismo gránulo y hay que quedarse con el más nuevo.
+enlazar_atms() {
+    local destino="$1" enlazados=0 f nombre ini fin clave d
+    local -A elegido=()
+    local fechas="$FECHA_PREV $FECHA_NUM $FECHA_SIG"
+    local vistas=""
+
+    shopt -s nullglob
+    for d in $fechas; do
+        case " $vistas " in *" $d "*) continue ;; esac
+        vistas="$vistas $d"
+
+        for f in "$HOST_ATMS_IN"/TATMS_"${SAT}"_d"${d}"_*.h5 \
+                 "$HOST_ATMS_IN"/GATMO_"${SAT}"_d"${d}"_*.h5; do
+            nombre=$(basename "$f")
+            read -r ini fin < <(intervalo_de "$nombre") || continue
+            [ -n "$ini" ] || continue
+
+            # Traslape de intervalos, no pertenencia de un punto
+            [ "$ini" -le "$VENTANA_FIN" ] && [ "$fin" -ge "$VENTANA_INI" ] || continue
+
+            clave=$(echo "$nombre" | sed -E 's/_c[0-9]+_/_c_/')
+            if [ -z "${elegido[$clave]:-}" ] || [ "$f" -nt "${elegido[$clave]}" ]; then
+                elegido[$clave]="$f"
+            fi
+        done
+    done
+    shopt -u nullglob
+
+    for f in "${elegido[@]}"; do
+        enlazar "$f" "$destino"/
+        enlazados=$((enlazados + 1))
+    done
+
+    echo "$enlazados"
+}
+
+formato_duracion() {
+    local s="$1"
+    if [ "$s" -ge 3600 ]; then
+        printf '%dh %dm %ds' $((s / 3600)) $(((s % 3600) / 60)) $((s % 60))
+    elif [ "$s" -ge 60 ]; then
+        printf '%dm %ds' $((s / 60)) $((s % 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
+# ==============================================================================
+# ARGUMENTOS
+# ==============================================================================
+
+FORCE=0
+PASADA=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -f|--force) FORCE=1 ;;
+        -h|--help)  uso; exit 0 ;;
+        -p|--pasada)
+            if [ $# -lt 2 ]; then
+                echo "ERROR: --pasada necesita un valor" >&2
+                exit 1
+            fi
+            PASADA="$2"
+            shift
+            ;;
+        *)
+            echo "ERROR: Argumento no reconocido: $1" >&2
+            uso >&2
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+START_EPOCH=$(date '+%s')
+
+# Staging y directorio de trabajo son HERMANOS, no anidados: el driver borra lo
+# que encuentra bajo -w al terminar, así que un staging dentro se lo llevaría por
+# delante junto con sus temporales.
+HOST_WORK="${WORK_BASE}/heap_work_${JOB_ID}"
+STAGING_DIR="${WORK_BASE}/heap_staging_${JOB_ID}"
+
+# ==============================================================================
+# SELECCIÓN DE LA PASADA
+# ==============================================================================
+
+if [ ! -d "$HOST_CRIS_IN" ]; then
+    echo "ERROR: Directorio de SDR de CrIS no encontrado: $HOST_CRIS_IN" >&2
+    echo "       Corre antes: run_sdr.sh --sensor cris" >&2
+    exit 1
+fi
+
+resolver_pasada || exit 1
+
+if [ -z "$ULTIMO_GCRSO" ]; then
+    echo "No hay SDR de CrIS que procesar en $HOST_CRIS_IN (no se ven archivos GCRSO*)."
+    exit 0
+fi
+
+if ! CLAVE=$(clave_de_pasada "$ULTIMO_GCRSO"); then
+    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GCRSO")" >&2
+    exit 1
+fi
+
+IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
+
+echo "=============================================================================="
+echo "CSPP HEAP v3.0 (NUCAPS) | pasada $CLAVE"
+echo "=============================================================================="
+
+# ==============================================================================
+# ¿ESTE SATÉLITE ESTÁ SOPORTADO?
+# ==============================================================================
+# Va antes que el marcador: si la respuesta es que no, no hay nada que consultar.
+# HEAP pide su propio nombre de misión, que no es el de los SDR (§1.2).
+
+case "$SAT" in
+    j01) MISION=j01 ;;
+    j02) MISION=n21 ;;
+    npp)
+        echo ""
+        echo "ℹ  HEAP 3.0 retiró el soporte a S-NPP (manual §1.2): solo procesa"
+        echo "   n21, j01, m03 y m01. La pasada $CLAVE no se puede sondear con"
+        echo "   esta versión; la única vía sería conservar un HEAP 2.x aparte."
+        echo ""
+        echo "   No hay nada que hacer."
+        exit 0
+        ;;
+    *)
+        echo "ERROR: Satélite no reconocido en la clave $CLAVE: '$SAT'" >&2
+        echo "       Se esperaba j01 (NOAA-20), j02 (NOAA-21) o npp." >&2
+        exit 1
+        ;;
+esac
+
+echo "  Misión HEAP: $MISION  (los SDR la nombran $SAT)"
+
+# ==============================================================================
+# ¿YA FUE PROCESADA?
+# ==============================================================================
+
+MARKER="${STATE_DIR}/${CLAVE}.done"
+
+if [ -f "$MARKER" ] && [ "$FORCE" -eq 0 ]; then
+    echo ""
+    echo "ℹ  La pasada $CLAVE ya fue procesada:"
+    while IFS= read -r linea; do
+        echo "   $linea"
+    done < "$MARKER"
+    echo ""
+    echo "   No hay nada que hacer. Usa --force para reprocesarla."
+    exit 0
+fi
+
+if [ -f "$MARKER" ]; then
+    echo "--force: se reprocesa a pesar del marcador existente"
+fi
+
+# ==============================================================================
+# VALIDACIÓN DEL AMBIENTE
+# ==============================================================================
+
+if [ ! -f "$SIF_HEAP" ]; then
+    echo "ERROR: Contenedor no encontrado: $SIF_HEAP" >&2
+    exit 1
+fi
+
+if [ ! -d "$HOST_ATMS_IN" ]; then
+    echo "ERROR: Directorio de SDR de ATMS no encontrado: $HOST_ATMS_IN" >&2
+    echo "       HR_IRMW combina infrarrojo y microondas: sin ATMS no hay sondeo." >&2
+    echo "       Corre antes: run_sdr.sh --sensor atms" >&2
+    exit 1
+fi
+
+# ==============================================================================
+# STAGING DE LA PASADA
+# ==============================================================================
+# El driver recibe un directorio y procesa todo lo que encuentre, así que se
+# enlaza únicamente lo de esta pasada. Los enlaces pueden acabar siendo
+# simbólicos si origen y destino están en sistemas de archivos distintos, y por
+# eso más abajo se montan además los dos directorios de origen sobre sí mismos:
+# sin ese bind el contenedor ve los nombres pero no los archivos, y el driver
+# los da por procesados sin abrir ninguno (verificado en tahan el 2026-08-13 con
+# OMPS: 39 gránulos "listos" en el mismo segundo y "0 products of 20").
+
+mkdir -p "$STAGING_DIR" "$HOST_WORK" "$HOST_EDR_OUT" "$HOST_CACHE" "$LOG_DIR" "$STATE_DIR"
+trap 'rm -rf "$HOST_WORK" "$STAGING_DIR"' EXIT
+
+CRIS_COUNT=0
+
+shopt -s nullglob
+for prefijo in SCRIF GCRSO; do
+    for f in "$HOST_CRIS_IN"/${prefijo}_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
+        enlazar "$f" "$STAGING_DIR"/
+        CRIS_COUNT=$((CRIS_COUNT + 1))
+    done
+done
+shopt -u nullglob
+
+if [ "$CRIS_COUNT" -eq 0 ]; then
+    echo "ERROR: No se enlazó ningún SDR de CrIS de la pasada $CLAVE" >&2
+    echo "       Se esperaban SCRIF*/GCRSO* en $HOST_CRIS_IN" >&2
+    exit 1
+fi
+
+# La ventana de la pasada sale del GCRSO agregado; las tres fechas acotan la
+# búsqueda de los SDR de ATMS, que pueden caer del otro lado de la medianoche.
+VENTANA_INI=""; VENTANA_FIN=""
+read -r VENTANA_INI VENTANA_FIN < <(intervalo_de "$ULTIMO_GCRSO") || true
+
+if [ -z "${VENTANA_FIN:-}" ]; then
+    echo "ERROR: No se pudo derivar la ventana temporal de $(basename "$ULTIMO_GCRSO")" >&2
+    exit 1
+fi
+
+FECHA_NUM="${FECHA#d}"
+FECHA_PREV=$(date -u -d "${FECHA_NUM} -1 day" +%Y%m%d)
+FECHA_SIG=$(date -u -d "${FECHA_NUM} +1 day" +%Y%m%d)
+
+ATMS_COUNT=$(enlazar_atms "$STAGING_DIR")
+
+LOG_FILE="$LOG_DIR/heap_${TIMESTAMP}_${CLAVE}.log"
+
+echo "  Ventana:  $VENTANA_INI – $VENTANA_FIN" | tee -a "$LOG_FILE"
+echo "  CrIS:     $CRIS_COUNT archivos"        | tee -a "$LOG_FILE"
+echo "  ATMS:     $ATMS_COUNT archivos"        | tee -a "$LOG_FILE"
+echo "  Caché:    $HOST_CACHE"                 | tee -a "$LOG_FILE"
+echo "  Salida:   $HOST_EDR_OUT"               | tee -a "$LOG_FILE"
+echo "  Hilos:    $CORES"                      | tee -a "$LOG_FILE"
+
+if [ "$ATMS_COUNT" -eq 0 ]; then
+    echo "❌ ERROR: No hay SDR de ATMS que se traslapen con la pasada $CLAVE" | tee -a "$LOG_FILE"
+    echo "   El modo HR_IRMW combina infrarrojo y microondas: sin ATMS no hay" | tee -a "$LOG_FILE"
+    echo "   sondeo. Corre: run_sdr.sh --sensor atms"                          | tee -a "$LOG_FILE"
+    echo "   Ojo: la órbita de ATMS NO es la de CrIS, el emparejamiento es por" | tee -a "$LOG_FILE"
+    echo "   tiempo. Busca en $HOST_ATMS_IN algo de esa ventana."               | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+# ==============================================================================
+# PROCESAMIENTO
+# ==============================================================================
+# El manual pide directorio de trabajo limpio en cada ejecución: HOST_WORK nace
+# vacío y se descarta al final, así que eso se cumple solo. Los productos se
+# piden en /work con --dest y de ahí se mueven a la salida DESPUÉS de contarlos:
+# no se publica lo que no se ha verificado.
+#
+# Ojo con las comillas: el guion viaja como UNA sola cadena entrecomillada, así
+# que toda comilla doble interior tiene que ir escapada. Una sin escapar parte el
+# guion y bash recibe argumentos de más.
+
+echo "" | tee -a "$LOG_FILE"
+echo ">>> Ejecutando run_heap.bash (misión $MISION, modo HR_IRMW)..." | tee -a "$LOG_FILE"
+
+EXIT_CODE=0
+apptainer exec \
+    --bind "$STAGING_DIR:/input" \
+    --bind "$HOST_CRIS_IN:$HOST_CRIS_IN" \
+    --bind "$HOST_ATMS_IN:$HOST_ATMS_IN" \
+    --bind "$HOST_WORK:/work" \
+    --bind "$HOST_CACHE:/anc" \
+    --pwd /work \
+    "$SIF_HEAP" /bin/bash -c "
+        export HDF5_USE_FILE_LOCKING=FALSE
+        export LC_ALL=C
+        source \$CSPP_HEAP_HOME/scripts/cspp_heap_env.sh
+        run_heap.bash -s $MISION -i /input -m HR_IRMW -o RO \
+                      -p $CORES -w /work -d /anc ${HEAP_OPTS:-}
+    " >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
+
+DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "❌ ERROR: CSPP HEAP falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
+    echo "   Revisa el log: $LOG_FILE"                                  | tee -a "$LOG_FILE"
+    echo "   Se conservan $HOST_WORK y $STAGING_DIR"                    | tee -a "$LOG_FILE"
+    trap - EXIT
+    exit $EXIT_CODE
+fi
+
+# ==============================================================================
+# VERIFICACIÓN Y ENTREGA
+# ==============================================================================
+# El código de salida no basta: estos drivers pueden terminar en 0 sin producir
+# nada. Con --maxdepth 1 se cuenta solo lo entregado en /work y no lo que pueda
+# quedar dentro del temporal que el propio driver crea y poda.
+
+mapfile -t PRODUCTOS < <(find "$HOST_WORK" -maxdepth 1 -type f -name 'NUCAPS-*.nc' | sort)
+NC_COUNT=${#PRODUCTOS[@]}
+
+if [ "$NC_COUNT" -eq 0 ]; then
+    echo "❌ ERROR: HEAP terminó sin error pero no generó productos."          | tee -a "$LOG_FILE"
+    echo "   Sospecha número uno, el ancillary: §1.6.3 dice que si no hay dos" | tee -a "$LOG_FILE"
+    echo "   pronósticos GFS que acoten la ventana, se emite un aviso y los"   | tee -a "$LOG_FILE"
+    echo "   gránulos afectados NO se procesan. Empieza por:"                  | tee -a "$LOG_FILE"
+    echo "   grep -iE 'gfs|warning|ancillary' $LOG_FILE"                       | tee -a "$LOG_FILE"
+    echo "   y revisa que $HOST_CACHE tenga un directorio yyyy_mm_dd_jdy"      | tee -a "$LOG_FILE"
+    echo "   de la fecha de la pasada."                                        | tee -a "$LOG_FILE"
+    echo "   Si los gránulos salen todos con la misma marca de tiempo, no"     | tee -a "$LOG_FILE"
+    echo "   llegó a abrirlos: revisa que $HOST_CRIS_IN y $HOST_ATMS_IN se"    | tee -a "$LOG_FILE"
+    echo "   vean dentro del contenedor."                                      | tee -a "$LOG_FILE"
+    echo "   Se conservan $HOST_WORK y $STAGING_DIR"                           | tee -a "$LOG_FILE"
+    trap - EXIT
+    exit 1
+fi
+
+EDR_COUNT=$(printf '%s\n' "${PRODUCTOS[@]}" | grep -c 'NUCAPS-EDR' || true)
+CCR_COUNT=$(printf '%s\n' "${PRODUCTOS[@]}" | grep -c 'NUCAPS-CCR' || true)
+OLR_COUNT=$(printf '%s\n' "${PRODUCTOS[@]}" | grep -c 'NUCAPS-OLR' || true)
+
+mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
+
+{
+    echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "pasada:    $CLAVE"
+    echo "satelite:  $SAT (misión HEAP $MISION)"
+    echo "cris:      $CRIS_COUNT archivos"
+    echo "atms:      $ATMS_COUNT archivos"
+    echo "edr:       $EDR_COUNT archivos"
+    echo "ccr:       $CCR_COUNT archivos"
+    echo "olr:       $OLR_COUNT archivos"
+    echo "duracion:  $DURACION"
+    echo "salida:    $HOST_EDR_OUT"
+    echo "log:       $LOG_FILE"
+} > "$MARKER"
+
+echo "" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE (EDR $EDR_COUNT, CCR $CCR_COUNT, OLR $OLR_COUNT) en $DURACION" | tee -a "$LOG_FILE"
+echo "   Salida:   $HOST_EDR_OUT" | tee -a "$LOG_FILE"
+echo "   Marcador: $MARKER"       | tee -a "$LOG_FILE"

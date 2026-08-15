@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# procesar_pasada.sh — encadena los once run_*.sh de una pasada.
+# procesar_pasada.sh — encadena los doce run_*.sh de una pasada.
 #
 # Hasta ahora el encadenamiento era un humano: ningún run_*.sh invoca a otro y
 # las dependencias solo existían como mensajes de error dirigidos al operador.
@@ -14,7 +14,7 @@
 #
 #   RT-STPS(raw)
 #     └─ nivel 1: SDR de cada RDR que RT-STPS haya producido
-#          ├─ nivel 2: ATMOS · ACSPO · FIRE · FLOOD · OMPS · P2G_L1
+#          ├─ nivel 2: ATMOS · ACSPO · FIRE · FLOOD · OMPS · HEAP · P2G_L1
 #          │     └─ nivel 3: LSR · CRYO            (necesitan ATMOS)
 #          │          └─ nivel 4: P2G_EDR          (rinde todo lo anterior)
 #
@@ -25,7 +25,7 @@
 # reflectancia de superficie sin sol— y eso no puede detener a las demás. Cada
 # etapa se invoca con `|| codigo=$?`, que es la forma correcta bajo set -e.
 #
-# Variables de entorno: las de los once run_*.sh se respetan tal cual, y este
+# Variables de entorno: las de los doce run_*.sh se respetan tal cual, y este
 # script lee las mismas *_STATE_DIR para poder leer los marcadores.
 #   MAX_PARALELO   Etapas simultáneas por nivel (def. 3)
 #   LOCK_FILE      Candado global (def. /data/tmp/lanot_polares.lock)
@@ -56,6 +56,7 @@ DIR_ACSPO="${ACSPO_STATE_DIR:-$ESTADO/cspp-acspo}"
 DIR_FIRE="${FIRE_STATE_DIR:-$ESTADO/cspp-active-fire}"
 DIR_FLOOD="${FLOOD_STATE_DIR:-$ESTADO/cspp-flood}"
 DIR_OMPS="${OMPS_STATE_DIR:-$ESTADO/cspp-omps}"
+DIR_HEAP="${HEAP_STATE_DIR:-$ESTADO/cspp-heap}"
 DIR_LSR="${LSR_STATE_DIR:-$ESTADO/cspp-lsr}"
 DIR_CRYO="${CRYO_STATE_DIR:-$ESTADO/cspp-cryo}"
 DIR_P2G_L1="${L1G_STATE_DIR:-$ESTADO/polar2grid_l1}"
@@ -115,7 +116,8 @@ clave_de_pasada() {
 # La clave de OMPS no puede ser la de VIIRS: el mismo sobrevuelo lleva otra
 # órbita según el instrumento (b45236 en VIIRS, b45237 en OMPS). Se le pasa la
 # clave truncada, que el -p de los run_*.sh resuelve contra las pasadas que de
-# verdad estén en su directorio.
+# verdad estén en su directorio. Lo mismo vale para HEAP, cuya pasada la fija
+# CrIS.
 clave_truncada() {
     echo "${1%_b*}"
 }
@@ -140,7 +142,7 @@ clave_sensor() {
 # Una tarea es una cadena con campos separados por tabulador:
 #   etiqueta <TAB> marcador <TAB> script <TAB> arg...
 # El marcador se mira antes y después para distinguir "corrió y produjo" de "ya
-# estaba hecho", que por código de salida son indistinguibles: los once
+# estaba hecho", que por código de salida son indistinguibles: los doce
 # devuelven 0 en los dos casos.
 
 correr_tarea() {
@@ -249,6 +251,7 @@ marcador_de() {
         fire)     echo "$DIR_FIRE/$CLAVE.done"               ;;
         flood)    echo "$DIR_FLOOD/$CLAVE.done"              ;;
         omps)     echo "$DIR_OMPS/$CLAVE_OMPS.done"          ;;
+        heap)     echo "$DIR_HEAP/$CLAVE_HEAP.done"          ;;
         lsr)      echo "$DIR_LSR/$CLAVE.done"                ;;
         cryo)     echo "$DIR_CRYO/$CLAVE.done"               ;;
         p2g_l1)   echo "$DIR_P2G_L1/$CLAVE.done"             ;;
@@ -257,7 +260,7 @@ marcador_de() {
     esac
 }
 
-# Del marcador salen la duración y los conteos, sin tener que tocar los once
+# Del marcador salen la duración y los conteos, sin tener que tocar los doce
 # scripts. Las claves varían entre ellos, así que se toma todo lo que no sea
 # metadato: 'atmos: 7  lsr: 3' o 'productos: 110'.
 resumen_de_marcador() {
@@ -394,6 +397,7 @@ touch "$MARCA"
 
 CLAVE=""
 CLAVE_OMPS=""
+CLAVE_HEAP=""
 
 # ==============================================================================
 # RT-STPS Y SDR  (solo si se entró por un RAW)
@@ -455,10 +459,12 @@ else
 fi
 
 CLAVE_OMPS="$(clave_truncada "$CLAVE")"
+CLAVE_HEAP="$CLAVE_OMPS"
 
 echo ""
 echo "  Pasada:      $CLAVE"
 echo "  Clave OMPS:  $CLAVE_OMPS  (otra órbita para el mismo sobrevuelo)"
+echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS)"
 
 # ==============================================================================
 # NIVELES 2, 3 Y 4
@@ -475,6 +481,7 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
     "$(tarea fire   "$DIR_FIRE/$CLAVE.done"        run_active_fire_edr.sh "$CLAVE")" \
     "$(tarea flood  "$DIR_FLOOD/$CLAVE.done"       run_flood_edr.sh       "$CLAVE")" \
     "$(tarea omps   "$DIR_OMPS/$CLAVE_OMPS.done"   run_omps_edr.sh        "$CLAVE_OMPS")" \
+    "$(tarea heap   "$DIR_HEAP/$CLAVE_HEAP.done"   run_heap_edr.sh        "$CLAVE_HEAP")" \
     "$(tarea p2g_l1 "$DIR_P2G_L1/$CLAVE.done"      run_polar2grid_l1.sh   "$CLAVE")"
 
 ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \

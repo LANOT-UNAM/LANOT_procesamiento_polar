@@ -1,0 +1,124 @@
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+#
+# Es la de la serie 8 y no la 9 como los demás EDR, a propósito: el manual
+# (§1.3) declara Rocky 8.10 como sistema destino, que es exactamente lo que
+# fija lanot_base_rocky8.sif. La 9 aparece como "también probado en 9.6" y la
+# nuestra es 9.8, así que la 8 es la que coincide de verdad con lo que SSEC
+# valida. HEAP se distribuye solo como binarios —no hay fuentes— y eso hace que
+# el ABI del sistema importe más que en los paquetes que se compilan.
+From: lanot_base_rocky8.sif
+
+%labels
+    Base lanot_base_rocky8.sif
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP HEAP EDR Version 3.0 - NUCAPS de CrIS+ATMS (Rocky 8)
+    Version 3.0-LANOT
+
+%help
+    CSPP HEAP v3.0: corre el algoritmo NUCAPS sobre los SDR de CrIS y ATMS y
+    entrega perfiles atmosféricos de temperatura, humedad, ozono, agua líquida y
+    gases traza en 100 niveles de presión, más parámetros de estabilidad (CAPE,
+    CIN, índice de levantamiento), radiancias limpiadas de nube (CCR) y
+    radiación de onda larga saliente (OLR).
+
+    Entradas (§1.6, Tabla 1), las cuatro en el MISMO directorio:
+      CrIS  SCRIF*.h5 (radiancias) + GCRSO*.h5 (geolocalización)
+      ATMS  TATMS*.h5 (temperatura de antena) + GATMO*.h5
+
+    Salidas (§1.7):
+      NUCAPS-EDR_v3r2_<sat>_s*_e*_c*.nc
+      NUCAPS-CCR-AR_v3r2_<sat>_*.nc
+      NUCAPS-OLR_v3r2_<sat>_*.nc     (solo con -o RO)
+
+    DOS TRAMPAS que el script de la cadena tiene que manejar:
+
+    1. La 3.0 RETIRÓ el soporte a S-NPP (§1.2). Solo quedan n21, j01 (JPSS) y
+       m03, m01 (Metop). Una pasada de NPP no se puede procesar con esta imagen.
+
+    2. El nombre del satélite NO es el de los SDR: HEAP pide 'n21' donde CSPP
+       SDR escribe 'j02'. NOAA-20 sí coincide ('j01' de los dos lados).
+
+    El caché de ancillary dinámico (GFS 0.5° en GRIB2) va montado en /anc y se
+    pasa con -d /anc. No se usa el default de CSPP_DYNAMIC_ANCIL_DIR, que es
+    $CSPP_HEAP_HOME/data/dynanc: eso queda dentro del .sif, que es de solo
+    lectura. Ver scripts/run_heap_edr.sh.
+
+    Verificación tras compilar:  apptainer test cspp_heap_v3.0.sif
+
+    Prueba de verdad, con los datos del propio paquete (§3.3):
+      tar -xzf CSPP_HEAP_TESTDATA_V3.0.tar.gz
+      cd nucaps_test_data && mkdir -p work/anc && cd work
+      run_heap.bash -s n21 -i ../input -o RO -p 4 -d $PWD/anc
+      # deben salir 48 NetCDF, 16 por tipo
+
+%files
+    CSPP_HEAP_V3.0.tar.gz /opt/
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    # Lo que el manual (§1.3) pide y la base 8 no trae: perl para los guiones
+    # del paquete y lftp para bajar el ancillary dinámico.
+    dnf install -y --setopt=install_weak_deps=False perl lftp
+    dnf clean all && rm -rf /var/cache/dnf
+
+    cd /opt
+    echo "--- Descomprimiendo CSPP HEAP v3.0 ---"
+    tar -zxf CSPP_HEAP_V3.0.tar.gz
+    rm -f CSPP_HEAP_V3.0.tar.gz
+
+    # El manual (§2.2) indica que la extracción crea CSPP_HEAP_3_0
+    REAL_FOLDER="CSPP_HEAP_3_0"
+
+    if [ ! -d "$REAL_FOLDER" ]; then
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Enlace genérico, para que los scripts no dependan del nombre exacto que
+    # produzca el tarball de la siguiente versión
+    ln -s "$REAL_FOLDER" cspp_heap
+
+    # Puntos de montaje genéricos: el script del contenedor no ve rutas del
+    # host. /anc es propio de esta receta: es el caché de ancillary dinámico,
+    # que no puede vivir dentro de la imagen (ver %help).
+    mkdir -p /input /output /work /anc
+
+%environment
+    export CSPP_HEAP_HOME=/opt/cspp_heap
+    export PATH=$CSPP_HEAP_HOME/scripts:$PATH
+
+%test
+    # apptainer test cspp_heap_v3.0.sif
+    #
+    # Cada orden va sola, no encadenada con &&: 'set -e' no aborta cuando falla
+    # el lado izquierdo de un &&, así que una prueba encadenada imprimiría el
+    # error y seguiría de largo dando la impresión de que todo está bien.
+    set -e
+
+    test -d /opt/cspp_heap
+    echo "  OK /opt/cspp_heap -> $(readlink /opt/cspp_heap)"
+
+    test -f /opt/cspp_heap/scripts/cspp_heap_env.sh
+    echo "  OK cspp_heap_env.sh"
+
+    test -x /opt/cspp_heap/scripts/run_heap.bash
+    echo "  OK run_heap.bash"
+
+    # §1.3 pide perl y lftp; sin ellos el fallo aparecería a media pasada
+    command -v perl > /dev/null
+    command -v lftp > /dev/null
+    echo "  OK perl y lftp"
+
+    # La ayuda del driver. Se comprueba la SALIDA y no el código: varios
+    # ejecutables de CSPP terminan -h con código distinto de 0.
+    . /opt/cspp_heap/scripts/cspp_heap_env.sh
+    run_heap.bash --help > /tmp/heap_help.txt 2>&1 || true
+    grep -q -- '--sat' /tmp/heap_help.txt
+    grep -q -- '--input' /tmp/heap_help.txt
+    echo "  OK run_heap.bash --help"
