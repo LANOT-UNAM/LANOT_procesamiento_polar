@@ -543,6 +543,16 @@ min-max, `dynamic_dnb` sale negro. Los otros tres algoritmos siguen disponibles 
 sus nombres a `-p` en `run_polar2grid_l1.sh`.
 
 ### 12. Nubes en NDVI y EVI — falsa alarma, cerrado el 2026-08-14
+
+**Añadido el 2026-08-14, tarde: el EVI vacío no es de esta cadena.** En la pasada del 0813 la
+vista de EVI salió en negro. Rastreado hasta el origen: la variable viene con cero píxeles
+válidos desde el `SurfRefl_*.nc` de CSPP LSR, con el NDVI y las tres reflectancias de entrada
+sanas en la misma pasada (ver "Hallazgos"). No hay nada que arreglar aquí. Lo que sí conviene
+decidir es qué hacer con la vista: hoy se genera igual y el resumen la cuenta entre las 11,
+así que se publica un JPG en negro. `geotiff2view` ya detecta el caso —de ahí sale el
+`All-NaN slice encountered`— y podría no escribir la imagen, pero eso es LANOT_tools, con su
+commit, su push, su pin y su recompilación.
+
 Se había anotado que las nubes se pintaban como suelo desnudo, por una mancha beige sobre
 el norte de México y Texas en la vista del 2026-08-11. **Es incorrecto: LSR ya enmascara
 las nubes.** Comprobado comparando el NDVI del 2026-08-13 con su `true_color`: el banco de
@@ -636,6 +646,25 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   únicos que no se duplican.
 - **ATMOS con `-l` no descarga ancillary**, y sin CMCSST cada gránulo aborta y la corrida
   entrega "0 products of 132" con código de salida 0.
+- **El EVI puede salir vacío de CSPP LSR, pasada por pasada, sin que falle nada.** En
+  `j01_d20260813_b45264` el EVI tiene **cero píxeles válidos ya en el `SurfRefl_*.nc`** —no se
+  pierde al remallar—, mientras que el NDVI de la misma pasada sale con 9.9 % válido y sus tres
+  reflectancias de entrada están sanas, azul incluido (M03 64.6 %, M05 64.6 %, M07 64.6 %). En
+  `j01_d20260811_b45236` el mismo EVI sale con 9.25 % válido y media 0.32, casi la misma máscara
+  que su NDVI. LSR es reproducible —al reprocesar el 0811 dos días después, los once `.nc`
+  salieron con el **tamaño idéntico** al byte—, así que no es el ambiente ni el ancillary: es el
+  algoritmo de CSPP rechazando el 100 % de los píxeles de esa variable en esa pasada. Río abajo
+  se manifiesta como `RuntimeWarning: All-NaN slice encountered` en `geotiff2view.py:203` y una
+  vista en negro que el resumen cuenta como buena.
+- **`gdalinfo` sobre un `.nc` y sobre el GeoTIFF no miden lo mismo.** El crudo solo respeta
+  `_FillValue`; Satpy además aplica `valid_range`. El NDVI del 0813 da 80 % "válido" en el
+  NetCDF con mínimo −199 y máximo 201, y 9.9 % dentro de −1..1 en el GeoTIFF. Los porcentajes
+  de los dos no son comparables — pero un 0 % en el NetCDF sí es concluyente, porque ahí no
+  hay ni siquiera algo que enmascarar.
+- **`gdalinfo` está en el host, no hace falta contenedor**; y si se usa uno, hay que montar
+  `/data` con `--bind`, porque `apptainer exec` a secas no lo monta y GDAL contesta
+  `not recognized as being in a supported file format`, que parece un archivo corrupto y no
+  lo es.
 - **`cspp_viirs_tifmerge.sh` no acepta destino.** Ignora `-o` sin protestar, nombra él la
   salida (`…_s<inicio>_e<fin>_c<creación>_merged.tif`) y la deja junto a la entrada. Hay
   que buscar el `*_merged.tif` y renombrarlo. Verificado en tahan el 2026-08-14.
