@@ -35,6 +35,23 @@ algoritmos de DNB sobre tres pasadas. **Solo con un `apptainer` simulado**, o se
 ejercitar nunca: el bloque de **incendios**, el de **inundaciones**, y el `--percentiles` del
 DNB. Esos tres son lo primero que hay que mirar en la próxima corrida.
 
+**Primera corrida real de inundaciones (tahan, 2026-08-14 19:38, pasada `j01_d20260814_b45273`)**:
+falló con código 2, y por dos razones encadenadas que conviene separar.
+
+1. **Comillas sin escapar** en el `bash -c` de `run_flood_edr.sh`: el `echo "--- Fusionando…"`
+   cerraba la cadena del shell de afuera y partía el guion. Como bash ejecuta lo que va
+   leyendo, CSPP corrió entero y el guion murió al final, en el `if` sin `fi`
+   (`Fusionando: -c: line 38: syntax error: unexpected end of file`). Corregido, y verificado
+   sin contenedor con el truco que quedó anotado en `CLAUDE.md`.
+2. **La pasada era nocturna** —09:23 UTC ≈ 03:23 local—, así que no había productos que
+   trasladar de todos modos: flood trabaja con las bandas reflectivas I01–I05. O sea que el
+   `.tif` fusionado **sigue sin ejercitarse**, igual que el bloque de incendios.
+
+De paso salió que la verificación de "cero productos" estaba mal: usaba `successful_runs`,
+que aquí venía lleno pese a no haber generado nada, así que la pasada nocturna habría dado un
+error falso. Ahora se decide con `VIIRS Flood output files = [...]` (ver "Hallazgos"), y `-k`
+conserva también el directorio de trabajo, que es donde quedan los logs por gránulo.
+
 **Lo que cambió en la cadena**, por si el resumen no cuadra con lo esperado:
 
 | Script | Antes | Ahora |
@@ -555,6 +572,14 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   únicos que no se duplican.
 - **ATMOS con `-l` no descarga ancillary**, y sin CMCSST cada gránulo aborta y la corrida
   entrega "0 products of 132" con código de salida 0.
+- **`successful_runs` de CSPP Flood no significa que haya productos.** Ahí entra todo
+  gránulo cuyo binario terminó en 0, produzca o no: en la pasada nocturna del 2026-08-14
+  los cinco aparecieron a la vez en `successful_runs` y en `failed_aoi_runs`, con
+  `rc_exe = 0` y cero archivos. El inventario real es la línea
+  `VIIRS Flood output files = [...]`, que el driver imprime por gránulo. La firma de la
+  pasada nocturna es que `VIIRS_Swath_Projection.exe` termina en 0 sin escribir ningún
+  `GITCO_Prj_SVI_*.h5` y entonces el `ls … | xargs -n 1 VIIRS_Flood_Detection.exe` corre
+  **sin argumento** —`xargs` sin `-r`— y contesta `Parameter error!` una vez por gránulo.
 - **Cada software tiene su propio caché de ancillary y no deben compartirse.** El de CSPP
   SDR usa subdirectorios por día; el de ATMOS guarda ~6 GB diarios sueltos en la raíz y
   los poda `delete_old_anc.sh`, que borraría el de SDR si se le apuntara ahí.

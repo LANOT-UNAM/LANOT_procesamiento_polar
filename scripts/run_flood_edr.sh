@@ -74,7 +74,7 @@ Uso:
 
 Opciones:
   -f, --force          Ignora el marcador de procesado
-  -k, --keep-staging   Conserva el directorio de enlaces, para diagnosticar
+  -k, --keep-staging   Conserva los directorios de enlaces y de trabajo, para diagnosticar
   -h, --help           Muestra esta ayuda
 EOF
 }
@@ -196,10 +196,13 @@ fi
 
 mkdir -p "$STAGING_DIR" "$WORK_DIR" "$OUTPUT_DIR" "$GEOTIFF_DIR" "$LOG_DIR" "$STATE_DIR"
 
+# Con -k se conserva también el directorio de trabajo: ahí quedan los logs por
+# gránulo (NOAA_VIIRS_Flood_*_run_0_*.log), que son lo único que dice qué vio el
+# binario. Sin ellos, una pasada sin productos no se puede distinguir de una rota.
 limpiar() {
     if [ "$KEEP" -eq 1 ]; then
-        echo "--keep-staging: se conserva $STAGING_DIR"
-        rm -rf "$WORK_DIR"; rm -f "${REF_FILE:-}"
+        echo "--keep-staging: se conservan $STAGING_DIR y $WORK_DIR"
+        rm -f "${REF_FILE:-}"
     else
         rm -rf "$STAGING_DIR" "$WORK_DIR" "${REF_FILE:-}"
     fi
@@ -254,6 +257,15 @@ BIND_OPTS=(
 )
 [ -n "${FLOOD_AOI:-}" ] && BIND_OPTS+=( -B "$(dirname "$FLOOD_AOI")":/aoi )
 
+# OJO CON LAS COMILLAS: el guion de adentro va como argumento de `bash -c` dentro
+# de UNA cadena entrecomillada, así que toda comilla doble interior tiene que ir
+# escapada (\"). Una sin escapar cierra la cadena del shell de afuera: lo que
+# sigue queda sujeto a separación de palabras y el guion se parte en pedazos. El
+# 2026-08-14 pasó exactamente eso con `echo "--- Fusionando..."`, y el síntoma no
+# se parece a la causa —"Fusionando: -c: line 38: syntax error: unexpected end of
+# file"—: `Fusionando` era el \$0 del bash de adentro. Peor: bash ejecuta lo que
+# va leyendo, así que CSPP corrió completo y el guion murió después, al llegar al
+# `if` sin `fi`, dejando sin ejecutar el traslado a la salida.
 EXIT_CODE=0
 apptainer exec \
     --env LC_ALL=C \
@@ -285,19 +297,25 @@ apptainer exec \
         if ls /work/*.nc > /dev/null 2>&1; then
             echo '--- Convirtiendo a GeoTIFF ---'
             for f in /work/*.nc; do
-                \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood2tif.sh "\$f"
+                \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_flood2tif.sh \"\$f\"
             done
 
             # Un .tif por gránulo no sirve de vista: la pasada son ~10. El sello
             # del primero da el nombre, en el formato que metadata.py de
             # LANOT_tools sabe leer (AAAAMMDD_HHMMSS).
             PRIMERO=\$(ls /work/*.nc | sort | head -1)
-            SELLO=\$(basename "\$PRIMERO" | grep -oE '_s[0-9]{15}' | head -1)
+            SELLO=\$(basename \"\$PRIMERO\" | grep -oE '_s[0-9]{15}' | head -1)
             SELLO=\${SELLO#_s}
-            SALIDA=/output_tif/${SAT}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
 
-            echo "--- Fusionando gránulos en \$SALIDA ---"
-            \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_tifmerge.sh -W /work -o "\$SALIDA" /work/*.tif
+            if [ -z \"\$SELLO\" ]; then
+                echo \"AVISO: no se pudo derivar el sello temporal de \$PRIMERO\"
+                echo \"       No se fusiona el GeoTIFF; los .nc sí se conservan.\"
+            else
+                SALIDA=/output_tif/${SAT}_viirs_flood_\${SELLO:0:8}_\${SELLO:8:6}.tif
+
+                echo \"--- Fusionando gránulos en \$SALIDA ---\"
+                \$CSPP_VIIRS_FLOOD_HOME/bin/cspp_viirs_tifmerge.sh -W /work -o \"\$SALIDA\" /work/*.tif
+            fi
         fi
 
         echo '--- Trasladando resultados (NetCDF) a Lustre ---'
@@ -319,21 +337,27 @@ NC_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" 2>/dev
 # ==============================================================================
 # Cero productos puede significar dos cosas muy distintas, y confundirlas ya
 # costó una corrida: el algoritmo solo trabaja de día, así que una pasada
-# nocturna termina bien y sin salida; pero si procesó gránulos y aun así no hay
-# archivos, algo se rompió. Se distingue con el propio reporte del driver, que
-# lista los gránulos que salieron adelante:
-#     successful_runs   []                 -> no procesó nada (de noche)
-#     successful_runs   ['J01...', ...]    -> sí procesó
-GRANULOS_OK=0
-if grep -qE "successful_runs +\[.+\]" "$LOG_FILE"; then
-    GRANULOS_OK=1
+# nocturna termina bien y sin salida; pero si el binario sí generó archivos y aun
+# así no hay ninguno en la salida, algo se rompió en el traslado.
+#
+# `successful_runs` NO sirve para distinguirlas, aunque lo parezca: CSPP lista
+# ahí todo gránulo cuyo binario terminó en 0, produzca o no. En la pasada
+# nocturna del 2026-08-14 los cinco gránulos aparecieron a la vez en
+# `successful_runs` y en `failed_aoi_runs`, con rc_exe = 0 — y sin un solo
+# producto. Lo que sí distingue los dos casos es el inventario que el propio
+# driver imprime por gránulo después de mover su salida:
+#     VIIRS Flood output files = []           -> no produjo nada (de noche)
+#     VIIRS Flood output files = ['...']      -> produjo, y debe estar en la salida
+PRODUJO=0
+if grep -qE "VIIRS Flood output files = \[.+\]" "$LOG_FILE"; then
+    PRODUJO=1
 fi
 
-if [ "$NC_COUNT" -eq 0 ] && [ "$GRANULOS_OK" -eq 1 ]; then
-    echo "❌ ERROR: el driver procesó gránulos pero no quedó ningún producto." | tee -a "$LOG_FILE"
-    echo "   Revisa dónde los dejó; deberían estar en $OUTPUT_DIR."           | tee -a "$LOG_FILE"
-    echo "   grep 'output files' $LOG_FILE"                                    | tee -a "$LOG_FILE"
-    echo "   No se escribió el marcador: la pasada se reintentará."            | tee -a "$LOG_FILE"
+if [ "$NC_COUNT" -eq 0 ] && [ "$PRODUJO" -eq 1 ]; then
+    echo "❌ ERROR: el driver generó archivos pero no quedó ningún producto." | tee -a "$LOG_FILE"
+    echo "   Revisa dónde los dejó; deberían estar en $OUTPUT_DIR."          | tee -a "$LOG_FILE"
+    echo "   grep 'output files' $LOG_FILE"                                   | tee -a "$LOG_FILE"
+    echo "   No se escribió el marcador: la pasada se reintentará."           | tee -a "$LOG_FILE"
     exit 1
 fi
 
@@ -356,7 +380,12 @@ fi
 if [ "$NC_COUNT" -eq 0 ]; then
     echo "⚠  Sin productos para la pasada $CLAVE ($DURACION)"                    | tee -a "$LOG_FILE"
     echo "   Es lo esperado si la pasada es nocturna: el algoritmo solo procesa" | tee -a "$LOG_FILE"
-    echo "   gránulos diurnos. Si sabes que era de día, revisa el log."          | tee -a "$LOG_FILE"
+    echo "   gránulos diurnos. La firma en el log es que VIIRS_Swath_Projection" | tee -a "$LOG_FILE"
+    echo "   termina en 0 sin escribir ningún GITCO_Prj_SVI_*.h5, y entonces el" | tee -a "$LOG_FILE"
+    echo "   'ls ... | xargs' de la detección corre sin argumento y contesta"    | tee -a "$LOG_FILE"
+    echo "   'Parameter error!' una vez por gránulo."                            | tee -a "$LOG_FILE"
+    echo "   Si sabes que era de día, revisa el log y vuelve a correr con -k"    | tee -a "$LOG_FILE"
+    echo "   para conservar los logs por gránulo del directorio de trabajo."     | tee -a "$LOG_FILE"
     echo "   Marcador: $MARKER"                                                  | tee -a "$LOG_FILE"
     exit 0
 fi
