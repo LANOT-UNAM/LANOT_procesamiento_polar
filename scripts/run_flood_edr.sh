@@ -28,8 +28,14 @@
 # no se reintente en cada corrida, y se avisa en el resumen.
 #
 # Uso:
-#   ./run_flood_edr.sh            # la pasada más reciente pendiente
-#   ./run_flood_edr.sh --force    # reprocesa aunque ya tenga marcador
+#   ./run_flood_edr.sh                      # la pasada más reciente pendiente
+#   ./run_flood_edr.sh --force              # reprocesa aunque ya tenga marcador
+#   ./run_flood_edr.sh --pasada d20260813   # una pasada concreta, no la más reciente
+#
+# --pasada existe sobre todo para las pruebas: la pasada más reciente puede ser
+# nocturna, y de noche este eslabón no produce nada (ver abajo), así que no sirve
+# para verificar la conversión a GeoTIFF. Se le da la clave completa o cualquier
+# trozo que la identifique; si coincide con varias, las lista y no hace nada.
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   FLOOD_SDR_IN     Entrada Level 1  (def. /data/output/jpss/level1/viirs)
@@ -69,13 +75,19 @@ JOB_ID="${SLURM_JOB_ID:-$$}"
 uso() {
     cat <<EOF
 Uso:
-  $0             Procesa la pasada más reciente de $INPUT_SDR_DIR
-  $0 --force     Reprocesa aunque ya exista el marcador
+  $0                          Procesa la pasada más reciente de $INPUT_SDR_DIR
+  $0 --force                  Reprocesa aunque ya exista el marcador
+  $0 --pasada d20260813       Procesa una pasada concreta, no la más reciente
 
 Opciones:
+  -p, --pasada CLAVE   Pasada a procesar: la clave (j01_d20260813_b45264) o
+                       cualquier trozo que la identifique sin ambigüedad
   -f, --force          Ignora el marcador de procesado
   -k, --keep-staging   Conserva los directorios de enlaces y de trabajo, para diagnosticar
   -h, --help           Muestra esta ayuda
+
+Pasadas disponibles en $INPUT_SDR_DIR:
+$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
 EOF
 }
 
@@ -88,6 +100,14 @@ clave_de_pasada() {
         return 1
     fi
     echo "${sat}_${fecha}_${orbita}"
+}
+
+# Las pasadas que hay en el directorio de SDR, una por línea y sin repetir.
+claves_disponibles() {
+    find "$INPUT_SDR_DIR" -maxdepth 1 -name 'GITCO*.h5' -printf '%f\n' 2>/dev/null |
+        while IFS= read -r nombre; do
+            clave_de_pasada "$nombre" || true
+        done | sort -u
 }
 
 formato_duracion() {
@@ -113,12 +133,21 @@ enlazar() {
 
 FORCE=0
 KEEP=0
+PASADA=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
         -f|--force)        FORCE=1 ;;
         -k|--keep-staging) KEEP=1 ;;
         -h|--help)         uso; exit 0 ;;
+        -p|--pasada)
+            if [ $# -lt 2 ]; then
+                echo "ERROR: --pasada necesita un valor" >&2
+                exit 1
+            fi
+            PASADA="$2"
+            shift
+            ;;
         *)
             echo "ERROR: Argumento no reconocido: $1" >&2
             uso >&2
@@ -142,17 +171,40 @@ if [ ! -d "$INPUT_SDR_DIR" ]; then
     exit 1
 fi
 
-ULTIMO_GITCO=$(find "$INPUT_SDR_DIR" -maxdepth 1 -name 'GITCO*.h5' \
-                    -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+if [ -n "$PASADA" ]; then
+    # --pasada acepta la clave completa o cualquier trozo que la identifique:
+    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
+    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
+    # inexistente se caza aquí y no cuatro minutos después.
+    mapfile -t COINCIDEN < <(claves_disponibles | grep -F -- "$PASADA" || true)
 
-if [ -z "$ULTIMO_GITCO" ]; then
-    echo "No hay SDR de banda I que procesar en $INPUT_SDR_DIR (no se ven archivos GITCO*)."
-    exit 0
-fi
+    if [ "${#COINCIDEN[@]}" -eq 0 ]; then
+        echo "ERROR: Ninguna pasada de $INPUT_SDR_DIR coincide con '$PASADA'" >&2
+        echo "       Disponibles:" >&2
+        claves_disponibles | sed 's/^/         /' >&2
+        exit 1
+    fi
 
-if ! CLAVE=$(clave_de_pasada "$ULTIMO_GITCO"); then
-    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GITCO")" >&2
-    exit 1
+    if [ "${#COINCIDEN[@]}" -gt 1 ]; then
+        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
+        printf '         %s\n' "${COINCIDEN[@]}" >&2
+        exit 1
+    fi
+
+    CLAVE="${COINCIDEN[0]}"
+else
+    ULTIMO_GITCO=$(find "$INPUT_SDR_DIR" -maxdepth 1 -name 'GITCO*.h5' \
+                        -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+
+    if [ -z "$ULTIMO_GITCO" ]; then
+        echo "No hay SDR de banda I que procesar en $INPUT_SDR_DIR (no se ven archivos GITCO*)."
+        exit 0
+    fi
+
+    if ! CLAVE=$(clave_de_pasada "$ULTIMO_GITCO"); then
+        echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GITCO")" >&2
+        exit 1
+    fi
 fi
 
 IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
