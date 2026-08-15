@@ -27,10 +27,13 @@ From: lanot_base_rocky8.sif
       CrIS  SCRIF*.h5 (radiancias) + GCRSO*.h5 (geolocalización)
       ATMS  TATMS*.h5 (temperatura de antena) + GATMO*.h5
 
-    Salidas (§1.7):
-      NUCAPS-EDR_v3r2_<sat>_s*_e*_c*.nc
-      NUCAPS-CCR-AR_v3r2_<sat>_*.nc
-      NUCAPS-OLR_v3r2_<sat>_*.nc     (solo con -o RO)
+    Salidas reales de la ruta JPSS con -m HR_IRMW -o RO, dos por gránulo:
+      NUCAPS-ALL-HR_v3r2_<sat>_s*_e*_c*.nc   perfiles + CCR en un archivo
+      NUCAPS-OLR_v3r2_<sat>_*.nc             onda larga saliente
+
+    Ojo: §1.7 del manual documenta NUCAPS-EDR y NUCAPS-CCR-AR por separado y
+    no menciona NUCAPS-ALL-HR, que es lo que de verdad sale en alta
+    resolución (verificado en tahan el 2026-08-15).
 
     DOS TRAMPAS que el script de la cadena tiene que manejar:
 

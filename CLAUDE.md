@@ -67,7 +67,7 @@ RAW (CCSDS de antena)
             ├─ cspp_cryo_edr_v1.0.sif ───► Level 2 cryosphere           [requiere ATMOS]
             ├─ cspp_acspo_v3.0.sif ──────► Level 2 acspo (SST)
             ├─ cspp_active_fire_v2.1.sif ► Level 2 fires (AFIMG_*.nc)
-            └─ cspp_heap_v3.0.sif ───────► Level 2 sounder (NUCAPS-{EDR,CCR-AR,OLR}*.nc)
+            └─ cspp_heap_v3.0.sif ───────► Level 2 sounder (NUCAPS-{ALL-HR,OLR}*.nc)
                                             [CrIS + ATMS; no S-NPP]
 
   Los productos de Level 2 los renderiza run_polar2grid_edr.sh, con

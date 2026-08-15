@@ -646,25 +646,41 @@ y perdió su bandera `--no-render`.
 puerta de atrás —ahora del lado de Polar2Grid— y la vista salía con fondo rosa. Ya corregido
 a `$P2G_DATOS`; el detalle está en los hallazgos.
 
-### 4. HEAP (rama ATMS/CrIS) — escrito el 2026-08-15, sin probar
+### 4. HEAP (rama ATMS/CrIS) — CORRE con datos reales, 2026-08-15
 
-`contenedores/cspp_heap_v3.0.def`, `scripts/run_heap_edr.sh` y
-`scripts/update_heap_ancillary.sh` ya existen y están cableados (manifiesto,
-`preparar_servidor.sh` y nivel 2 de `procesar_pasada.sh`). **Nada de esto ha corrido**: ni la
-compilación, ni el script, ni los dos eslabones de Level 1 de los que depende.
+La imagen (1.45 GB) está en `/opt/containers/cspp_heap_v3.0.sif` y la cadena entera corrió
+sobre la pasada `j01_d20260813_b45265`:
 
-Al retomarlo, en este orden:
-
-```bash
-./contenedores/construir.sh cspp_heap_v3.0       # y apptainer test
-# la prueba del propio manual (§3.3), antes que la nuestra: 48 NetCDF
-scripts/run_sdr.sh --sensor cris                  # nunca se ha ejercitado
-scripts/run_sdr.sh --sensor atms                  # tampoco
-scripts/run_heap_edr.sh
+```
+CrIS 30 archivos · ATMS 32 archivos → 28 productos en 35 s
+  14 NUCAPS-ALL-HR   perfiles + CCR
+  14 NUCAPS-OLR      onda larga saliente
 ```
 
-La prueba del manual va primero a propósito: si falla, el problema es el contenedor y no el
-script, y separarlos ahorra el rato de no saber cuál de los dos mirar.
+**Falta un gránulo**: los 30 archivos de CrIS son 15 gránulos (SCRIF + GCRSO cada uno) y
+salieron 14 de cada familia. Queda por confirmar si es normal —el de un extremo puede caerse
+por falta de contexto o de ATMS colindante— o si le faltó ancillary. Se mira con
+`grep -iE 'reject|quality|retriev|granule'` sobre el log de la corrida.
+
+Lo que se aprendió costando dos corridas:
+
+**`NUCAPS-ALL-HR` no está en el manual.** §1.7 documenta `NUCAPS-EDR` y `NUCAPS-CCR-AR` por
+separado, pero la ruta JPSS con `-m HR_IRMW` entrega **un solo archivo combinado**. Por eso
+`run_heap_edr.sh` cuenta las familias por lo que hay en el directorio y no contra una lista de
+patrones: con la lista, una corrida buena se reportaba como "EDR 0, CCR 0, OLR 14" sobre 28
+archivos, y el marcador —del que sale el resumen del orquestador— mentía.
+
+**Los SDR no siempre salen agregados**, aunque `CLAUDE.md` lo daba por hecho. En `level1`
+conviven las dos convenciones según cómo haya salido cada corrida de `run_sdr.sh`: la pasada
+del 11 dejó un `GCRSO` de 3 min y un `GATMO` de 11; la del 13, quince `GCRSO` de 30 s. La
+primera versión sacaba la ventana temporal de un archivo "representativo" y con la segunda
+convención le salía de **30 segundos**: enganchaba 4 archivos de ATMS en vez de 32 y HEAP
+terminaba en 0 sin un mensaje de error. Ahora la ventana recorre todos los `GCRSO` de la
+órbita.
+
+Falta todavía la prueba del propio manual (§3.3) con `CSPP_HEAP_TESTDATA_V3.0.tar.gz`, que no
+se bajó. No es urgente ahora que la cadena real funciona, pero sería la forma de separar un
+problema del contenedor de uno del script si algo se tuerce más adelante.
 
 Cinco cosas del diseño que conviene tener presentes al depurar:
 

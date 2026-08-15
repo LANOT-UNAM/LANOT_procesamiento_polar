@@ -11,6 +11,19 @@
 # CIN, índice de levantamiento), radiancias limpiadas de nube (CCR) y radiación
 # de onda larga saliente (OLR).
 #
+# Salen DOS archivos por gránulo, no los tres que sugiere §1.7 del manual:
+#
+#   NUCAPS-ALL-HR_v3r2_*.nc   la recuperación: perfiles + CCR en un solo
+#                             archivo, porque el modo es HR_IRMW
+#   NUCAPS-OLR_v3r2_*.nc      la radiación de onda larga saliente
+#
+# `NUCAPS-ALL-HR` no aparece en el manual de instalación, que documenta
+# NUCAPS-EDR y NUCAPS-CCR-AR por separado; es lo que de verdad produce la ruta
+# JPSS de alta resolución (verificado en tahan el 2026-08-15). Por eso el conteo
+# de familias sale de los archivos y no de una lista fija: si una versión futura
+# vuelve a separarlos, el marcador lo refleja sin tocar el script. El contenido
+# está descrito en el NUCAPS External Users Manual, que §1.7 enlaza.
+#
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR de
 # CrIS y, si ya fue procesada con éxito, avisa y no hace nada. Una pasada se
 # identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
@@ -561,9 +574,50 @@ if [ "$NC_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-EDR_COUNT=$(printf '%s\n' "${PRODUCTOS[@]}" | grep -c 'NUCAPS-EDR' || true)
-CCR_COUNT=$(printf '%s\n' "${PRODUCTOS[@]}" | grep -c 'NUCAPS-CCR' || true)
-OLR_COUNT=$(printf '%s\n' "${PRODUCTOS[@]}" | grep -c 'NUCAPS-OLR' || true)
+# Las familias se cuentan por lo que DE VERDAD haya, no contra una lista fija de
+# patrones. El manual de instalación (§1.7) documenta tres —NUCAPS-EDR,
+# NUCAPS-CCR-AR y NUCAPS-OLR— pero en modo HR_IRMW la recuperación sale como un
+# solo archivo combinado, NUCAPS-ALL-HR, que el manual no menciona: EDR y CCR
+# juntos, "HR" por la alta resolución del modo. Verificado en tahan el
+# 2026-08-15: 14 NUCAPS-ALL-HR y 14 NUCAPS-OLR, un par por gránulo.
+#
+# Con los tres patrones a mano, esa corrida se reportaba como "EDR 0, CCR 0,
+# OLR 14" sobre 28 archivos: el marcador mentía y el resumen del orquestador
+# habría heredado la mentira.
+
+declare -A FAMILIAS=()
+for f in "${PRODUCTOS[@]}"; do
+    fam=$(basename "$f")
+    fam="${fam%%_v*}"
+    FAMILIAS[$fam]=$(( ${FAMILIAS[$fam]:-0} + 1 ))
+done
+
+# Lo que no es OLR es recuperación (los perfiles), que es a lo que se viene.
+RECUPERACION=0
+for fam in "${!FAMILIAS[@]}"; do
+    case "$fam" in
+        *OLR*) ;;
+        *) RECUPERACION=$(( RECUPERACION + ${FAMILIAS[$fam]} )) ;;
+    esac
+done
+
+# Un montón de OLR sin un solo perfil no es una corrida buena, aunque el
+# conteo total sea distinto de cero. El criterio de los otros EDR —¿produjo
+# algo?— se queda corto aquí, porque HEAP entrega dos cosas y solo una importa.
+if [ "$RECUPERACION" -eq 0 ]; then
+    echo "❌ ERROR: $NC_COUNT archivos, pero ninguno de recuperación."          | tee -a "$LOG_FILE"
+    echo "   Salió el OLR y no los perfiles, que son el producto principal."    | tee -a "$LOG_FILE"
+    echo "   Familias encontradas:"                                            | tee -a "$LOG_FILE"
+    for fam in "${!FAMILIAS[@]}"; do
+        echo "     $fam: ${FAMILIAS[$fam]}"                                    | tee -a "$LOG_FILE"
+    done
+    echo "   Busca los gránulos rechazados en el log:"                          | tee -a "$LOG_FILE"
+    echo "   grep -iE 'reject|quality|retriev' $LOG_FILE"                       | tee -a "$LOG_FILE"
+    echo "   (Si se pasó -o O por HEAP_OPTS, es lo esperado y no un fallo.)"    | tee -a "$LOG_FILE"
+    echo "   Se conservan $HOST_WORK y $STAGING_DIR"                            | tee -a "$LOG_FILE"
+    trap - EXIT
+    exit 1
+fi
 
 mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
 
@@ -573,15 +627,18 @@ mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
     echo "satelite:  $SAT (misión HEAP $MISION)"
     echo "cris:      $CRIS_COUNT archivos"
     echo "atms:      $ATMS_COUNT archivos"
-    echo "edr:       $EDR_COUNT archivos"
-    echo "ccr:       $CCR_COUNT archivos"
-    echo "olr:       $OLR_COUNT archivos"
+    for fam in $(printf '%s\n' "${!FAMILIAS[@]}" | sort); do
+        printf '%-10s %s archivos\n' "$(echo "$fam" | tr 'A-Z' 'a-z'):" "${FAMILIAS[$fam]}"
+    done
     echo "duracion:  $DURACION"
     echo "salida:    $HOST_EDR_OUT"
     echo "log:       $LOG_FILE"
 } > "$MARKER"
 
 echo "" | tee -a "$LOG_FILE"
-echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE (EDR $EDR_COUNT, CCR $CCR_COUNT, OLR $OLR_COUNT) en $DURACION" | tee -a "$LOG_FILE"
+DESGLOSE=$(for fam in $(printf '%s\n' "${!FAMILIAS[@]}" | sort); do
+               printf '%s %s, ' "${FAMILIAS[$fam]}" "$fam"
+           done)
+echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE (${DESGLOSE%, }) en $DURACION" | tee -a "$LOG_FILE"
 echo "   Salida:   $HOST_EDR_OUT" | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"       | tee -a "$LOG_FILE"
