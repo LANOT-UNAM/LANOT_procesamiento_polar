@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit e6c1c0861175281355dc9b8d3dd11bc202ef1360
+    LANOT_tools_commit a5d8d986bf1018342e309dd2f691278ef8bc5562
 
 %help
     Polar2Grid v3.2 con las herramientas de LANOT para adornar las vistas
@@ -54,7 +54,7 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    LANOT_TOOLS_COMMIT=e6c1c0861175281355dc9b8d3dd11bc202ef1360
+    LANOT_TOOLS_COMMIT=a5d8d986bf1018342e309dd2f691278ef8bc5562
 
     # Lo que esta receta necesita además de la base: GDAL y el toolchain para
     # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
@@ -120,6 +120,15 @@ From: lanot_base_rocky9.sif
     mapdrawer --help > /dev/null
     geotiff2view --help > /dev/null
 
+    # Las banderas que los run_*.sh dan por sentadas. Comprobarlas aquí, y no
+    # solo que --help salga con 0, es lo que atrapa un PIN DESACTUALIZADO: el
+    # 2026-08-14 se compiló con un commit anterior a --percentiles y el fallo
+    # apareció hasta el renderizado, con "unrecognized arguments". Al agregar
+    # una bandera nueva en LANOT_tools que use la cadena, súbela también aquí.
+    geotiff2view --help | grep -q -- --percentiles
+    geotiff2view --help | grep -q -- --lat-south
+    mapdrawer    --help | grep -q -- --timestamp-pos
+
     # Verificación de los recursos que usan las herramientas
     test -x /opt/lanot-tools/venv/bin/python
     test -d /usr/local/share/lanot/colortables
@@ -155,6 +164,13 @@ From: lanot_base_rocky9.sif
     echo "geotiff2view:"
     geotiff2view --help > /dev/null
     echo "  OK $(command -v geotiff2view)"
+
+    # Banderas que usan los run_*.sh; ver la nota del %post sobre el pin.
+    echo "Banderas en uso:"
+    geotiff2view --help | grep -q -- --percentiles
+    geotiff2view --help | grep -q -- --lat-south
+    mapdrawer    --help | grep -q -- --timestamp-pos
+    echo "  OK --percentiles, --lat-south, --timestamp-pos"
 
     echo "venv:"
     /opt/lanot-tools/venv/bin/python --version
