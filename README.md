@@ -149,11 +149,7 @@ Cada software tiene **su propio caché** bajo `/data/ancillary`, y no se compart
 
 ## 🤝 Contribución
 
-Este es un proyecto interno del LANOT. Se trabaja **directo sobre `main`**, sin ramas ni Pull Requests: `tahan` es servidor de desarrollo y no el que está conectado a la antena, así que la ceremonia solo estorba. El ciclo es editar, `git push`, `git pull` en tahan, `instalar.sh` y correr.
-
-El `push` lo hace siempre Alejandro: revisar lo que sale es como se mantiene al tanto de por dónde va el proyecto.
-
-Si algún día `main` vuelve a alimentar la antena directamente, hay que revisar esta regla.
+Este es un proyecto interno del LANOT. Se trabaja **directo sobre `main`**, sin ramas ni Pull Requests: `tahan` es servidor de desarrollo y no el que está conectado a la antena. El ciclo es editar, `git push`, `git pull` en tahan, `instalar.sh` y correr.
 
 ---
 
