@@ -54,7 +54,10 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    LANOT_TOOLS_COMMIT=a5d8d986bf1018342e309dd2f691278ef8bc5562
+    # a7c774a trae el código de salida 3 de geotiff2view: no escribe imagen
+    # cuando el GeoTIFF no tiene un solo píxel válido. Sin recompilar, la cadena
+    # sigue publicando el JPG en negro del EVI — no se rompe nada, solo no mejora.
+    LANOT_TOOLS_COMMIT=a7c774a99e25384df9b661c13ab857e9b7202617
 
     # Lo que esta receta necesita además de la base: GDAL y el toolchain para
     # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
@@ -129,6 +132,13 @@ From: lanot_base_rocky9.sif
     geotiff2view --help | grep -q -- --lat-south
     mapdrawer    --help | grep -q -- --timestamp-pos
 
+    # No todo lo que la cadena da por sentado es una bandera. run_polar2grid_*.sh
+    # distingue "sin datos validos" (codigo 3) de "fallo" leyendo el codigo de
+    # salida de geotiff2view archivo por archivo; con un pin anterior a eso, la
+    # vista vacia se sigue publicando en negro y nadie se entera. La tabla de
+    # codigos vive en el epilogo del --help, asi que basta buscarla.
+    geotiff2view --help | grep -q -- "0 imagen generada"
+
     # Verificación de los recursos que usan las herramientas
     test -x /opt/lanot-tools/venv/bin/python
     test -d /usr/local/share/lanot/colortables
@@ -170,7 +180,14 @@ From: lanot_base_rocky9.sif
     geotiff2view --help | grep -q -- --percentiles
     geotiff2view --help | grep -q -- --lat-south
     mapdrawer    --help | grep -q -- --timestamp-pos
-    echo "  OK --percentiles, --lat-south, --timestamp-pos"
+
+    # No todo lo que la cadena da por sentado es una bandera. run_polar2grid_*.sh
+    # distingue "sin datos validos" (codigo 3) de "fallo" leyendo el codigo de
+    # salida de geotiff2view archivo por archivo; con un pin anterior a eso, la
+    # vista vacia se sigue publicando en negro y nadie se entera. La tabla de
+    # codigos vive en el epilogo del --help, asi que basta buscarla.
+    geotiff2view --help | grep -q -- "0 imagen generada"
+    echo "  OK --percentiles, --lat-south, --timestamp-pos, codigos de salida"
 
     echo "venv:"
     /opt/lanot-tools/venv/bin/python --version
