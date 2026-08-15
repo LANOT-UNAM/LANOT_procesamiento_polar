@@ -12,77 +12,77 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
-## Dónde quedó el 2026-08-15 (cierre de la sesión)
+## Dónde quedó el 2026-08-15
 
-Todo está empujado en los dos repositorios salvo **un commit** de la cadena: `a28c2ee`, el que
-sube el pin a `a7c774a`. Y **falta recompilar** `polar2grid_v3.2-mapdrawer.sif` con ese pin.
+### El DNB nocturno salió bien: `--percentiles` funciona con datos reales
 
-### Lo primero al retomar, en orden
+Era el último de los tres pendientes del 0814 que seguía probado solo con un `apptainer`
+simulado. La vista de `dynamic_dnb` de la pasada nocturna del 2026-08-14 (09:23 UTC,
+`wgs84_geo_750m`) enseña luces de ciudad de todo el occidente de México y del suroeste de
+Estados Unidos, con estructura de nubes visible sobre el Pacífico y el golfo de California:
+o sea que el estirado por percentiles hace exactamente lo que tenía que hacer, y de paso es la
+primera prueba con datos reales del `vestir()` nuevo en Level 1. El rótulo sale completo
+—`NOAA-20 DNB Dynamic 2026/08/14 09:23Z`—, así que la entrada `dynamic_dnb` de `product_map`
+también quedó ejercitada.
 
-**1. La vista de tipo de nube tiene las etiquetas mal. No publicarla así.**
+Las franjas negras horizontales de la mitad norte son la interferencia de antena de siempre
+(ver "Hallazgos"), no un problema del renderizado.
 
-Salió con datos —el mecanismo funciona, ver el pendiente 14— pero al compararla con la de
-CLAVR-x de la **misma pasada** (`j01_d20260813_b45264`) no concuerdan:
+### El tipo de nube: la enumeración autoritativa, y no era ninguna de las dos hipótesis
 
-- donde CLAVR-x pinta **azul** (Water, 3), la nuestra pinta **verde** (Fog, 2);
-- donde CLAVR-x pinta **amarillo** (Cirrus, 7), la nuestra pinta **rojo** (Opaque Ice, 6).
+La comparación con la vista de CLAVR-x de la misma pasada (`j01_d20260813_b45264`) había
+mostrado un corrimiento de −1, y de ahí salió la hipótesis de que JRR fuera "CLAVR-x sin
+Prob. clear". El `ncdump -h` completo del `JRR-CloudPhase` descartó que el archivo traiga la
+respuesta: `CloudType` solo declara `long_name`, `coordinates`, `_FillValue`, `units` y
+`valid_range = 0b, 8b`, **sin `flag_meanings`**. Tampoco está en el manual de CSPP ATMOS ni en
+la documentación de Polar2Grid, que no trae realce para `CloudType` (sí para `CloudPhase`, con
+paleta embebida de seis clases).
 
-Las dos son un corrimiento de **−1**, que encaja con que la enumeración de JRR sea la de
-CLAVR-x **sin "Prob. clear"**:
+Donde sí está es en la **Tabla 30 del ATBD del algoritmo empresarial de nubes de NOAA**
+([ATBD_EPS_Cloud_CldType_v3.0](https://www.star.nesdis.noaa.gov/JPSS/documents/ATBD/ATBD_EPS_Cloud_CldType_v3.0.pdf)),
+que es de donde viene el producto:
 
 ```
-0 Clear   1 Fog   2 Water   3 Super cool   4 Mixed
-5 Opaque Ice   6 Cirrus   7 Overlapping   8 Overshooting
+0 Clear                     6 Optically Thin Ice
+1 Spare                     7 Multilayered Ice
+2 Liquid Water              8 Cloud type could not be determined
+3 Supercooled Liquid Water
+4 Mixed Phase
+5 Optically Thick Ice
 ```
 
-Son nueve, cuadra con `valid_range = 0b, 8b` y explica las dos observaciones. **Es una
-hipótesis, no un dato**: `cloud_type_jrr.cpt` se escribió suponiendo "las nueve primeras de
-CLAVR-x" y eso quedó desmentido, así que no repetir el error. Antes de tocar el CPT hay que
-buscar la enumeración autoritativa:
+Explica las dos observaciones —el 2 es agua y el 6 es hielo delgado, o sea cirros— pero la
+hipótesis fallaba en los extremos: el **1 es un hueco reservado** que el algoritmo nunca emite,
+no Fog, y el **8 es "no se pudo determinar"**, no Overshooting. JRR no tiene Fog, ni
+Overshooting, ni Unknown, ni Dust, ni Smoke: son dos algoritmos distintos, no una lista
+recortada. La misma tabla, en su versión de fase (Tabla 31), confirma las seis clases de
+`CloudPhase` —`0 Clear, 1 Liquid Water, 2 Supercooled, 3 Mixed, 4 Ice, 5 no determinada`—, que
+son las que ya pinta la paleta embebida de Polar2Grid.
 
-```bash
-ncdump -h /data/output/jpss/level2/atmosphere/JRR-CloudPhase_v3r2_j01_s20260813*.nc | less
-```
+`cloud_type_jrr.cpt` quedó corregido con esas etiquetas, y con los colores mapeados **por
+significado** a los de `cloud_type.cpt` (agua azul, sobreenfriada cian, mixta rosa, hielo
+grueso rojo, hielo delgado amarillo, multicapa naranja) para que las dos vistas se puedan
+comparar de un vistazo. **Falta hacer esa comparación con datos reales**: es la prueba final y
+sin ella esto sigue siendo una lectura del ATBD, no un hecho verificado sobre nuestras
+imágenes.
 
-— el `grep` anterior solo miró las líneas de `CloudType`; puede haber un atributo global o una
-`Description` con las clases. Si no aparece, va en la documentación de CSPP ATMOS o en el ATBD
-del algoritmo empresarial de nubes de NOAA. Y en cualquier caso, la prueba final es volver a
-comparar las dos imágenes de la misma pasada: deben coincidir clase por clase.
+El rótulo vacío tenía otra causa, más simple de lo que decía la nota del cierre anterior: la
+entrada `cloud_type` **ya estaba** en `product_map`, pero es la de CLAVR-x. Polar2Grid nombra al
+producto de JRR con el nombre de la variable del NetCDF, `CloudType`, que en minúsculas es
+`cloudtype` y no casa con ese token. Se agregó la pareja, igual que ya existía para la fase
+(`cloudphase` de JRR junto a `cloud_phase` de CLAVR-x).
 
-**2. La vista de tipo de nube sale sin nombre.** El rótulo dice `NOAA-20 VIIRS` a secas, no
-"Cloud Type": falta la entrada de `CloudType` en `product_map` de `LANOT_tools/metadata.py`.
-Es exactamente lo que advierte `CLAUDE.md` —un CPT nuevo obliga a agregar también su entrada—
-y se pasó por alto al agregar la paleta. Ojo con el orden de la lista: gana la primera
-subcadena que aparezca en el nombre del archivo, así que `CloudType` debe ir **antes** que
-cualquier clave más genérica. Esto sí necesita recompilar, porque `metadata.py` es código.
+**Cómo llegan los dos arreglos a producción es distinto**, y conviene no confundirlo: el `.cpt`
+es colortable, va montada desde el host, así que basta con `git pull` + `install.sh` en tahan.
+`metadata.py` es código y viaja dentro del `.sif`: **hay que recompilar**. El pin del `.def` ya
+subió a `f1d0c60`; falta empujar LANOT_tools para que ese commit exista en GitHub, porque el
+`.def` clona de ahí y no del host.
 
-**3. El DNB nunca se ha ejercitado con datos reales.** De las tres cosas que el cierre del
-0814 marcó como probadas solo con un `apptainer` simulado, incendios e inundaciones ya
-salieron con datos reales; **`--percentiles` del DNB no**, porque `run_polar2grid_l1.sh` no se
-ha corrido desde entonces. Antes de correrlo, descartar que el contenedor sea anterior a esa
-bandera:
-
-```bash
-apptainer exec /opt/containers/polar2grid_v3.2-mapdrawer.sif geotiff2view --help | grep -- --percentiles
-```
-
-Si no sale nada, Level 1 falla entero; la recompilación pendiente lo arregla de paso. Y hay
-que probarlo sobre una **pasada nocturna**, que es para lo que existe el estirado por
-percentiles: sobre una diurna no prueba nada.
-
-```bash
-./scripts/run_polar2grid_l1.sh --pasada d20260814 --force   # la de 09:23 UTC
-```
-
-Qué mirar: que la vista del DNB enseñe luces de ciudad y estructura de nubes y no salga negra;
-que los conteos sean **59 GeoTIFF y 3 vistas** —siguen sin confirmarse desde que se pasó a un
-solo algoritmo—, con 7 GeoTIFF de DNB (6 son ángulos) y **una** vista; y qué pasa con los RGB,
-que de noche no tienen sentido. Si Polar2Grid los filtra serán 1 vista y no 3; si los produce
-en negro, veremos si el código 3 los atrapa. Esa corrida es además la primera prueba con datos
-reales del `vestir()` nuevo en Level 1.
-
-**4. Recompilar** con el pin `a7c774a`, que es lo que activa el código 3 de `geotiff2view` y,
-con él, que el EVI vacío deje de publicarse. Hasta entonces sigue saliendo el JPG en negro.
+De paso: el pin estaba escrito **dos veces** en `polar2grid_v3.2-mapdrawer.def` —en `%post` y
+en la etiqueta `LANOT_tools_commit` de `%labels`, que es lo único consultable con
+`apptainer inspect` sobre un `.sif` ya hecho— y la etiqueta se había quedado en `a5d8d98`
+mientras el pin iba en `a7c774a`. Ahora las dos apuntan a `f1d0c60` y hay un comentario que
+pide moverlas juntas.
 
 ### Lo que sí quedó bien, verificado con datos reales el 2026-08-15
 
@@ -103,6 +103,20 @@ Las dos se ven en la vista de inundaciones y no valen una corrida por sí solas:
   espacio *si el borde sur de los datos está al norte de esa latitud*, y en esta pasada el
   swath llega a 5°S. O sea que no es un fallo, es la condición documentada de la bandera; pero
   con las rejillas dinámicas actuales casi nunca se va a cumplir. Va con el pendiente 9.
+
+### Lo que sigue, en orden
+
+1. **Empujar los dos repositorios.** En LANOT_tools quedan `b4af211` (el CPT corregido) y
+   `f1d0c60` (la entrada de `product_map`); en la cadena, el commit que sube el pin. Sin el
+   `push` de LANOT_tools la recompilación no puede funcionar: el `.def` clona de GitHub.
+2. **`git pull` + `install.sh` en tahan**, que es lo que pone el `.cpt` nuevo en
+   `/usr/local/share/lanot/colortables`. Con eso solo, las etiquetas de la barra ya salen
+   bien; el rótulo del producto todavía no.
+3. **Recompilar** `polar2grid_v3.2-mapdrawer.sif` con el pin `f1d0c60`, para que
+   `metadata.py` entre a la imagen y la vista deje de rotularse "NOAA-20 VIIRS" a secas.
+4. **Volver a generar la vista de tipo de nube de `j01_d20260813_b45264` y compararla contra
+   la de CLAVR-x de la misma pasada.** Deben coincidir clase por clase, no solo parecerse.
+   Es la prueba que cierra el asunto; hasta entonces la enumeración es lectura del ATBD.
 
 ---
 
@@ -797,8 +811,9 @@ Con `--list-products-all` aparecen, además de `CloudType`: `CloudMask`, `CloudM
 (`CloudMicroEffRad`, `CloudMicroIWP`, `CloudMicroLWP`, `CloudMicroVisOD`), `Dust`, `Smoke`,
 `SnowIce`, `Fire_Mask`, `Shadow_Mask`, toda la familia de ceniza volcánica y un largo etcétera.
 
-`CloudType` ya está pedido y funciona; lo que le falta son las etiquetas correctas y su
-entrada en `product_map` (ver el cierre de sesión). **Lo que queda por decidir es el resto**, y
+`CloudType` ya está pedido y funciona; sus etiquetas y su entrada en `product_map` quedaron
+corregidas el 2026-08-15, a falta de recompilar y de comparar la vista contra la de CLAVR-x
+(ver arriba). **Lo que queda por decidir es el resto**, y
 es una decisión de producto y no técnica: ahora que se sabe que están disponibles, conviene
 enseñarle la lista a los colegas del laboratorio antes de elegir. El costo de agregar
 cualquiera es una palabra en el `-p` de ATMOS más su paleta y su entrada en `product_map`.

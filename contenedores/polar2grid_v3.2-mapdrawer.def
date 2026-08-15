@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit a5d8d986bf1018342e309dd2f691278ef8bc5562
+    LANOT_tools_commit f1d0c60b972d6351817b20c67d0f6af6899c31ea
 
 %help
     Polar2Grid v3.2 con las herramientas de LANOT para adornar las vistas
@@ -49,15 +49,23 @@ From: lanot_base_rocky9.sif
     # porque el repositorio todavía no tiene etiquetas de versión; en cuanto las
     # tenga, sustituir por --branch <etiqueta>.
     #
+    # El pin aparece DOS veces: aquí y en la etiqueta LANOT_tools_commit de
+    # %labels, que es lo único que se puede consultar en un .sif ya compilado
+    # (apptainer inspect). Hay que moverlas juntas; hasta hoy la etiqueta se
+    # quedó en a5d8d98 mientras el pin ya iba en a7c774a.
+    #
     # OJO: el clon es de GitHub, no del host. Cambiar LANOT_tools en tahan y
     # recompilar NO actualiza nada — hay que empujar el commit y mover este pin.
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # a7c774a trae el código de salida 3 de geotiff2view: no escribe imagen
-    # cuando el GeoTIFF no tiene un solo píxel válido. Sin recompilar, la cadena
-    # sigue publicando el JPG en negro del EVI — no se rompe nada, solo no mejora.
-    LANOT_TOOLS_COMMIT=a7c774a99e25384df9b661c13ab857e9b7202617
+    # f1d0c60 agrega a product_map la entrada 'cloudtype', que es como Polar2Grid
+    # nombra al producto de JRR (sin guion bajo). Sin recompilar, la vista de tipo
+    # de nube sigue saliendo rotulada "NOAA-20 VIIRS" a secas. Las etiquetas de la
+    # barra vienen del mismo commit pero por la otra vía —cloud_type_jrr.cpt es
+    # colortable, va montada desde el host— así que esas se arreglan con un
+    # git pull + install.sh en tahan, sin tocar la imagen.
+    LANOT_TOOLS_COMMIT=f1d0c60b972d6351817b20c67d0f6af6899c31ea
 
     # Lo que esta receta necesita además de la base: GDAL y el toolchain para
     # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
