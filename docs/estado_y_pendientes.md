@@ -12,6 +12,100 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## Dónde quedó el 2026-08-15 (cierre de la sesión)
+
+Todo está empujado en los dos repositorios salvo **un commit** de la cadena: `a28c2ee`, el que
+sube el pin a `a7c774a`. Y **falta recompilar** `polar2grid_v3.2-mapdrawer.sif` con ese pin.
+
+### Lo primero al retomar, en orden
+
+**1. La vista de tipo de nube tiene las etiquetas mal. No publicarla así.**
+
+Salió con datos —el mecanismo funciona, ver el pendiente 14— pero al compararla con la de
+CLAVR-x de la **misma pasada** (`j01_d20260813_b45264`) no concuerdan:
+
+- donde CLAVR-x pinta **azul** (Water, 3), la nuestra pinta **verde** (Fog, 2);
+- donde CLAVR-x pinta **amarillo** (Cirrus, 7), la nuestra pinta **rojo** (Opaque Ice, 6).
+
+Las dos son un corrimiento de **−1**, que encaja con que la enumeración de JRR sea la de
+CLAVR-x **sin "Prob. clear"**:
+
+```
+0 Clear   1 Fog   2 Water   3 Super cool   4 Mixed
+5 Opaque Ice   6 Cirrus   7 Overlapping   8 Overshooting
+```
+
+Son nueve, cuadra con `valid_range = 0b, 8b` y explica las dos observaciones. **Es una
+hipótesis, no un dato**: `cloud_type_jrr.cpt` se escribió suponiendo "las nueve primeras de
+CLAVR-x" y eso quedó desmentido, así que no repetir el error. Antes de tocar el CPT hay que
+buscar la enumeración autoritativa:
+
+```bash
+ncdump -h /data/output/jpss/level2/atmosphere/JRR-CloudPhase_v3r2_j01_s20260813*.nc | less
+```
+
+— el `grep` anterior solo miró las líneas de `CloudType`; puede haber un atributo global o una
+`Description` con las clases. Si no aparece, va en la documentación de CSPP ATMOS o en el ATBD
+del algoritmo empresarial de nubes de NOAA. Y en cualquier caso, la prueba final es volver a
+comparar las dos imágenes de la misma pasada: deben coincidir clase por clase.
+
+**2. La vista de tipo de nube sale sin nombre.** El rótulo dice `NOAA-20 VIIRS` a secas, no
+"Cloud Type": falta la entrada de `CloudType` en `product_map` de `LANOT_tools/metadata.py`.
+Es exactamente lo que advierte `CLAUDE.md` —un CPT nuevo obliga a agregar también su entrada—
+y se pasó por alto al agregar la paleta. Ojo con el orden de la lista: gana la primera
+subcadena que aparezca en el nombre del archivo, así que `CloudType` debe ir **antes** que
+cualquier clave más genérica. Esto sí necesita recompilar, porque `metadata.py` es código.
+
+**3. El DNB nunca se ha ejercitado con datos reales.** De las tres cosas que el cierre del
+0814 marcó como probadas solo con un `apptainer` simulado, incendios e inundaciones ya
+salieron con datos reales; **`--percentiles` del DNB no**, porque `run_polar2grid_l1.sh` no se
+ha corrido desde entonces. Antes de correrlo, descartar que el contenedor sea anterior a esa
+bandera:
+
+```bash
+apptainer exec /opt/containers/polar2grid_v3.2-mapdrawer.sif geotiff2view --help | grep -- --percentiles
+```
+
+Si no sale nada, Level 1 falla entero; la recompilación pendiente lo arregla de paso. Y hay
+que probarlo sobre una **pasada nocturna**, que es para lo que existe el estirado por
+percentiles: sobre una diurna no prueba nada.
+
+```bash
+./scripts/run_polar2grid_l1.sh --pasada d20260814 --force   # la de 09:23 UTC
+```
+
+Qué mirar: que la vista del DNB enseñe luces de ciudad y estructura de nubes y no salga negra;
+que los conteos sean **59 GeoTIFF y 3 vistas** —siguen sin confirmarse desde que se pasó a un
+solo algoritmo—, con 7 GeoTIFF de DNB (6 son ángulos) y **una** vista; y qué pasa con los RGB,
+que de noche no tienen sentido. Si Polar2Grid los filtra serán 1 vista y no 3; si los produce
+en negro, veremos si el código 3 los atrapa. Esa corrida es además la primera prueba con datos
+reales del `vestir()` nuevo en Level 1.
+
+**4. Recompilar** con el pin `a7c774a`, que es lo que activa el código 3 de `geotiff2view` y,
+con él, que el EVI vacío deje de publicarse. Hasta entonces sigue saliendo el JPG en negro.
+
+### Lo que sí quedó bien, verificado con datos reales el 2026-08-15
+
+- **La barra de color de inundaciones**, con sus 18 recuadros y las etiquetas del propio
+  producto. La vista se lee sola: océano en `Agua nor.`, tierra en `Suelo/veg.`, nubes en
+  `Nube` y las manchas rojas del delta del Misisipi en el extremo alto de la fracción.
+- **El nombre uniforme** `noaa20_viirs_flood_…`, que ya ordena junto al resto de su pasada.
+- **El `-p` explícito de ATMOS**, que entrega los siete de siempre más `CloudType`.
+
+### Dos asperezas menores de la barra de color
+
+Las dos se ven en la vista de inundaciones y no valen una corrida por sí solas:
+
+- **El recuadro "Sin datos" es negro sobre fondo negro**: se lee la etiqueta pero no se ve el
+  color. Lo mismo le pasaría a cualquier paleta con una clase negra. Opciones: quitarlo del
+  CPT —el negro se explica solo— o darle un borde a los recuadros en `_draw_colorbar()`.
+- **La barra se encima al mapa** en vez de tener espacio propio. `--lat-south 11` solo reserva
+  espacio *si el borde sur de los datos está al norte de esa latitud*, y en esta pasada el
+  swath llega a 5°S. O sea que no es un fallo, es la condición documentada de la bandera; pero
+  con las rejillas dinámicas actuales casi nunca se va a cumplir. Va con el pendiente 9.
+
+---
+
 ## Dónde quedó el 2026-08-14 (cierre de la sesión)
 
 **Lo primero al retomar**: en el repositorio quedaron **cuatro commits sin empujar**
@@ -691,6 +785,27 @@ Lo que dejó el caso de incendios, y que aplica a flood:
   hace con los SDR, dejaría fuera gránulos; hay que emparejar por ventana temporal.
 - De los tres productos disponibles (`confidence_cat`, `T4`, `power`) solo el primero tiene
   paleta. Los otros dos salen como GeoTIFF sin vista, que es el comportamiento correcto.
+
+### 14. Un centenar de productos de ATMOS que no estábamos ofreciendo
+Descubierto el 2026-08-15 persiguiendo por qué la cadena nueva no generaba la vista de **tipo
+de nube** que la vieja sí publica con CLAVR-x. No era que el producto faltara: `CloudType`
+está en `JRR-CloudPhase`, que ya leemos.
+
+Lo que pasaba es que **`--list-products` oculta la mitad de lo disponible** (ver "Hallazgos").
+Con `--list-products-all` aparecen, además de `CloudType`: `CloudMask`, `CloudMaskBinary`,
+`CloudProbability`, `CldOptDpth`, `CldTopPres`, `CldTopEmss`, la microfísica
+(`CloudMicroEffRad`, `CloudMicroIWP`, `CloudMicroLWP`, `CloudMicroVisOD`), `Dust`, `Smoke`,
+`SnowIce`, `Fire_Mask`, `Shadow_Mask`, toda la familia de ceniza volcánica y un largo etcétera.
+
+`CloudType` ya está pedido y funciona; lo que le falta son las etiquetas correctas y su
+entrada en `product_map` (ver el cierre de sesión). **Lo que queda por decidir es el resto**, y
+es una decisión de producto y no técnica: ahora que se sabe que están disponibles, conviene
+enseñarle la lista a los colegas del laboratorio antes de elegir. El costo de agregar
+cualquiera es una palabra en el `-p` de ATMOS más su paleta y su entrada en `product_map`.
+
+Dos que se ven especialmente prometedores: **`CloudMask`**, que reabre el enmascarado del
+pendiente 12 —aunque siga topando con las rejillas dinámicas—, y **`Dust`/`Smoke`**, que en
+esta región tienen uso operativo evidente.
 
 ## Hallazgos que conviene no volver a descubrir
 
