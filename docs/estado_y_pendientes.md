@@ -85,9 +85,44 @@ son las que ya pinta la paleta embebida de Polar2Grid.
 `cloud_type_jrr.cpt` quedó corregido con esas etiquetas, y con los colores mapeados **por
 significado** a los de `cloud_type.cpt` (agua azul, sobreenfriada cian, mixta rosa, hielo
 grueso rojo, hielo delgado amarillo, multicapa naranja) para que las dos vistas se puedan
-comparar de un vistazo. **Falta hacer esa comparación con datos reales**: es la prueba final y
-sin ella esto sigue siendo una lectura del ATBD, no un hecho verificado sobre nuestras
-imágenes.
+comparar de un vistazo.
+
+### La comparación con CLAVR-x: pasa, y por qué se puede afirmar
+
+Hecha el 2026-08-15 sobre `j01_d20260813_b45264`, con la vista nueva ya recompilada (rótulo
+`NOAA-20 Cloud Type 2026/08/13 19:11Z`) contra la PNG de `ql_clavrx.sh` de la misma pasada.
+
+Lo que hay que verificar no es que las dos imágenes se parezcan —son dos algoritmos con dos
+listas de clases— sino que el mapeo de las trece de CLAVR-x a las nueve de JRR sea
+**consistente**: varias clases de CLAVR-x cayendo en una sola de JRR, y nunca una clase de JRR
+repartida entre clases físicamente incompatibles. Eso es lo que se observa:
+
+| CLAVR-x | JRR | Dónde se ve |
+|---|---|---|
+| Water (azul) **+ Fog (verde)** | Agua | filigrana de la Sierra Madre, cúmulos del Pacífico, y las manchas verdes de CLAVR-x sobre el sur de México y Yucatán |
+| Opaque Ice (rojo) **+ Overshooting** | Hielo grueso | los núcleos convectivos del golfo y del sur, en las mismas posiciones |
+| Cirrus (amarillo) | Hielo delgado | los yunques alrededor de esos núcleos |
+| Super cool (cian) | Sobreenfriada | los mismos parches, p. ej. el del centro de México junto al complejo convectivo |
+| Clear + Prob. clear (dos grises) | Despejado | el interior de México y el golfo |
+| Unknown (blanco) | Indeterminado | el borde superior del swath |
+
+**El verde de CLAVR-x saliendo azul en la nuestra es la confirmación clave**: JRR no tiene
+clase Fog, la niebla es agua líquida. Y explica al revés el síntoma que abrió todo esto — con
+las etiquetas viejas no es que la niebla se rotulara mal, es que *todas* las nubes bajas de
+agua salían rotuladas "Fog".
+
+Un corrimiento de índice no puede producir un mapeo así: repartiría nuestro azul entre clases
+sin relación física entre sí. Que sea muchos-a-uno y coherente en las seis familias es la
+prueba, no el parecido.
+
+**El recuadro `Sin uso` no aparece en el mapa**: ni un píxel gris oscuro en toda la escena, que
+es lo que predice el "Spare" del ATBD para el valor 1.
+
+Queda una diferencia real, que no es de etiquetas: **JRR detecta bastante más hielo delgado**
+que CLAVR-x, sobre todo del lado del golfo, donde CLAVR-x pone Clear o Water. Es diferencia de
+algoritmo —un error de etiquetas sería sistemático y este no lo es— pero conviene vigilarla
+cuando se compare con otra pasada, porque es lo que más va a saltar a la vista de quien esté
+acostumbrado a la imagen vieja.
 
 El rótulo vacío tenía otra causa, más simple de lo que decía la nota del cierre anterior: la
 entrada `cloud_type` **ya estaba** en `product_map`, pero es la de CLAVR-x. Polar2Grid nombra al
@@ -97,9 +132,10 @@ producto de JRR con el nombre de la variable del NetCDF, `CloudType`, que en min
 
 **Cómo llegan los dos arreglos a producción es distinto**, y conviene no confundirlo: el `.cpt`
 es colortable, va montada desde el host, así que basta con `git pull` + `install.sh` en tahan.
-`metadata.py` es código y viaja dentro del `.sif`: **hay que recompilar**. El pin del `.def` ya
-subió a `f1d0c60`; falta empujar LANOT_tools para que ese commit exista en GitHub, porque el
-`.def` clona de ahí y no del host.
+`metadata.py` es código y viaja dentro del `.sif`, así que hay que recompilar con el pin en
+`f1d0c60` — y para eso el commit tiene que estar **empujado** a GitHub, porque el `.def` clona
+de ahí y no del host. Los dos pasos ya se hicieron el mismo día; de ahí que la vista de la
+comparación traiga el rótulo completo.
 
 De paso: el pin estaba escrito **dos veces** en `polar2grid_v3.2-mapdrawer.def` —en `%post` y
 en la etiqueta `LANOT_tools_commit` de `%labels`, que es lo único consultable con
@@ -129,25 +165,22 @@ Las dos se ven en la vista de inundaciones y no valen una corrida por sí solas:
 
 ### Lo que sigue, en orden
 
-1. **Empujar los dos repositorios.** En LANOT_tools quedan `b4af211` (el CPT corregido) y
-   `f1d0c60` (la entrada de `product_map`); en la cadena, el commit que sube el pin. Sin el
-   `push` de LANOT_tools la recompilación no puede funcionar: el `.def` clona de GitHub.
-2. **`git pull` + `install.sh` en tahan**, que es lo que pone el `.cpt` nuevo en
-   `/usr/local/share/lanot/colortables`. Con eso solo, las etiquetas de la barra ya salen
-   bien; el rótulo del producto todavía no.
-3. **Recompilar** `polar2grid_v3.2-mapdrawer.sif` con el pin `f1d0c60`, para que
-   `metadata.py` entre a la imagen y la vista deje de rotularse "NOAA-20 VIIRS" a secas.
-4. **Volver a generar la vista de tipo de nube de `j01_d20260813_b45264` y compararla contra
-   la de CLAVR-x de la misma pasada.** Es la prueba que cierra el asunto; hasta entonces la
-   enumeración es lectura del ATBD.
+El tipo de nube quedó cerrado: etiquetas, rótulo, despliegue y comparación. Lo que sigue
+abierto de esta tanda es menor:
 
-   Y hay que comparar **por significado, no por color**. `referencia/cspp_7_clavrx.sh`, que se
-   trajo el 2026-08-15, muestra que la imagen contra la que comparamos no la hace Polar2Grid
-   —que ahí solo produce GeoTIFF `float32` sobre la misma rejilla `wgs84_geo_750m`— sino
-   `ql_clavrx.sh`, el quicklook del propio bundle de CLAVR-x, con su paleta. Es el mismo
-   patrón de flood. Así que lo que debe coincidir es *dónde* cae cada clase, no el tono: son
-   dos algoritmos, dos listas de clases y dos paletas. Donde CLAVR-x diga Cirrus, la nuestra
-   debe decir hielo delgado; donde diga Water, agua.
+1. **Confirmar de frente los 59 GeoTIFF y 3 vistas de Level 1 con una pasada diurna.** Con la
+   nocturna la cuenta cuadra por la vía indirecta, pero conviene verla directa. Es trámite.
+2. **Las dos asperezas de la barra de color** de aquí arriba, que no valen una corrida por sí
+   solas y se pueden juntar con el pendiente 9.
+3. **Decidir qué más se pide de ATMOS** (pendiente 14), que es decisión de producto: hay que
+   enseñarle la lista de `--list-products-all` a los colegas del laboratorio.
+
+Y una advertencia que vale para la próxima paleta categórica, ya sea de ATMOS o de otro
+bundle: la imagen contra la que se compara **no la hace Polar2Grid**.
+`referencia/cspp_7_clavrx.sh`, que se trajo el 2026-08-15, muestra que ahí Polar2Grid solo
+produce GeoTIFF `float32` sobre la misma rejilla `wgs84_geo_750m`; la PNG la hace
+`ql_clavrx.sh`, el quicklook del propio bundle, con su paleta. Es el mismo patrón de flood, y
+ya van dos. Así que la comparación es siempre **por significado, no por color**.
 
 ---
 
@@ -842,9 +875,8 @@ Con `--list-products-all` aparecen, además de `CloudType`: `CloudMask`, `CloudM
 (`CloudMicroEffRad`, `CloudMicroIWP`, `CloudMicroLWP`, `CloudMicroVisOD`), `Dust`, `Smoke`,
 `SnowIce`, `Fire_Mask`, `Shadow_Mask`, toda la familia de ceniza volcánica y un largo etcétera.
 
-`CloudType` ya está pedido y funciona; sus etiquetas y su entrada en `product_map` quedaron
-corregidas el 2026-08-15, a falta de recompilar y de comparar la vista contra la de CLAVR-x
-(ver arriba). **Lo que queda por decidir es el resto**, y
+`CloudType` ya está pedido, corregido y verificado contra la vista de CLAVR-x de la misma
+pasada (2026-08-15, ver arriba). **Lo que queda por decidir es el resto**, y
 es una decisión de producto y no técnica: ahora que se sabe que están disponibles, conviene
 enseñarle la lista a los colegas del laboratorio antes de elegir. El costo de agregar
 cualquiera es una palabra en el `-p` de ATMOS más su paleta y su entrada en `product_map`.
