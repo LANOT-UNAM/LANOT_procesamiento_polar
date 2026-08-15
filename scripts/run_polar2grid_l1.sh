@@ -337,23 +337,28 @@ trap 'rm -rf "$HOST_WORK" "$REF_FILE"' EXIT
 # ==============================================================================
 # Cada bloque es independiente: se registra su código pero no aborta a los demás.
 
+# Los montajes son los mismos para toda invocación del contenedor, sean las
+# llamadas a Polar2Grid o las de LANOT_tools archivo por archivo.
+BINDS_P2G=(
+    "${BIND_CPT[@]}"
+    --bind "$STAGING_SDR:/input_sdr"
+    --bind "$HOST_SDR_IN:$HOST_SDR_IN"
+    --bind "$GRID_CONFIG:/config/grid.yaml:ro"
+    --bind "$OUT_M:/output_m"
+    --bind "$OUT_I:/output_i"
+    --bind "$OUT_DNB:/output_dnb"
+    --bind "$OUT_RGB:/output_rgb"
+    --bind "$VISTA_DNB:/vista_dnb"
+    --bind "$VISTA_RGB:/vista_rgb"
+    --bind "$HOST_WORK:/work"
+)
+
 en_contenedor() {
     local etiqueta="$1"; shift
     local codigo=0
 
     echo "--- $etiqueta ---" >> "$LOG_FILE"
-    apptainer exec \
-        "${BIND_CPT[@]}" \
-        --bind "$STAGING_SDR:/input_sdr" \
-        --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
-        --bind "$GRID_CONFIG:/config/grid.yaml:ro" \
-        --bind "$OUT_M:/output_m" \
-        --bind "$OUT_I:/output_i" \
-        --bind "$OUT_DNB:/output_dnb" \
-        --bind "$OUT_RGB:/output_rgb" \
-        --bind "$VISTA_DNB:/vista_dnb" \
-        --bind "$VISTA_RGB:/vista_rgb" \
-        --bind "$HOST_WORK:/work" \
+    apptainer exec "${BINDS_P2G[@]}" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
 
     if [ $codigo -ne 0 ]; then
@@ -361,6 +366,17 @@ en_contenedor() {
     fi
 
     return 0
+}
+
+# Corre UNA herramienta de LANOT_tools sobre UN archivo y devuelve su código de
+# salida tal cual. Ver la nota extensa en run_polar2grid_edr.sh: el resumen es
+# que concatenar las órdenes de toda una sección en un solo `bash -c` deja el
+# código de salida de la ÚLTIMA orden y pierde el de las demás, justo cuando
+# geotiff2view distingue "sin datos válidos" (3) de "falló" (1).
+en_contenedor_uno() {
+    local codigo=0
+    apptainer exec "${BINDS_P2G[@]}" "$SIF_P2G" "$@" >> "$LOG_FILE" 2>&1 || codigo=$?
+    return $codigo
 }
 
 # --no-enhance y float32 porque lo que se guarda son DATOS; el realce visual
@@ -409,17 +425,49 @@ en_contenedor "RGB true_color / false_color (750 m)" \
 # GeoTIFF de datos (escala a 8 bits y decora), mapdrawer para los que ya son
 # imagen (solo los viste).
 
-# $5 es un ERE opcional: solo se viste lo que haga match. Sirve para dejar
-# fuera los productos que son datos y no imágenes.
-ordenes_de() {
-    local dir_tif="$1" montaje_tif="$2" montaje_img="$3" herramienta="$4" filtro="${5:-.}"
-    local tif nombre
+# $6 es un ERE opcional: solo se viste lo que haga match. Sirve para dejar
+# fuera los productos que son datos y no imágenes. $7 son banderas extra para la
+# herramienta, si necesita alguna.
+#
+# Una invocación del contenedor por archivo, para poder leer su código de salida:
+# el 3 de geotiff2view significa "el GeoTIFF no tiene un solo píxel válido", que
+# no es un fallo sino un producto que salió vacío en esta pasada, y una imagen en
+# negro es peor que ninguna porque se publica y se cuenta como buena.
+vestir() {
+    local etiqueta="$1" dir_tif="$2" montaje_tif="$3" montaje_img="$4"
+    local herramienta="$5" filtro="${6:-.}" extras_str="${7:-}"
+    local tif nombre codigo
+    local generadas=0 vacias=0 fallidas=0
+    local -a orden=() extras=()
+    [ -n "$extras_str" ] && read -r -a extras <<< "$extras_str"
+
+    echo "--- $etiqueta ---" >> "$LOG_FILE"
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
-        echo "$herramienta '$montaje_tif/$nombre' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"
+        orden=("$herramienta" "$montaje_tif/$nombre" "${extras[@]}" "${DECORACION[@]}"
+               -o "$montaje_img/${nombre%.*}.jpg")
+
+        codigo=0
+        en_contenedor_uno "${orden[@]}" || codigo=$?
+
+        case $codigo in
+            0) generadas=$((generadas + 1)) ;;
+            3) echo "  · sin datos válidos, no se genera vista: $nombre" | tee -a "$LOG_FILE"
+               vacias=$((vacias + 1)) ;;
+            *) echo "  ⚠ no se pudo vestir: $nombre (código $codigo)" | tee -a "$LOG_FILE"
+               fallidas=$((fallidas + 1)) ;;
+        esac
     done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' -newer "$REF_FILE" 2>/dev/null \
                   | grep -E "$filtro" | sort)
+
+    if [ $((generadas + vacias + fallidas)) -eq 0 ]; then
+        echo "  ⚠ $etiqueta: nada que vestir" | tee -a "$LOG_FILE"
+        return 0
+    fi
+
+    echo "  $etiqueta: generadas $generadas, sin datos $vacias, con error $fallidas" >> "$LOG_FILE"
+    return 0
 }
 
 # El DNB va sin -p: es una imagen en escala de grises, no lleva paleta. El -b
@@ -436,20 +484,11 @@ ordenes_de() {
 # tenga sentido decorar con logo y timestamp (verificado en tahan el
 # 2026-08-13, cuando salieron 10 vistas en vez de 5).
 DNB_VISTAS='dynamic_dnb'
-ORDENES_DNB=$(ordenes_de "$OUT_DNB" /output_dnb /vista_dnb "geotiff2view -b --percentiles 1,99" "$DNB_VISTAS")
-if [ -n "$ORDENES_DNB" ]; then
-    en_contenedor "Vistas de DNB" "$ORDENES_DNB"
-else
-    echo "  ⚠ Sin GeoTIFF de DNB que vestir" | tee -a "$LOG_FILE"
-fi
+vestir "Vistas de DNB" "$OUT_DNB" /output_dnb /vista_dnb \
+       geotiff2view "$DNB_VISTAS" "-b --percentiles 1,99"
 
 # El RGB ya viene realzado por Satpy: mapdrawer no recolorea, solo decora.
-ORDENES_RGB=$(ordenes_de "$OUT_RGB" /output_rgb /vista_rgb "mapdrawer")
-if [ -n "$ORDENES_RGB" ]; then
-    en_contenedor "Vistas de RGB" "$ORDENES_RGB"
-else
-    echo "  ⚠ Sin GeoTIFF de RGB que vestir" | tee -a "$LOG_FILE"
-fi
+vestir "Vistas de RGB" "$OUT_RGB" /output_rgb /vista_rgb mapdrawer
 
 # ==============================================================================
 # VERIFICACIÓN

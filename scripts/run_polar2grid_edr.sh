@@ -516,6 +516,36 @@ mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" "$STAGING
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
 
+# Los montajes son los mismos para toda invocación del contenedor, sean las
+# llamadas a Polar2Grid o las de LANOT_tools archivo por archivo. Se arman una
+# vez, aquí, porque dependen de los directorios de staging que acaban de
+# definirse.
+BINDS_P2G=(
+    "${BIND_CPT[@]}"
+    --bind "$STAGING_SDR:/input_sdr"
+    --bind "$STAGING_EDR:/input_edr"
+    --bind "$STAGING_LSR:/input_lsr"
+    --bind "$STAGING_ACSPO:/input_acspo"
+    --bind "$STAGING_FIRE:/input_fire"
+    --bind "$HOST_SDR_IN:$HOST_SDR_IN"
+    --bind "$HOST_EDR_IN:$HOST_EDR_IN"
+    --bind "$HOST_LSR_IN:$HOST_LSR_IN"
+    --bind "$HOST_ACSPO_IN:$HOST_ACSPO_IN"
+    --bind "$HOST_FIRE_IN:$HOST_FIRE_IN"
+    --bind "$GRID_CONFIG:/config/grid.yaml:ro"
+    --bind "$HOST_TIF_OUT:/output_tif"
+    --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif"
+    --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif"
+    --bind "$HOST_FIRE_TIF_OUT:/output_fire_tif"
+    --bind "$HOST_FLOOD_TIF_IN:/output_flood_tif"
+    --bind "$HOST_IMG_OUT:/output_img"
+    --bind "$HOST_LSR_IMG_OUT:/output_lsr_img"
+    --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img"
+    --bind "$HOST_FIRE_IMG_OUT:/output_fire_img"
+    --bind "$HOST_FLOOD_IMG_OUT:/output_flood_img"
+    --bind "$HOST_WORK:/work"
+)
+
 # SDR de la pasada, CON su nombre original. El patrón de Satpy para viirs_sdr
 # termina en _{source:8s}.h5, un campo obligatorio de 8 caracteres que es
 # justamente 'cspp_dev': quitarlo no ayuda al match, lo impide. Verificado en
@@ -569,30 +599,7 @@ en_contenedor() {
     local codigo=0
 
     echo "--- $etiqueta ---" >> "$LOG_FILE"
-    apptainer exec \
-        "${BIND_CPT[@]}" \
-        --bind "$STAGING_SDR:/input_sdr" \
-        --bind "$STAGING_EDR:/input_edr" \
-        --bind "$STAGING_LSR:/input_lsr" \
-        --bind "$STAGING_ACSPO:/input_acspo" \
-        --bind "$STAGING_FIRE:/input_fire" \
-        --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
-        --bind "$HOST_EDR_IN:$HOST_EDR_IN" \
-        --bind "$HOST_LSR_IN:$HOST_LSR_IN" \
-        --bind "$HOST_ACSPO_IN:$HOST_ACSPO_IN" \
-        --bind "$HOST_FIRE_IN:$HOST_FIRE_IN" \
-        --bind "$GRID_CONFIG:/config/grid.yaml:ro" \
-        --bind "$HOST_TIF_OUT:/output_tif" \
-        --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif" \
-        --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif" \
-        --bind "$HOST_FIRE_TIF_OUT:/output_fire_tif" \
-        --bind "$HOST_FLOOD_TIF_IN:/output_flood_tif" \
-        --bind "$HOST_IMG_OUT:/output_img" \
-        --bind "$HOST_LSR_IMG_OUT:/output_lsr_img" \
-        --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img" \
-        --bind "$HOST_FIRE_IMG_OUT:/output_fire_img" \
-        --bind "$HOST_FLOOD_IMG_OUT:/output_flood_img" \
-        --bind "$HOST_WORK:/work" \
+    apptainer exec "${BINDS_P2G[@]}" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
 
     if [ $codigo -ne 0 ]; then
@@ -600,6 +607,26 @@ en_contenedor() {
     fi
 
     return 0
+}
+
+# Corre UNA herramienta de LANOT_tools sobre UN archivo y devuelve su código de
+# salida tal cual. Es lo que permite leer el código por archivo: antes las
+# órdenes de toda una sección se concatenaban en una sola cadena para un único
+# `bash -c`, y el código del conjunto era el de la ÚLTIMA orden — el de las demás
+# se perdía. Con geotiff2view distinguiendo "sin datos válidos" (3) de "falló"
+# (1), ese código es justo lo que hay que leer.
+#
+# De paso desaparece la cadena de órdenes con comillas anidadas: los argumentos
+# viajan como arreglo, sin que nada tenga que sobrevivir a dos niveles de
+# entrecomillado. Esa cadena ya costó una corrida en run_flood_edr.sh.
+#
+# Cuesta un arranque de contenedor por archivo en vez de uno por sección —unos
+# 20-25 por pasada, del orden de 15 s— y solo aplica a las vistas: las llamadas a
+# Polar2Grid, que son las caras, siguen siendo una por sección.
+en_contenedor_uno() {
+    local codigo=0
+    apptainer exec "${BINDS_P2G[@]}" "$SIF_P2G" "$@" >> "$LOG_FILE" 2>&1 || codigo=$?
+    return $codigo
 }
 
 # --- Etapa 1: remuestreo a la rejilla, una sola vez por conjunto ---
@@ -698,40 +725,62 @@ vestir() {
     # NO en DECORACION, que es compartido: la rama de mapdrawer también se
     # conserva para los RGB de superficie retirados, y ésos no llevan barra.
     local cpt_barra="${8:-}"
-    local tif nombre cpt ordenes="" barra=""
-    local -a criterio=()
+    local tif nombre cpt codigo
+    local generadas=0 vacias=0 fallidas=0
+    local -a criterio=() orden=()
     [ "$solo_nuevos" -eq 1 ] && criterio=(-newer "$REF_FILE")
 
-    # mapdrawer busca la paleta de la barra en tres lugares, por prioridad: el
-    # tag de texto 'colormap' del TIFF, el --cpt externo, y el colormap nativo.
-    # El de flood tiene colormap nativo, así que sin --cpt saldría una barra con
-    # las 256 entradas —70 de ellas negro de relleno—, sin etiquetas y numerada
-    # 0-255. El --cpt gana sobre el nativo, que es justo lo que hace falta.
-    [ -n "$cpt_barra" ] && barra="--cpt '$cpt_barra' --colorbar"
+    echo "--- $etiqueta ---" >> "$LOG_FILE"
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
+
         if [ "$herramienta" = "mapdrawer" ]; then
             # Ya es imagen: solo se viste, no se recolorea
-            ordenes+="mapdrawer '$montaje_tif/$nombre' ${DECORACION[*]} $barra -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
-            continue
+            orden=(mapdrawer "$montaje_tif/$nombre" "${DECORACION[@]}")
+            # mapdrawer busca la paleta de la barra en tres lugares, por
+            # prioridad: el tag de texto 'colormap' del TIFF, el --cpt externo, y
+            # el colormap nativo. El de flood tiene colormap nativo, así que sin
+            # --cpt saldría una barra con las 256 entradas —70 de ellas negro de
+            # relleno—, sin etiquetas y numerada 0-255. El --cpt gana sobre el
+            # nativo, que es justo lo que hace falta.
+            [ -n "$cpt_barra" ] && orden+=(--cpt "$cpt_barra" --colorbar)
+        else
+            if ! cpt=$(paleta_de "$nombre"); then
+                echo "  · sin paleta, no se genera vista: $nombre" >> "$LOG_FILE"
+                continue
+            fi
+            orden=(geotiff2view "$montaje_tif/$nombre" -b -p "$cpt" "${DECORACION[@]}")
         fi
-        if ! cpt=$(paleta_de "$nombre"); then
-            echo "  · sin paleta, no se genera vista: $nombre" >> "$LOG_FILE"
-            continue
-        fi
-        ordenes+="geotiff2view '$montaje_tif/$nombre' -b -p '$cpt' ${DECORACION[*]} -o '$montaje_img/${nombre%.*}.jpg'"$'\n'
+        orden+=(-o "$montaje_img/${nombre%.*}.jpg")
+
+        codigo=0
+        en_contenedor_uno "${orden[@]}" || codigo=$?
+
+        # El 3 lo emite geotiff2view cuando el GeoTIFF no tiene un solo píxel
+        # válido. No es un fallo: hay productos que salen vacíos en una pasada
+        # —el EVI del 2026-08-13— y publicar un JPG en negro es peor que no
+        # publicar nada. mapdrawer no usa ese código; si algún día lo devolviera,
+        # se contaría aquí como vacío, que es lo más parecido.
+        case $codigo in
+            0) generadas=$((generadas + 1)) ;;
+            3) echo "  · sin datos válidos, no se genera vista: $nombre" | tee -a "$LOG_FILE"
+               vacias=$((vacias + 1)) ;;
+            *) echo "  ⚠ no se pudo vestir: $nombre (código $codigo)" | tee -a "$LOG_FILE"
+               fallidas=$((fallidas + 1)) ;;
+        esac
     done < <(find "$dir_tif" -maxdepth 1 -name '*.tif' "${criterio[@]}" 2>/dev/null \
                   | grep -E "$filtro" | sort)
 
-    if [ -z "$ordenes" ]; then
+    if [ $((generadas + vacias + fallidas)) -eq 0 ]; then
         # Puede ser que el filtro dejara fuera todo (son datos, no imágenes) o
         # que ningún producto tenga CPT. El detalle queda arriba, en el log.
         echo "  ⚠ $etiqueta: nada que vestir" | tee -a "$LOG_FILE"
         return 0
     fi
 
-    en_contenedor "$etiqueta" "$ordenes"
+    echo "  $etiqueta: generadas $generadas, sin datos $vacias, con error $fallidas" >> "$LOG_FILE"
+    return 0
 }
 
 vestir "Vistas de ATMOS" "$HOST_TIF_OUT"       /output_tif       /output_img
