@@ -84,6 +84,30 @@ inundaciones. Las dos se revisaron a ojo:
   píxeles sueltos de 375 m sobre fondo negro, así que a pantalla completa la vista se lee
   como una imagen negra con motas. Habría que dilatar los puntos o componerlos sobre el
   `true_color` de la misma pasada; es trabajo de `geotiff2view`, no de estos scripts.
+  **Se deja como está**: así se generan hoy en producción.
+
+**La barra de color de flood, resuelta el 2026-08-14.** La vista salía sin barra, o sea sin
+forma de saber qué significan el azul, el verde o el rojo. No hizo falta tocar `mapdrawer`:
+su `--colorbar` busca la paleta en tres lugares por prioridad —el tag de texto `colormap` del
+TIFF, el `--cpt` externo y el colormap nativo de rasterio— y el `--cpt` gana sobre el nativo.
+Con solo `--colorbar` habría salido una barra de las 256 entradas, **70 de ellas negro de
+relleno**, sin etiquetas y numerada 0-255.
+
+El `colortables/flood.cpt` nuevo toma los colores de la tabla que incrusta
+`cspp_viirs_flood2tif.sh` y las etiquetas del atributo `WaterDetection:TypeDescription` del
+propio NetCDF —10 clases más la fracción de agua—, no de inferir de los colores. Dos detalles
+que importan si alguien lo edita:
+
+- **La primera columna es el número de recuadro, no el valor del dato**, como en `glm_fed.cpt`.
+  Con los valores reales (1, 15, 16, 20, 27, 30, 38, 50, 99, 100-200) la barra saldría casi
+  toda negra: `_draw_colorbar()` pinta todos los índices entre el mínimo y el máximo y la rama
+  discreta de `load()` deja en negro los que el archivo no menciona. Sirve para la leyenda, no
+  para recolorear: `mapdrawer` no recolorea, y la imagen ya trae su paleta.
+- **`Bareland` y `Vegetation` comparten color** en la tabla original, así que van en un solo
+  recuadro. Dos recuadros idénticos harían creer que se distinguen.
+
+Como las paletas se montan desde el host, esto **no necesita recompilar**: basta `install.sh`
+de LANOT_tools en tahan y un `git pull` de la cadena.
 
 **La vista de inundaciones NO está en otro marco**, aunque lo parezca. Se anotó primero que sí
 —su `.tif` sale de `gdal_translate` del bundle de CSPP y nunca pasa por el remuestreo de
@@ -556,11 +580,25 @@ sus nombres a `-p` en `run_polar2grid_l1.sh`.
 **Añadido el 2026-08-14, tarde: el EVI vacío no es de esta cadena.** En la pasada del 0813 la
 vista de EVI salió en negro. Rastreado hasta el origen: la variable viene con cero píxeles
 válidos desde el `SurfRefl_*.nc` de CSPP LSR, con el NDVI y las tres reflectancias de entrada
-sanas en la misma pasada (ver "Hallazgos"). No hay nada que arreglar aquí. Lo que sí conviene
-decidir es qué hacer con la vista: hoy se genera igual y el resumen la cuenta entre las 11,
-así que se publica un JPG en negro. `geotiff2view` ya detecta el caso —de ahí sale el
-`All-NaN slice encountered`— y podría no escribir la imagen, pero eso es LANOT_tools, con su
-commit, su push, su pin y su recompilación.
+sanas en la misma pasada (ver "Hallazgos"). No hay nada que arreglar en el producto.
+
+**Lo que sí se arregló es que la cadena lo publicara como bueno**, el mismo día:
+
+- `geotiff2view` ya no escribe imagen cuando el GeoTIFF no tiene un solo píxel válido: avisa
+  por stderr y sale con **código 3**, reservado para eso (el 1 queda para fallos de verdad y
+  el 2 lo usa argparse). Va en el `--help` y en el README de LANOT_tools, que es contrato con
+  quien llama. Con pruebas en `tests/test_geotiff2view.py`, que no existía.
+- Los dos `run_polar2grid_*.sh` llaman a la herramienta **una vez por archivo** para poder leer
+  ese código, y distinguen "generada" de "sin datos" y de "con error". Antes concatenaban las
+  órdenes de toda una sección en un solo `bash -c`, donde el código del conjunto es el de la
+  última orden: el de EVI se habría perdido igual, porque `EVI` va antes que `NDVI` en el
+  orden alfabético.
+
+Queda una consecuencia que conviene recordar: el `RuntimeWarning: All-NaN slice encountered`
+que puso sobre la pista **ya no aparece**. Salía de dos f-strings de depuración que se
+evaluaban aunque `VERBOSE` fuera falso —recorriendo el arreglo completo para tirar el
+resultado—, y eso se corrigió de paso. El síntoma ahora es explícito: `· sin datos válidos, no
+se genera vista` en el log, y el recuento por sección al final de cada bloque.
 
 Se había anotado que las nubes se pintaban como suelo desnudo, por una mancha beige sobre
 el norte de México y Texas en la vista del 2026-08-11. **Es incorrecto: LSR ya enmascara
