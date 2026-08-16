@@ -66,6 +66,7 @@
 #   HEAP_CACHE       Caché dinámico   (def. /data/ancillary/heap)
 #   HEAP_WORK_BASE   Raíz de trabajo  (def. /data/tmp)
 #   HEAP_LOG_BASE    Raíz de logs     (def. /var/log/lanot/polares)
+#   HEAP_MARGEN_ATMS Segundos de margen al enlazar ATMS (def. 90; 0 = estricto)
 #   HEAP_OPTS        Banderas extra para run_heap.bash
 #
 # ==============================================================================
@@ -85,6 +86,10 @@ LOG_DIR="${HEAP_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CORES="${SLURM_CPUS_PER_TASK:-4}"
 JOB_ID="${SLURM_JOB_ID:-$$}"
+
+# Segundos que se ensancha, a cada lado, la ventana con la que se enlazan los
+# SDR de ATMS. Ver enlazar_atms(). 0 = traslape estricto.
+MARGEN_ATMS="${HEAP_MARGEN_ATMS:-90}"
 
 # ==============================================================================
 # FUNCIONES
@@ -202,6 +207,20 @@ intervalo_de() {
     echo "${fecha}${tini:0:6} ${fecha_fin}${tfin:0:6}"
 }
 
+# Suma (o resta) segundos a un sello de 14 dígitos, respetando el cambio de día.
+#   desplazar_sello 20260813191402 -90  ->  20260813191232
+#
+# Vía época y no con "... -90 seconds" en la cadena de fecha: ahí GNU date lee
+# el -90 como HUSO HORARIO y falla con "invalid date". El síntoma es traicionero
+# porque la función devuelve cadena vacía en vez de abortar, y aguas abajo la
+# comparación numérica no casa nada: en la prueba local el enlazado de ATMS caía
+# a 0 archivos.
+desplazar_sello() {
+    local s="$1" base
+    base=$(date -u -d "${s:0:4}-${s:4:2}-${s:6:2} ${s:8:2}:${s:10:2}:${s:12:2} UTC" +%s) || return 1
+    date -u -d "@$(( base + ($2) ))" +%Y%m%d%H%M%S
+}
+
 # La ventana de la pasada, en VENTANA_INI y VENTANA_FIN: el inicio más temprano
 # y el fin más tardío de TODOS los GCRSO de la órbita.
 #
@@ -259,8 +278,14 @@ enlazar() {
 # 2026-08-11, por ejemplo, el GCRSO agregado cubre 3 min y el GATMO 11: con el
 # criterio de pertenencia no se habría enlazado ninguno.
 #
-# El traslape ya es inclusivo en los extremos, así que no hace falta margen: un
-# gránulo de ATMS que comparta un solo segundo con la pasada entra.
+# Al traslape se le suma un MARGEN a cada lado (HEAP_MARGEN_ATMS, 90 s por
+# omisión ≈ tres gránulos de ATMS). El traslape estricto ya es inclusivo en los
+# extremos —un gránulo que comparta un solo segundo entra— y aun así el primer
+# gránulo de CrIS de la pasada del 2026-08-13 salió sin producto: 15 gránulos
+# de entrada y 14 de salida, faltando justo el primero. La sospecha es que la
+# recuperación necesita microondas que ENVUELVAN al gránulo, no solo que lo
+# toquen. Enlazar de más no cuesta nada —HEAP toma lo que le sirve y son un par
+# de enlaces— así que el margen es una opción barata.
 #
 # Se buscan tres fechas —la anterior, la de la pasada y la siguiente— porque un
 # archivo de ATMS puede empezar del otro lado de la medianoche.
@@ -272,6 +297,18 @@ enlazar_atms() {
     local -A elegido=()
     local fechas="$FECHA_PREV $FECHA_NUM $FECHA_SIG"
     local vistas=""
+    local desde hasta
+
+    desde=$(desplazar_sello "$VENTANA_INI" "-$MARGEN_ATMS")
+    hasta=$(desplazar_sello "$VENTANA_FIN" "$MARGEN_ATMS")
+
+    # Sin esto, un fallo de desplazar_sello dejaría los límites vacíos y el
+    # traslape no casaría con nada: 0 archivos de ATMS y un diagnóstico que
+    # apunta al lugar equivocado.
+    if [ -z "$desde" ] || [ -z "$hasta" ]; then
+        echo "ERROR: No se pudo aplicar el margen de ${MARGEN_ATMS}s a la ventana" >&2
+        return 1
+    fi
 
     shopt -s nullglob
     for d in $fechas; do
@@ -284,8 +321,9 @@ enlazar_atms() {
             read -r ini fin < <(intervalo_de "$nombre") || continue
             [ -n "$ini" ] || continue
 
-            # Traslape de intervalos, no pertenencia de un punto
-            [ "$ini" -le "$VENTANA_FIN" ] && [ "$fin" -ge "$VENTANA_INI" ] || continue
+            # Traslape de intervalos con la ventana ensanchada, no pertenencia
+            # de un punto
+            [ "$ini" -le "$hasta" ] && [ "$fin" -ge "$desde" ] || continue
 
             clave=$(echo "$nombre" | sed -E 's/_c[0-9]+_/_c_/')
             if [ -z "${elegido[$clave]:-}" ] || [ "$f" -nt "${elegido[$clave]}" ]; then
@@ -493,7 +531,7 @@ LOG_FILE="$LOG_DIR/heap_${TIMESTAMP}_${CLAVE}.log"
 
 echo "  Ventana:  $VENTANA_INI – $VENTANA_FIN" | tee -a "$LOG_FILE"
 echo "  CrIS:     $CRIS_COUNT archivos"        | tee -a "$LOG_FILE"
-echo "  ATMS:     $ATMS_COUNT archivos"        | tee -a "$LOG_FILE"
+echo "  ATMS:     $ATMS_COUNT archivos (margen ${MARGEN_ATMS}s)" | tee -a "$LOG_FILE"
 echo "  Caché:    $HOST_CACHE"                 | tee -a "$LOG_FILE"
 echo "  Salida:   $HOST_EDR_OUT"               | tee -a "$LOG_FILE"
 echo "  Hilos:    $CORES"                      | tee -a "$LOG_FILE"
