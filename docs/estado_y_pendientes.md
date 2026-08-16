@@ -2,14 +2,14 @@
 
 **Última actualización: 2026-08-15**
 
-**Los once eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
+**Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
-que faltaba. Del ozono queda pendiente solo la vista, que exige Polar2Grid 3.3
+que faltaba de aquello. Del ozono queda pendiente solo la vista, que exige Polar2Grid 3.3
 (pendiente 8).
 
-El **doceavo**, HEAP, se escribió el 2026-08-15 y **no ha corrido**: es la rama de sondeos
-de CrIS+ATMS, que va más allá de lo que hace el servidor viejo desde este repositorio. Ver
-el pendiente 4.
+El doceavo, **HEAP**, se escribió y se probó el 2026-08-15: sondeos NUCAPS de CrIS+ATMS,
+que van **más allá** de lo que hace el servidor viejo. Corre de punta a punta —30 productos
+de los 15 gránulos de una pasada, en 23 s— y lo que le falta es la vista. Ver el pendiente 4.
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
@@ -62,9 +62,11 @@ ninguna de las tareas de la tabla de más abajo está confirmada como activa.
 
 ### Lo que se cerró hoy
 
-- **HEAP escrito** (pendiente 4): receta, `run_heap_edr.sh`, podador de caché y cableado.
-  Probado solo con contenedor y árbol simulados; en tahan no ha corrido nada. Es el único
-  eslabón que **no** tiene equivalente en el servidor viejo corriendo desde este repositorio.
+- **HEAP, escrito y probado con datos reales** (pendiente 4): receta, `run_heap_edr.sh`,
+  podador de caché y cableado. Es el único eslabón que **no** tiene equivalente en el
+  servidor viejo. Cinco defectos salieron en la puesta en marcha y están anotados abajo; el
+  que más vale la pena recordar es que dos de ellos estaban emparejados — el margen de ATMS
+  se encontró **porque** el rescate de logs ya existía.
 - **El tipo de nube**, con la enumeración del ATBD y la comparación contra CLAVR-x. Ver abajo.
 - **La orquestación**: `procesar_pasada.sh`, `barrer_pendientes.sh` y `recibe.sh` corregido.
   `plan_orquestacion.md` queda como registro del diseño, con las cuatro cosas que salieron
@@ -713,11 +715,22 @@ Seis cosas del diseño que conviene tener presentes al depurar:
 - **Es el único contenedor de EDR sobre Rocky 8**, porque §1.3 declara 8.10 como SO destino y
   el paquete es binario puro. No "uniformarlo" a la 9 sin probar.
 
-Sin resolver: **la vista**. Los NUCAPS-EDR son retrievals por FOR —puntos dispersos de unos
-50 km—, no un swath de imagen, así que la rejilla de 750 m no viene al caso. Antes de decidir
-nada hay que ver qué expone el lector `nucaps` de Polar2Grid 3.2 con `--list-products` sobre
-una pasada real. Mientras tanto `run_heap_edr.sh` produce `.nc` y nada más, como el resto de
-los `run_*_edr.sh`.
+Sin resolver, en orden:
+
+1. **La vista.** Los NUCAPS son retrievals por FOR —puntos dispersos de unos 50 km—, no un
+   swath de imagen, así que la rejilla de 750 m no viene al caso. Antes de decidir nada hay
+   que ver qué expone el lector `nucaps` de Polar2Grid 3.2 con `--list-products` sobre una
+   pasada real. Mientras tanto `run_heap_edr.sh` produce `.nc` y nada más, como el resto de
+   los `run_*_edr.sh`.
+2. **`update_heap_ancillary.sh` en cron**, semanal. Ahora sí urge: `/data/ancillary/heap` ya
+   tiene datos y nadie los borra.
+3. **`level2/sounder` acumula en cada reproceso**, como `level2/atmosphere`: los `NUCAPS-*`
+   llevan campo de creación. Tres `--force` seguidos dejaron 86 archivos de una sola pasada.
+   Incluirlo cuando se escriba el `limpiar_productos.sh` del pendiente 5, reutilizando el
+   criterio de `enlazar_en_ventana` (`run_lsr_edr.sh`): el `_c<sello>` más reciente por
+   gránulo.
+4. **La prueba §3.3 del manual**, con `CSPP_HEAP_TESTDATA_V3.0.tar.gz`, que no se bajó. Ya no
+   urge, pero sería la forma de separar un problema del contenedor de uno del script.
 
 ### 5. Productos duplicados
 `/data/output/jpss/level2/atmosphere` crece con cada reproceso: los `JRR-*` llevan campo
