@@ -44,9 +44,11 @@
 #      SDR escribe 'j02'. NOAA-20 sí coincide en los dos lados.
 #
 # La órbita NO se cruza entre instrumentos: el mismo sobrevuelo lleva un b#####
-# distinto según el sensor (verificado con VIIRS ÷ OMPS el 2026-08-13). Por eso
-# la pasada la fija CrIS y los SDR de ATMS se emparejan por TIEMPO, enlazando
-# los que se traslapan con la ventana de la pasada.
+# distinto según el sensor (verificado con VIIRS ÷ OMPS el 2026-08-13, y con
+# CrIS ÷ VIIRS el 2026-08-15: b45265 contra b45264). Por eso la pasada la fija
+# CrIS y los SDR de ATMS se emparejan por TIEMPO, enlazando los que se traslapan
+# con la ventana de la pasada MÁS UN MARGEN — sin ese margen se pierde el primer
+# gránulo de cada pasada. Ver enlazar_atms().
 #
 # El ancillary dinámico (GFS 0.5° en GRIB2) lo baja el propio driver a
 # /data/ancillary/heap, que se monta en /anc. Ese caché NO se purga solo
@@ -66,7 +68,8 @@
 #   HEAP_CACHE       Caché dinámico   (def. /data/ancillary/heap)
 #   HEAP_WORK_BASE   Raíz de trabajo  (def. /data/tmp)
 #   HEAP_LOG_BASE    Raíz de logs     (def. /var/log/lanot/polares)
-#   HEAP_MARGEN_ATMS Segundos de margen al enlazar ATMS (def. 90; 0 = estricto)
+#   HEAP_MARGEN_ATMS Margen al enlazar ATMS (def. 90 s). Con 0 se pierde el
+#                    primer gránulo de cada pasada: ver enlazar_atms().
 #   HEAP_OPTS        Banderas extra para run_heap.bash
 #
 # ==============================================================================
@@ -278,14 +281,22 @@ enlazar() {
 # 2026-08-11, por ejemplo, el GCRSO agregado cubre 3 min y el GATMO 11: con el
 # criterio de pertenencia no se habría enlazado ninguno.
 #
-# Al traslape se le suma un MARGEN a cada lado (HEAP_MARGEN_ATMS, 90 s por
-# omisión ≈ tres gránulos de ATMS). El traslape estricto ya es inclusivo en los
-# extremos —un gránulo que comparta un solo segundo entra— y aun así el primer
-# gránulo de CrIS de la pasada del 2026-08-13 salió sin producto: 15 gránulos
-# de entrada y 14 de salida, faltando justo el primero. La sospecha es que la
-# recuperación necesita microondas que ENVUELVAN al gránulo, no solo que lo
-# toquen. Enlazar de más no cuesta nada —HEAP toma lo que le sirve y son un par
-# de enlaces— así que el margen es una opción barata.
+# Al traslape se le suma un MARGEN a cada lado, y NO es opcional: HEAP necesita
+# microondas que ENVUELVAN al gránulo, no solo que lo toquen.
+#
+# Medido en tahan el 2026-08-15 sobre j01_d20260813_b45265, misma pasada y solo
+# cambiando HEAP_MARGEN_ATMS:
+#
+#      0 s → 32 archivos de ATMS → 14 gránulos de 15   (falta el PRIMERO)
+#     90 s → 42 archivos de ATMS → 15 de 15
+#
+# El traslape estricto es inclusivo en los extremos —un gránulo que comparta un
+# segundo entra— pero al primer gránulo de CrIS solo le daba un ATMS que empieza
+# ya dentro de él, y con eso la recuperación no sale. No es que el gránulo
+# viniera truncado: los 15 SCRIF pesan lo mismo (~28.97 MB).
+#
+# 90 s son unos tres gránulos de ATMS, holgura de sobra. Enlazar de más no
+# cuesta nada, porque HEAP toma lo que le sirve y son un par de enlaces.
 #
 # Se buscan tres fechas —la anterior, la de la pasada y la siguiente— porque un
 # archivo de ATMS puede empezar del otro lado de la medianoche.

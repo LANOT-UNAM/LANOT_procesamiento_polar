@@ -652,15 +652,26 @@ La imagen (1.45 GB) está en `/opt/containers/cspp_heap_v3.0.sif` y la cadena en
 sobre la pasada `j01_d20260813_b45265`:
 
 ```
-CrIS 30 archivos · ATMS 32 archivos → 28 productos en 35 s
-  14 NUCAPS-ALL-HR   perfiles + CCR
-  14 NUCAPS-OLR      onda larga saliente
+CrIS 30 archivos (15 gránulos) · ATMS 42 archivos → 30 productos en 23 s
+  15 NUCAPS-ALL-HR   perfiles + CCR
+  15 NUCAPS-OLR      onda larga saliente
 ```
 
-**Falta un gránulo**: los 30 archivos de CrIS son 15 gránulos (SCRIF + GCRSO cada uno) y
-salieron 14 de cada familia. Queda por confirmar si es normal —el de un extremo puede caerse
-por falta de contexto o de ATMS colindante— o si le faltó ancillary. Se mira con
-`grep -iE 'reject|quality|retriev|granule'` sobre el log de la corrida.
+**Los 15 gránulos salen**, pero costó encontrar por qué al principio salían 14. La
+recuperación necesita microondas que **envuelvan** al gránulo, no solo que lo toquen: con
+traslape estricto, al primer gránulo de la pasada solo le tocaba un ATMS que empieza ya dentro
+de él, y se perdía. Medido sobre la misma pasada, cambiando solo `HEAP_MARGEN_ATMS`:
+
+| margen | ATMS enlazados | gránulos con producto |
+|---|---|---|
+| 0 s | 32 | 14 de 15 |
+| **90 s** (por omisión) | 42 | **15 de 15** |
+
+Descartado antes que el gránulo perdido viniera truncado: los 15 `SCRIF` pesan lo mismo
+(~28.97 MB). Y el rastro que lo identificó fueron los `NUCAPS-GranuleInfo_*.txt`, que HEAP
+deja en el directorio de trabajo y que `run_heap_edr.sh` ahora rescata al directorio de logs
+—antes se borraban con el directorio, así que una corrida "exitosa pero parcial" no se podía
+investigar después.
 
 Lo que se aprendió costando dos corridas:
 
@@ -682,7 +693,10 @@ Falta todavía la prueba del propio manual (§3.3) con `CSPP_HEAP_TESTDATA_V3.0.
 se bajó. No es urgente ahora que la cadena real funciona, pero sería la forma de separar un
 problema del contenedor de uno del script si algo se tuerce más adelante.
 
-Cinco cosas del diseño que conviene tener presentes al depurar:
+Seis cosas del diseño que conviene tener presentes al depurar:
+
+- **El margen de ATMS no es opcional** (`HEAP_MARGEN_ATMS`, 90 s). Con 0 se pierde el primer
+  gránulo de cada pasada, en silencio y con la etapa reportando éxito.
 
 - **NPP quedó fuera.** HEAP 3.0 retiró el soporte a S-NPP (§1.2). El script sale en 0 con un
   aviso, no en 1: es trabajo imposible, no un fallo, y el orquestador no debe contarlo como
