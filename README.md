@@ -119,27 +119,9 @@ CSPP no tiene lista de correo ni RSS, así que nadie avisa. La portada sí es p�
 
 ---
 
-## 📂 Estructura del Repositorio
-
-```
-.
-├── config/         # grid.yaml (rejillas propias) y plantillas XML de RT-STPS
-├── contenedores/   # recetas .def, construir.sh, y el manifiesto de tarballs
-├── docs/           # documentación técnica y manuales
-├── referencia/     # código del servidor viejo: se consulta, no se ejecuta
-├── scripts/        # la cadena: run_*.sh, orquestador, instalación
-├── .gitignore      # exclusión de binarios y datos
-├── LICENSE         # GPLv3
-└── README.md       # este archivo
-```
-
-`docs/estado_y_pendientes.md` es el documento vivo: qué eslabón se ha probado con datos reales, qué falta y qué preguntas siguen abiertas.
-
----
-
 ## ⚙️ Mantenimiento Operativo
 
-### Datos auxiliares dinámicos
+### Datos ancilares dinámicos
 Cada software tiene **su propio caché** bajo `/data/ancillary`, y no se comparten: el podador de ATMOS borra por directorio y se llevaría el de SDR entero. Los refrescan dos tareas de cron, `update_sdr_daily.sh` y `update_atmos_ancillary.sh`.
 
 ### Leap seconds
