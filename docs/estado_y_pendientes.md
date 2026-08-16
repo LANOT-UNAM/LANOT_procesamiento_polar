@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-15**
+**Última actualización: 2026-08-16**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -11,12 +11,16 @@ El doceavo, **HEAP**, se escribió y se probó el 2026-08-15: sondeos NUCAPS de 
 que van **más allá** de lo que hace el servidor viejo. Corre de punta a punta —30 productos
 de los 15 gránulos de una pasada, en 23 s— y lo que le falta es la vista. Ver el pendiente 4.
 
+Acabo de descargar cspp-sounder-ql-1.4.tar.gz y su correspondiente manual CSPP_Sounder_QL_Installation_Guide_v1.4.pdf para crear una vista rápida de los productos de HEAP. Evaluar si vale la pena integrarlo a alguno de nuestros contenedores, tal vez al de heap.
+
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
 ---
 
 ## Dónde quedó el 2026-08-15 (cierre de la sesión)
+
+Nota: el humano se encarga de empujar así que dejar de reportar que nada está empujado, porque es falso. Inmediatamente después de que lo escribes aquí, yo lo empujo.
 
 **Nada está empujado.** Quedan **once commits** en la cadena (de `1e5b74f` a `0de1b1b`) y
 **uno** en LANOT_tools (`af02825`, que solo toca comentarios del `.cpt`).
