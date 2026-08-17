@@ -772,21 +772,66 @@ Sin resolver, en orden:
    NUCAPS-EDR → polar2grid.sh -r nucaps → GeoTIFF float32 → geotiff2view + CPT → vista
    ```
 
-   Tres cosas que anotar para cuando se implemente:
-   - **La lista por omisión son 203 productos** (100 niveles × 2 variables + 3). Hay que pasar
-     `-p` explícito o cada pasada escribe 203 GeoTIFF. También hay `--pressure-levels MIN MAX`
-     (por omisión 110–987) y `--no-mask-surface` / `--no-mask-quality`.
-   - **La rejilla no es la de 750 m**: los FOR son de ~50 km, así que hace falta una propia en
-     `config/grid.yaml`, del orden de 0.25°.
-   - **Polar2Grid no expone punto de rocío, humedad relativa, CAPE ni índice de levantamiento.**
-     Los dos índices no necesitan software de terceros: el propio `.nc` los describe
-     (`Stability:description = "1 CAPE; ... 10 Lifted Index (LI) @ 500 hPa"`, `_FillValue =
-     -9999.f`). Para el rocío y la HR hacen falta fórmulas sobre `H2O_MR`, y para el Skew-T,
-     `CSPP Sounder QL` —que tiene su propio contenedor pendiente— o un módulo con matplotlib.
+   Y no se quedó en el papel: el 2026-08-17 se corrió **de punta a punta** —remuestreo,
+   GeoTIFF, `geotiff2view`, JPG decorado con costas, logo y sello— sobre los 19 gránulos
+   `NUCAPS-EDR_v3r2_n21` del paquete de muestra de Sounder QL, que son los únicos sondeos
+   reales a la mano mientras HEAP no produzca los suyos. `Temperature_497mb` salió entre 257 y
+   270 K con media 265 y desviación 2.0, y el campo mostró una bolsa fría al norte y aire
+   cálido hacia el Golfo: físicamente creíble. De esa corrida salieron siete cosas que ya no
+   hay que averiguar.
 
-   El plan por fases completo, con la evaluación de Sounder QL (1.6 GB de conda-pack para
-   664 KB de código, GPLv3, y tres trampas de contenedor ya documentadas), quedó fuera del
-   repositorio; lo esencial está resumido aquí.
+   **1. El vapor de agua NO se puede leer por este camino.** `H2O_MR_*mb` revienta con
+   `KeyError: 'H2O_MR/attr/valid_range'`: `satpy/readers/nucaps.py:193` da por hecho que la
+   variable trae el atributo `valid_range`, y los `v3r2` no lo traen (otras sí: `Stability`
+   tiene `valid_range = 0.f, 1000000.f`). Es un desajuste entre el lector y el formato, ambos
+   de CIMSS. Va reporte aparte, a Polar2Grid. Mientras tanto el vapor tendría que salir por un
+   lector propio o por Sounder QL, que lo lee con `--dset wvap`.
+
+   **2. Un producto ilegible aborta la llamada completa.** No degrada ni se salta: pedir los
+   cuatro `Temperature_*` más un `H2O_MR_*` no produjo nada, ni siquiera los que sí cargaban.
+   Al implementarlo hay que tenerlo en cuenta, por la misma razón por la que `vestir()` corre
+   una herramienta por archivo en vez de concatenar.
+
+   **3. La rejilla es `wgs84_geo_5km`**, ya versionada en `config/grid.yaml`. Sin `-g`,
+   Polar2Grid usa su rejilla dinámica y eligió 633 m: 44 Mpx y 1.7 MB de JPEG para 2 280
+   puntos de dato, con el logo tan pequeño que no se veía. A 5 km son 772 × 797 y 104 KB.
+
+   **4. La máscara de calidad se queda puesta**, y esto cierra la duda de si convenía rellenar.
+   Los huecos negros que se ven entre huellas **no son del remuestreo**: subir
+   `--radius-of-influence` a 35 km casi no los movió, y con `--no-mask-quality` se llenan
+   todos. O sea que son recuperaciones que NUCAPS marcó como malas. Peor aún, quitar la
+   máscara mete valores disparatados que se pintan como frío extremo y arrastran el estirado
+   por percentiles. **El aspecto moteado es una característica del producto, no un defecto**:
+   NUCAPS es una recuperación infrarroja, así que los huecos correlacionan con nubosidad. Igual
+   que las costuras de los gránulos truncados de VIIRS, hay que documentarlo para que nadie lo
+   persiga como bug.
+
+   **5. Faltan DOS entradas en `metadata.py`**, no una. La vista salió rotulada
+   "NOAA-21 2026/06/30 18:47Z", sin nombre de producto **y sin sensor**: el nombre que genera
+   Polar2Grid es `noaa21_atms-cris_Temperature_497mb_...`, y ni `Temperature_*mb` está en
+   `product_map` ni `atms-cris` en el mapa de sensores (que solo conoce viirs, avhrr, modis,
+   abi, mhs, amsu).
+
+   **6. Cada nivel de presión necesita su propio rango de color.** 497 hPa vive en 257–270 K y
+   850 andará cerca de 285: una sola `nucaps_temp.cpt` no sirve para los tres. O son tres CPT,
+   o se estira por percentiles como se hizo con el DNB.
+
+   **7. La lista por omisión son 203 productos** (100 niveles × 2 variables + 3). Hay que pasar
+   `-p` explícito o cada pasada escribe 203 GeoTIFF. También hay `--pressure-levels MIN MAX`
+   (por omisión 110–987).
+
+   Lo que Polar2Grid **no** expone: punto de rocío, humedad relativa, CAPE e índice de
+   levantamiento. Los dos índices no necesitan software de terceros —el propio `.nc` se
+   describe: `Stability:description = "1 CAPE; ... 10 Lifted Index (LI) @ 500 hPa"`,
+   `_FillValue = -9999.f`—. Para el rocío y la HR hacen falta fórmulas sobre `H2O_MR`, y para
+   el Skew-T, `CSPP Sounder QL` o un módulo con matplotlib.
+
+   **Sobre CSPP Sounder QL**, que se descargó para esto y quedó archivado como opción: son
+   1.6 GB de conda-pack para 664 KB de código propio, bajo GPLv3, con tres trampas de
+   contenedor documentadas (cartopy sin los shapefiles de Natural Earth y sin `110m_coastline`
+   en el stock reutilizable de `cspp-geo-grb`; `unpack_check` que compara `dev:inode` y aborta
+   dentro de un `.sif`; y los ejecutables que terminan en un pipe a `grep` sin `pipefail`, así
+   que su código de salida es el de `grep`). Solo valdría la pena por el Skew-T y el vapor.
 2. **`update_heap_ancillary.sh` en cron**, semanal. Ahora sí urge: `/data/ancillary/heap` ya
    tiene datos y nadie los borra.
 3. **`level2/sounder` acumula en cada reproceso**, como `level2/atmosphere`: los `NUCAPS-*`
