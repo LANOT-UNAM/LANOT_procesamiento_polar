@@ -59,15 +59,33 @@ es de un producto que su propio software no genera.
 
 ### 3. Un segundo reporte, este a Polar2Grid
 
-Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). **Redactado** en
-`docs/reporte_polar2grid_nucaps.md`. Le faltan **dos datos que solo están en tahan** y que el
-propio documento marca con `[PEGAR …]`: la traza completa y la versión de Satpy que trae el
-bundle. Con eso, revisar y enviar; el bloque de "PENDIENTE ANTES DE ENVIAR" se borra al
-mandarlo.
+Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). **Redactado y
+completo** en `docs/reporte_polar2grid_nucaps.md`: revisar y enviar.
 
 Va con dos peticiones, no una: el `KeyError` —que es lo que bloquea— y, aparte, que un
 producto ilegible no tumbe la llamada entera, porque cuando muere ya se pagó el remuestreo.
 Si resulta que el todo-o-nada es deliberado, la segunda se cae sola y la primera sigue en pie.
+
+**Lo que hizo que el reporte pasara de "tenemos un `KeyError`" a "aquí está la línea":** el
+bundle de Polar2Grid está extraído en **`/data/cspp/polar2grid_v_3_2/`**, en esta máquina, con
+todo el `site-packages` de su runtime de Python. O sea que el código de los lectores de Satpy
+se puede leer aquí, sin tahan y sin contenedor:
+
+```
+/data/cspp/polar2grid_v_3_2/libexec/python_runtime/lib/python3.11/site-packages/satpy/
+```
+
+De ahí salieron las tres cosas que sostienen el reporte, y ninguna necesitó reproducir el
+fallo: que `nucaps.py:193` usa `self[...]` mientras la línea 194 usa `self.get(...)` para
+`_FillValue`; que `get(item, default=None)` existe en el handler
+(`satpy/readers/core/netcdf.py:319`) y que `__getitem__` indexa `file_content` directo, que es
+de dónde sale el `KeyError` con ese texto; y —lo que lo vuelve concluyente— que la línea 218
+**ya contempla** `valid_min is not None`, así que el arreglo de una línea encaja con lo que el
+código de abajo ya espera. También de ahí sale que no es cosa del vapor de agua: `nucaps.yaml`
+define otros dieciocho datasets `pressure_based` igual, y cualquiera cae en la misma ruta.
+
+Vale la pena recordarlo para la próxima: **antes de dar por perdido un detalle porque "está en
+tahan", mirar `/data/cspp`.** Es el mismo tarball que se mete en el `.sif`.
 
 ### 4. Lo que se puede avanzar sin esperar a nadie — ESCRITO el 2026-08-17
 

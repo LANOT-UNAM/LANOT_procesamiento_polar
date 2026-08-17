@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Infraestructura como código para la cadena operativa de satélites polares JPSS (Suomi-NPP, NOAA-20, NOAA-21) del LANOT-UNAM. **No contiene software científico ni datos**: solo recetas Apptainer (`contenedores/*.def`), scripts de orquestación en Bash (`scripts/`), plantillas XML de RT-STPS (`config/`) y documentación (`docs/`).
 
-No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compilan a partir de tarballs oficiales de CIMSS/SSEC y NASA DRL que **no están versionados** (`.gitignore` excluye `*.tar.gz`, `*.sif`, `*.h5`, `*.nc`, `*.tif`, `*.log`). El sistema real corre en el servidor `tahan`; en esta máquina de desarrollo las rutas `/opt/containers`, `/data/...` y `/var/log/lanot/...` normalmente no existen, así que los scripts no se pueden ejecutar de verdad — se editan y se validan con `bash -n`.
+No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compilan a partir de tarballs oficiales de CIMSS/SSEC y NASA DRL que **no están versionados** (`.gitignore` excluye `*.tar.gz`, `*.sif`, `*.h5`, `*.nc`, `*.tif`, `*.log`). El sistema real corre en el servidor `tahan`; en esta máquina de desarrollo las rutas `/opt/containers` y `/var/log/lanot/...` no existen, así que los scripts no se pueden ejecutar de verdad — se editan y se validan con `bash -n`.
+
+**Lo que sí se puede consultar en local**, y ahorra un viaje a tahan: `/data/cspp/polar2grid_v_3_2/` es el bundle de Polar2Grid extraído —el mismo tarball que entra al `.sif`— con todo su runtime de Python, así que el código de los lectores de Satpy se lee aquí (`libexec/python_runtime/lib/python3.11/site-packages/satpy/readers/`). Antes de dar por perdido un detalle de un contenedor, mirar ahí. `~/lanot/LANOT_tools` está clonado al lado y su suite de pruebas sí corre en local.
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
