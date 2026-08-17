@@ -47,34 +47,70 @@ es de un producto que su propio software no genera.
 
 ### 2. Higiene, mientras CIMSS responde
 
-- **Desactivar `heap` en `procesar_pasada.sh`.** Ahora que la etapa falla de verdad (correcto),
-  cada pasada deja un `/data/tmp/heap_work_*` con 30 `.nc` que ya no se borran, y gasta 25 s en
-  producir radiancias que nadie consume.
+- ~~**Desactivar `heap` en `procesar_pasada.sh`.**~~ **Hecho.** La línea quedó comentada en el
+  sitio donde iba, con la explicación y la instrucción de devolverla a la lista cuando haya
+  producto. El resto de la rama —`run_heap_edr.sh`, el renderizado, las CPT— sigue en su lugar.
 - **Borrar los `.done` de `/data/output/jpss/state/cspp-heap/`**: todos se firmaron con el
-  criterio viejo y afirman un éxito que no ocurrió.
+  criterio viejo y afirman un éxito que no ocurrió. **Pendiente, va en tahan**:
+
+  ```bash
+  rm -f /data/output/jpss/state/cspp-heap/*.done
+  ```
 
 ### 3. Un segundo reporte, este a Polar2Grid
 
 Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). Es un bug de su
 lector contra su propio formato v3r2 y tenemos la traza exacta. Sin redactar todavía.
 
-### 4. Lo que se puede avanzar sin esperar a nadie
+### 4. Lo que se puede avanzar sin esperar a nadie — ESCRITO el 2026-08-17
 
-Hay 19 gránulos `NUCAPS-EDR_v3r2_n21` reales en
-`/opt/contenedores/sample_data/input/nucaps/` (de tahan; vienen del paquete de muestra de
-Sounder QL). Con eso el renderizado se puede **implementar y probar completo hoy**, de modo
-que el día que CIMSS destrabe HEAP la vista salga el mismo día. Tres piezas, y el orden
-importa por el costo de recompilar:
+Las tres piezas están hechas, en una sola pasada por LANOT_tools como estaba previsto. Lo que
+falta de esto es **de servidor, no de código**: ver "Para que la vista de sondeos quede lista
+en tahan", abajo.
 
-1. **El bloque de sondeos en `run_polar2grid_edr.sh`** — `-p` explícito, `-g wgs84_geo_5km`
-   con `--grid-configs`, máscara de calidad puesta, y `vestir` con `geotiff2view`. **No toca
-   LANOT_tools, así que se prueba sin recompilar nada.** Empezar por aquí.
-2. **Los CPT de temperatura**, uno por nivel (ver hallazgo 6: los rangos difieren por nivel).
-3. **Las dos entradas de `metadata.py`** (producto y sensor `atms-cris`, hallazgo 5).
+1. **El bloque de sondeos en `run_polar2grid_edr.sh`** — hecho. `-p` explícito con los cuatro
+   campos, `-g wgs84_geo_5km` con `--grid-configs`, sin `--method` (se deja el del lector, que
+   es con lo que se probó), máscara de calidad puesta, y `vestir` con `geotiff2view`. Entra al
+   staging **solo** `NUCAPS-EDR*`, emparejado por ventana temporal y no por órbita, y con la
+   deduplicación por `_c<sello>` que ya usaban ATMOS y LSR.
+2. **Los CPT de temperatura**, uno por nivel — hecho: `nucaps_temp_850.cpt` (270–300 K),
+   `nucaps_temp_700.cpt` (260–290), `nucaps_temp_500.cpt` (245–275) y `nucaps_skin_temp.cpt`
+   (265–315). Mismos colores que `sst.cpt`, para que las vistas de temperatura de LANOT se
+   lean igual; lo único que cambia entre niveles es el rango, que es lo que no se puede
+   compartir. **Rango fijo y no percentiles**: la temperatura a nivel fijo es un campo con
+   rango climatológico estable, así que la paleta fija es justo lo que hace comparables dos
+   pasadas — el argumento de los percentiles era del DNB, que es radiancia con cola larga.
+   De regalo, `geotiff2view` dibuja la barra de color solo con que haya CPT.
+3. **Las entradas de `metadata.py`** — hechas, y son más de dos: el sensor `atms-cris` →
+   `CrIS+ATMS` (con `cris` y `atms` sueltos de respaldo), los cuatro productos que se rinden,
+   `Surface_Pressure` y `Topography`, y un `temperature` genérico **al final** de `product_map`
+   para que los otros 96 niveles no salgan sin nombre si algún día se piden. Con pruebas en
+   `tests/test_metadata.py`, incluida una que fija el orden: el genérico no debe ganarle a
+   `CldTopTemp`.
 
-(2) y (3) tocan `LANOT_tools` y arrastran la secuencia completa —commitear, **empujar**, subir
-el pin en los **dos** lugares del `.def`, recompilar `polar2grid_v3.2-mapdrawer.sif`—, que es
-la que ya costó dos compilaciones. **Juntarlas en una sola pasada**, no ir de a uno.
+Una decisión que no estaba prevista: los sondeos se visten **sin el `-s 0.5`** del resto. A
+5 km la imagen ya sale de 772 × 797, y a la mitad la barra de color no se puede leer. `vestir()`
+acepta ahora un noveno argumento con banderas extra, que van después de `DECORACION` y por lo
+tanto ganan (argparse se queda con la última).
+
+Verificado en bucefalo con un `apptainer` simulado: el staging deja los 3 gránulos de la
+ventana y descarta el reproceso duplicado, el que cae fuera, el de otro satélite y las familias
+`NUCAPS-ALL-HR`/`NUCAPS-OLR`; salen los cuatro GeoTIFF con su CPT correcto y el `-s 1` final.
+
+### Para que la vista de sondeos quede lista en tahan
+
+En este orden, y **nada de esto se puede hacer desde bucefalo**:
+
+1. `git push` en **LANOT_tools** (Alejandro). El pin del `.def` ya apunta al commit nuevo, así
+   que sin empujar la compilación no lo encuentra.
+2. En tahan, `git pull` en los dos repos y `sudo ./install.sh` en LANOT_tools, que instala las
+   CPT nuevas en `/usr/local/share/lanot/colortables`. **Las CPT no necesitan recompilar**: el
+   host se monta encima del directorio de la imagen.
+3. `sudo apptainer build polar2grid_v3.2-mapdrawer.sif …` — esto **sí** hace falta, por
+   `metadata.py`, que viaja dentro del `.sif`. Sin recompilar, las vistas saldrían con la
+   paleta y la barra correctas pero sin nombre de producto ni sensor.
+4. Reproducir la prueba de renderizado con los 19 gránulos de muestra (las órdenes están más
+   abajo) y mirar que la etiqueta diga ahora "NOAA-21 CrIS+ATMS Temp 500 hPa".
 
 ### Órdenes que reproducen la prueba de hoy
 
@@ -866,7 +902,10 @@ Sin resolver, en orden:
 1. **El producto**, que es lo que de verdad falta: sin `NUCAPS-EDR` no hay nada que ver. Ver
    arriba. Todo lo demás de esta lista está río abajo de eso.
 
-   **La vista, en cambio, ya está resuelta de diseño** (2026-08-17). El lector `nucaps` de
+   **La vista, en cambio, ya está resuelta y escrita** (2026-08-17): el bloque de sondeos de
+   `run_polar2grid_edr.sh`, las cuatro CPT por nivel y las entradas de `metadata.py`. Lo que
+   sigue de esta entrada es cómo se llegó ahí, y los siete hallazgos que no hay que volver a
+   averiguar. El lector `nucaps` de
    Polar2Grid 3.2 **sí sirve**: probado con `--list-products` sobre un `NUCAPS-EDR_v3r2_n21`
    real del paquete de muestra de Sounder QL, responde con `Topography`, `Surface_Pressure`,
    `Skin_Temperature` y las 100 capas de `Temperature_*mb` y `H2O_MR_*mb` — incluidas

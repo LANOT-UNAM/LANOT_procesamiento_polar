@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit f1d0c60b972d6351817b20c67d0f6af6899c31ea
+    LANOT_tools_commit edb225339b79123e47bc2a137d30b5528a2dab31
 
 %help
     Polar2Grid v3.2 con las herramientas de LANOT para adornar las vistas
@@ -59,13 +59,14 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # f1d0c60 agrega a product_map la entrada 'cloudtype', que es como Polar2Grid
-    # nombra al producto de JRR (sin guion bajo). Sin recompilar, la vista de tipo
-    # de nube sigue saliendo rotulada "NOAA-20 VIIRS" a secas. Las etiquetas de la
-    # barra vienen del mismo commit pero por la otra vía —cloud_type_jrr.cpt es
-    # colortable, va montada desde el host— así que esas se arreglan con un
-    # git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=f1d0c60b972d6351817b20c67d0f6af6899c31ea
+    # edb2253 mete en metadata.py el sensor 'atms-cris' y los productos de los
+    # sondeos NUCAPS: sin recompilar, la vista de un Temperature_497mb sale
+    # rotulada "NOAA-21 <fecha>" a secas, sin producto ni sensor. Las cuatro CPT
+    # nuevas del mismo commit entran por la otra vía —son colortables, van
+    # montadas desde el host— así que esas se arreglan con un git pull +
+    # install.sh en tahan, sin tocar la imagen. Antes iba en f1d0c60, que agregó
+    # a product_map la entrada 'cloudtype' con el mismo razonamiento.
+    LANOT_TOOLS_COMMIT=edb225339b79123e47bc2a137d30b5528a2dab31
 
     # Lo que esta receta necesita además de la base: GDAL y el toolchain para
     # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
@@ -147,6 +148,12 @@ From: lanot_base_rocky9.sif
     # codigos vive en el epilogo del --help, asi que basta buscarla.
     geotiff2view --help | grep -q -- "0 imagen generada"
 
+    # Tampoco es bandera el mapa de nombres de metadata.py, que es lo ÚNICO de
+    # la vista de sondeos que viaja dentro del .sif —las CPT van montadas desde
+    # el host— y por lo tanto lo único que un pin viejo puede dejar atrás sin
+    # que nada falle: la vista saldría bien coloreada y sin decir de qué es.
+    /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa21_atms-cris_Temperature_497mb_20260630_184728_wgs84_geo_5km.tif'); assert m['sensor']=='CrIS+ATMS'; assert m['product']=='Temp 500 hPa'"
+
     # Verificación de los recursos que usan las herramientas
     test -x /opt/lanot-tools/venv/bin/python
     test -d /usr/local/share/lanot/colortables
@@ -195,7 +202,12 @@ From: lanot_base_rocky9.sif
     # vista vacia se sigue publicando en negro y nadie se entera. La tabla de
     # codigos vive en el epilogo del --help, asi que basta buscarla.
     geotiff2view --help | grep -q -- "0 imagen generada"
-    echo "  OK --percentiles, --lat-south, --timestamp-pos, codigos de salida"
+
+    # Ver la nota del %post: el mapa de nombres de metadata.py es lo único de la
+    # vista de sondeos que va dentro de la imagen, y un pin viejo lo deja atrás
+    # en silencio.
+    /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa21_atms-cris_Temperature_497mb_20260630_184728_wgs84_geo_5km.tif'); assert m['sensor']=='CrIS+ATMS'; assert m['product']=='Temp 500 hPa'"
+    echo "  OK --percentiles, --lat-south, --timestamp-pos, codigos de salida, product_map"
 
     echo "venv:"
     /opt/lanot-tools/venv/bin/python --version

@@ -3,15 +3,15 @@
 # LANOT - UNAM | Visualización de productos Nivel 2 con Polar2Grid v3.2
 # ==============================================================================
 #
-# Level 2 (atmosphere, LSR, ACSPO, Active Fire) → GeoTIFF de datos + vistas
+# Level 2 (atmosphere, LSR, ACSPO, Active Fire, sondeos) → GeoTIFF de datos + vistas
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue renderizada con éxito, avisa y no hace nada. Una pasada se
 # identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
 #
-# Cada conjunto (ATMOS, LSR, ACSPO, FIRE) es independiente: si uno falla, se
-# reporta y los otros siguen. Basta con que alguno produzca imágenes para dar la pasada por
-# renderizada.
+# Cada conjunto (ATMOS, LSR, ACSPO, FIRE, SOUNDER) es independiente: si uno
+# falla, se reporta y los otros siguen. Basta con que alguno produzca imágenes
+# para dar la pasada por renderizada.
 #
 # Dos etapas por conjunto, según la regla de la cadena: Polar2Grid remuestrea
 # UNA vez (swath → rejilla) y entrega GeoTIFF de datos; lo visual sale de
@@ -42,6 +42,7 @@
 #   P2G_LSR_IN      Entrada LSR       (def. /data/output/jpss/level2/lsr)
 #   P2G_ACSPO_IN    Entrada ACSPO/SST (def. /data/output/jpss/level2/acspo)
 #   P2G_FIRE_IN     Entrada incendios (def. /data/output/jpss/level2/fires)
+#   P2G_SOUNDER_IN  Entrada sondeos   (def. /data/output/jpss/level2/sounder)
 #   P2G_FLOOD_TIF   GeoTIFF de flood  (def. /data/output/jpss/geotiff/flood)
 #   P2G_GEOTIFF     Raíz de GeoTIFF   (def. /data/output/jpss/geotiff)
 #   P2G_VISTAS      Raíz de vistas    (def. /data/output/jpss/vistas)
@@ -50,6 +51,7 @@
 #   P2G_GRID_CONFIG Rejillas propias  (def. <repo>/config/grid.yaml)
 #   P2G_GRID        Rejilla a usar    (def. wgs84_geo_750m)
 #   P2G_GRID_375    Rejilla incendios (def. wgs84_geo_375m)
+#   P2G_GRID_5KM    Rejilla sondeos   (def. wgs84_geo_5km)
 #   P2G_WORK_BASE   Raíz de staging   (def. /data/tmp)
 #   P2G_COLORTABLES Paletas del host  (def. /usr/local/share/lanot/colortables)
 #   P2G_LOG_BASE    Raíz de logs      (def. /var/log/lanot/polares)
@@ -67,6 +69,11 @@ HOST_EDR_IN="${P2G_EDR_IN:-/data/output/jpss/level2/atmosphere}"
 HOST_LSR_IN="${P2G_LSR_IN:-/data/output/jpss/level2/lsr}"
 HOST_ACSPO_IN="${P2G_ACSPO_IN:-/data/output/jpss/level2/acspo}"
 HOST_FIRE_IN="${P2G_FIRE_IN:-/data/output/jpss/level2/fires}"
+# Sondeos NUCAPS de CSPP HEAP (CrIS + ATMS). Es el único conjunto que no viene de
+# VIIRS, así que ni comparte rejilla con los demás ni se cruza con ellos por
+# órbita: se empareja por la ventana temporal de la pasada, como el resto de
+# Level 2. Ver la nota del bloque de renderizado.
+HOST_SOUNDER_IN="${P2G_SOUNDER_IN:-/data/output/jpss/level2/sounder}"
 # Flood es el caso raro: su GeoTIFF NO lo hace Polar2Grid sino el convertidor
 # del propio bundle de CSPP, en run_flood_edr.sh, porque el lector
 # viirs_edr_flood es para el formato HDF de la v1.x. Aquí solo se viste.
@@ -78,12 +85,14 @@ HOST_TIF_OUT="$GEOTIFF/atmos"
 HOST_LSR_TIF_OUT="$GEOTIFF/lsr"
 HOST_ACSPO_TIF_OUT="$GEOTIFF/acspo"
 HOST_FIRE_TIF_OUT="$GEOTIFF/fire"
+HOST_SOUNDER_TIF_OUT="$GEOTIFF/sounder"
 
 VISTAS="${P2G_VISTAS:-/data/output/jpss/vistas}"
 HOST_IMG_OUT="$VISTAS/atmos"
 HOST_LSR_IMG_OUT="$VISTAS/lsr"
 HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 HOST_FIRE_IMG_OUT="$VISTAS/fire"
+HOST_SOUNDER_IMG_OUT="$VISTAS/sounder"
 HOST_FLOOD_IMG_OUT="$VISTAS/flood"
 
 # El contenedor trae la rejilla de fábrica, no las nuestras: hay que pasarle
@@ -94,6 +103,11 @@ GRID_CONFIG="${P2G_GRID_CONFIG:-$SCRIPT_DIR/../config/grid.yaml}"
 GRID="${P2G_GRID:-wgs84_geo_750m}"
 # Los AFIMG de Active Fire son de banda I: van a 375 m, no a los 750 del resto.
 GRID_375="${P2G_GRID_375:-wgs84_geo_375m}"
+# Los sondeos van al otro extremo: la unidad del dato es el FOR de CrIS, de unos
+# 50 km. Sin -g, Polar2Grid eligió 633 m y sacó 44 Mpx —1.7 MB de JPEG— para
+# 2 280 puntos de dato, con el logo tan pequeño que no se veía (tahan,
+# 2026-08-17). A 5 km son 772 × 797 y 104 KB.
+GRID_5KM="${P2G_GRID_5KM:-wgs84_geo_5km}"
 
 # Minutos de tolerancia al emparejar productos con la ventana de la pasada
 MARGEN_MIN="${P2G_MARGEN_MIN:-10}"
@@ -132,6 +146,19 @@ PALETAS=(
     "NDVI:ndvi.cpt"
     "EVI:evi.cpt"
     "confidence_cat:viirs_confidence_cat.cpt"
+    # Sondeos: un CPT por nivel de presión, y no percentiles. La temperatura a
+    # nivel fijo es un campo con rango climatológico estable, así que la paleta
+    # fija es lo que hace comparables dos pasadas — el argumento de los
+    # percentiles era del DNB, que es radiancia con cola larga. Lo que no se
+    # puede es compartir uno solo entre niveles: 497 mb salió entre 257 y 270 K
+    # y 850 anda 30 K más arriba (tahan, 2026-08-17).
+    #
+    # Skin_Temperature va ANTES que los Temperature_*mb solo por claridad; no se
+    # pisan, porque ninguno de los dos nombres contiene al otro.
+    "Skin_Temperature:nucaps_skin_temp.cpt"
+    "Temperature_853mb:nucaps_temp_850.cpt"
+    "Temperature_707mb:nucaps_temp_700.cpt"
+    "Temperature_497mb:nucaps_temp_500.cpt"
 )
 
 # Las paletas viven dentro de la imagen: install.sh las copia al compilar. Si
@@ -512,10 +539,14 @@ STAGING_EDR="${HOST_WORK}/edr_links"
 STAGING_LSR="${HOST_WORK}/lsr_links"
 STAGING_ACSPO="${HOST_WORK}/acspo_links"
 STAGING_FIRE="${HOST_WORK}/fire_links"
+STAGING_SOUNDER="${HOST_WORK}/sounder_links"
 
 mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" "$STAGING_FIRE" \
+         "$STAGING_SOUNDER" \
          "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
+         "$HOST_SOUNDER_TIF_OUT" \
          "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" "$HOST_FIRE_IMG_OUT" \
+         "$HOST_SOUNDER_IMG_OUT" \
          "$HOST_FLOOD_TIF_IN" "$HOST_FLOOD_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
@@ -524,13 +555,22 @@ trap 'rm -rf "$HOST_WORK"' EXIT
 # llamadas a Polar2Grid o las de LANOT_tools archivo por archivo. Se arman una
 # vez, aquí, porque dependen de los directorios de staging que acaban de
 # definirse.
+# El directorio de sondeos puede no existir: HEAP es el eslabón más nuevo y hoy
+# no produce NUCAPS-EDR en ningún servidor. Un --bind a una ruta inexistente
+# tumba el `apptainer exec` entero, o sea que se llevaría por delante el
+# renderizado de todo lo demás; se monta solo si está, como las paletas.
+BIND_SOUNDER=()
+[ -d "$HOST_SOUNDER_IN" ] && BIND_SOUNDER=(--bind "$HOST_SOUNDER_IN:$HOST_SOUNDER_IN")
+
 BINDS_P2G=(
     "${BIND_CPT[@]}"
+    "${BIND_SOUNDER[@]}"
     --bind "$STAGING_SDR:/input_sdr"
     --bind "$STAGING_EDR:/input_edr"
     --bind "$STAGING_LSR:/input_lsr"
     --bind "$STAGING_ACSPO:/input_acspo"
     --bind "$STAGING_FIRE:/input_fire"
+    --bind "$STAGING_SOUNDER:/input_sounder"
     --bind "$HOST_SDR_IN:$HOST_SDR_IN"
     --bind "$HOST_EDR_IN:$HOST_EDR_IN"
     --bind "$HOST_LSR_IN:$HOST_LSR_IN"
@@ -541,11 +581,13 @@ BINDS_P2G=(
     --bind "$HOST_LSR_TIF_OUT:/output_lsr_tif"
     --bind "$HOST_ACSPO_TIF_OUT:/output_acspo_tif"
     --bind "$HOST_FIRE_TIF_OUT:/output_fire_tif"
+    --bind "$HOST_SOUNDER_TIF_OUT:/output_sounder_tif"
     --bind "$HOST_FLOOD_TIF_IN:/output_flood_tif"
     --bind "$HOST_IMG_OUT:/output_img"
     --bind "$HOST_LSR_IMG_OUT:/output_lsr_img"
     --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img"
     --bind "$HOST_FIRE_IMG_OUT:/output_fire_img"
+    --bind "$HOST_SOUNDER_IMG_OUT:/output_sounder_img"
     --bind "$HOST_FLOOD_IMG_OUT:/output_flood_img"
     --bind "$HOST_WORK:/work"
 )
@@ -573,6 +615,7 @@ EDR_COUNT=0
 LSR_COUNT=0
 ACSPO_COUNT=0
 FIRE_COUNT=0
+SOUNDER_COUNT=0
 [ -d "$HOST_EDR_IN" ] && EDR_COUNT=$(enlazar_en_ventana "$STAGING_EDR" "$HOST_EDR_IN" "JRR-")
 [ -d "$HOST_LSR_IN" ] && LSR_COUNT=$(enlazar_en_ventana "$STAGING_LSR" "$HOST_LSR_IN" "SurfRefl_")
 # Los .nc de ACSPO empiezan con el sello temporal, no con un prefijo de producto
@@ -581,6 +624,16 @@ FIRE_COUNT=0
 # pasada (b45264 en el primer gránulo del 2026-08-13 y b45265 en los siguientes),
 # así que un glob por órbita dejaría fuera parte de los gránulos.
 [ -d "$HOST_FIRE_IN" ] && FIRE_COUNT=$(enlazar_en_ventana "$STAGING_FIRE" "$HOST_FIRE_IN" "AFIMG_")
+# Solo los NUCAPS-EDR, que son los perfiles. En level2/sounder conviven además
+# los NUCAPS-ALL-HR (radiancias limpiadas de nube) y los NUCAPS-OLR (onda larga
+# saliente), que no tienen lector en Polar2Grid y que además harían fallar la
+# llamada entera si entraran en el mismo -f.
+#
+# La ventana de la pasada la fija VIIRS, pero los sondeos son de CrIS+ATMS: se
+# emparejan por tiempo y NUNCA por órbita, que no es común entre instrumentos
+# (el mismo sobrevuelo es b45264 en VIIRS y b45265 en CrIS). Por eso van por
+# enlazar_en_ventana como el resto de Level 2, y no por glob de órbita.
+[ -d "$HOST_SOUNDER_IN" ] && SOUNDER_COUNT=$(enlazar_en_ventana "$STAGING_SOUNDER" "$HOST_SOUNDER_IN" "NUCAPS-EDR")
 
 LOG_FILE="$LOG_DIR/p2g_${TIMESTAMP}_${CLAVE}.log"
 
@@ -589,6 +642,7 @@ echo "  ATMOS:    $EDR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  LSR:      $LSR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  ACSPO:    $ACSPO_COUNT productos en la ventana"  | tee -a "$LOG_FILE"
 echo "  FIRE:     $FIRE_COUNT productos en la ventana"   | tee -a "$LOG_FILE"
+echo "  SONDEOS:  $SOUNDER_COUNT productos en la ventana" | tee -a "$LOG_FILE"
 
 REF_FILE=$(mktemp -t p2g_ref_XXXXXX)
 trap 'rm -rf "$HOST_WORK" "$REF_FILE"' EXIT
@@ -727,6 +781,37 @@ else
     echo "  ⚠ Sin productos de Active Fire para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
 
+if [ "$SOUNDER_COUNT" -gt 0 ]; then
+    # Sondeos NUCAPS. Cuatro cosas que costaron un intento cada una (tahan,
+    # 2026-08-17, sobre los 19 gránulos NUCAPS-EDR_v3r2_n21 del paquete de
+    # muestra de CSPP Sounder QL):
+    #
+    # 1. -p es OBLIGATORIO. La lista por omisión son 203 productos (100 niveles
+    #    × 2 variables + 3), o sea 203 GeoTIFF por pasada.
+    # 2. NADA de H2O_MR. Revienta con KeyError: 'H2O_MR/attr/valid_range' —
+    #    satpy/readers/nucaps.py:193 da por hecho un atributo que los v3r2 no
+    #    traen— y un producto ilegible ABORTA la llamada completa: no degrada ni
+    #    se salta, así que se pierden también los Temperature_* que sí cargan.
+    #    Va reporte a Polar2Grid; mientras tanto el vapor no sale por aquí.
+    # 3. La máscara de calidad se queda puesta. Los huecos entre huellas no son
+    #    del remuestreo (subir --radius-of-influence a 35 km casi no los movió):
+    #    son recuperaciones que NUCAPS marcó como malas, y --no-mask-quality las
+    #    rellena con valores disparatados que se pintan como frío extremo. El
+    #    aspecto moteado es del producto —recuperación infrarroja, los huecos
+    #    correlacionan con nubosidad—, no un defecto que perseguir.
+    # 4. Sin --method: se deja el del lector, que es con lo que se probó.
+    #
+    # Los sondeos se bastan solos: traen su propia geolocalización, no llevan
+    # GMTCO.
+    SOUNDER_DATOS="Temperature_853mb Temperature_707mb Temperature_497mb Skin_Temperature"
+    P2G_SOUNDER_DATOS="--grid-configs /config/grid.yaml -g $GRID_5KM --dtype float32 --no-enhance"
+
+    en_contenedor "Sondeos (NUCAPS)" \
+        "cd /output_sounder_tif && polar2grid.sh -v -r nucaps -w geotiff -p $SOUNDER_DATOS $P2G_SOUNDER_DATOS -f /input_sounder/NUCAPS-EDR*.nc"
+else
+    echo "  ⚠ Sin sondeos para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
+fi
+
 # --- Etapa 2: vistas decoradas a partir de los GeoTIFF recién escritos ---
 # Los productos llegan sin paleta, así que recolorea geotiff2view. Un producto
 # sin CPT no genera vista y no es error.
@@ -745,10 +830,15 @@ vestir() {
     # NO en DECORACION, que es compartido: la rama de mapdrawer también se
     # conserva para los RGB de superficie retirados, y ésos no llevan barra.
     local cpt_barra="${8:-}"
+    # $9: banderas extra de decoración, separadas por espacios. Van DESPUÉS de
+    # DECORACION, así que una repetida gana: argparse se queda con la última. Es
+    # como los sondeos anulan el -s 0.5 que sí quieren las imágenes de 750 m.
+    local extras="${9:-}"
     local tif nombre cpt codigo
     local generadas=0 vacias=0 fallidas=0
-    local -a criterio=() orden=()
+    local -a criterio=() orden=() extra_args=()
     [ "$solo_nuevos" -eq 1 ] && criterio=(-newer "$REF_FILE")
+    [ -n "$extras" ] && read -r -a extra_args <<< "$extras"
 
     echo "--- $etiqueta ---" >> "$LOG_FILE"
 
@@ -772,7 +862,7 @@ vestir() {
             fi
             orden=(geotiff2view "$montaje_tif/$nombre" -b -p "$cpt" "${DECORACION[@]}")
         fi
-        orden+=(-o "$montaje_img/${nombre%.*}.jpg")
+        orden+=("${extra_args[@]}" -o "$montaje_img/${nombre%.*}.jpg")
 
         codigo=0
         en_contenedor_uno "${orden[@]}" || codigo=$?
@@ -810,6 +900,11 @@ vestir "Vistas de LSR"   "$HOST_LSR_TIF_OUT"   /output_lsr_tif   /output_lsr_img
 vestir "Vistas de SST"   "$HOST_ACSPO_TIF_OUT" /output_acspo_tif /output_acspo_img
 # De incendios solo se viste confidence_cat: T4 y power son dato y no tienen CPT.
 vestir "Vistas de incendios" "$HOST_FIRE_TIF_OUT" /output_fire_tif /output_fire_img geotiff2view 'confidence_cat'
+# Los sondeos van sin el -s 0.5 del resto: a 5 km la imagen ya sale de 772 × 797,
+# y a la mitad la barra de color —que geotiff2view dibuja sola cuando hay CPT— no
+# se puede leer. El -s 1 final es el que gana.
+vestir "Vistas de sondeos" "$HOST_SOUNDER_TIF_OUT" /output_sounder_tif /output_sounder_img \
+       geotiff2view . 1 '' '-s 1'
 # Flood ya viene como imagen: cspp_viirs_flood2tif.sh le pega la paleta flood.ct
 # con add_colormap.py, así que solo hay que vestirlo. Es el único usuario que le
 # queda a la rama de mapdrawer desde que se retiraron los RGB de superficie.
@@ -828,20 +923,23 @@ contar_nuevos() {
 # productos. Lo que dice ya quedó en $LOG_FILE, así que se descarta para no
 # ensuciar el árbol de salida.
 find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
+     "$HOST_SOUNDER_TIF_OUT" \
      -maxdepth 1 -name '*.log' -delete 2>/dev/null || true
 
 TIF_ATMOS=$(contar_nuevos "$HOST_TIF_OUT"       '*.tif')
 TIF_LSR=$(contar_nuevos   "$HOST_LSR_TIF_OUT"   '*.tif')
 TIF_SST=$(contar_nuevos   "$HOST_ACSPO_TIF_OUT" '*.tif')
 TIF_FIRE=$(contar_nuevos  "$HOST_FIRE_TIF_OUT"  '*.tif')
+TIF_SOUNDER=$(contar_nuevos "$HOST_SOUNDER_TIF_OUT" '*.tif')
 JPG_ATMOS=$(contar_nuevos "$HOST_IMG_OUT"       '*.jpg')
 JPG_LSR=$(contar_nuevos   "$HOST_LSR_IMG_OUT"   '*.jpg')
 JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
 JPG_FIRE=$(contar_nuevos  "$HOST_FIRE_IMG_OUT"  '*.jpg')
+JPG_SOUNDER=$(contar_nuevos "$HOST_SOUNDER_IMG_OUT" '*.jpg')
 JPG_FLOOD=$(contar_nuevos "$HOST_FLOOD_IMG_OUT" '*.jpg')
 
-TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE))
-JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_FLOOD))
+TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE + TIF_SOUNDER))
+JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_SOUNDER + JPG_FLOOD))
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -861,12 +959,13 @@ fi
     echo "lsr:         $TIF_LSR geotiff, $JPG_LSR vistas"
     echo "sst:         $TIF_SST geotiff, $JPG_SST vistas"
     echo "fire:        $TIF_FIRE geotiff, $JPG_FIRE vistas"
+    echo "sondeos:     $TIF_SOUNDER geotiff, $JPG_SOUNDER vistas"
     echo "flood:       $JPG_FLOOD vistas (el geotiff lo hace run_flood_edr.sh)"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, flood $JPG_FLOOD) en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE, sondeos $TIF_SOUNDER) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, sondeos $JPG_SOUNDER, flood $JPG_FLOOD) en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"

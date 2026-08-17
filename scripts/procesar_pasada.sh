@@ -464,7 +464,7 @@ CLAVE_HEAP="$CLAVE_OMPS"
 echo ""
 echo "  Pasada:      $CLAVE"
 echo "  Clave OMPS:  $CLAVE_OMPS  (otra órbita para el mismo sobrevuelo)"
-echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS)"
+echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS; etapa desactivada)"
 
 # ==============================================================================
 # NIVELES 2, 3 Y 4
@@ -481,8 +481,19 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
     "$(tarea fire   "$DIR_FIRE/$CLAVE.done"        run_active_fire_edr.sh "$CLAVE")" \
     "$(tarea flood  "$DIR_FLOOD/$CLAVE.done"       run_flood_edr.sh       "$CLAVE")" \
     "$(tarea omps   "$DIR_OMPS/$CLAVE_OMPS.done"   run_omps_edr.sh        "$CLAVE_OMPS")" \
-    "$(tarea heap   "$DIR_HEAP/$CLAVE_HEAP.done"   run_heap_edr.sh        "$CLAVE_HEAP")" \
     "$(tarea p2g_l1 "$DIR_P2G_L1/$CLAVE.done"      run_polar2grid_l1.sh   "$CLAVE")"
+
+# HEAP queda FUERA de la cadena desde el 2026-08-17, mientras CIMSS responde.
+# CSPP HEAP v3.0 no produce NUCAPS-EDR —ni con los datos de prueba del propio
+# fabricante, con su propio comando: es el build, no nuestra cadena—, así que la
+# etapa falla siempre (correctamente, desde que exige el producto por nombre) y
+# cada pasada dejaría un /data/tmp/heap_work_* con 30 .nc que ya nadie borra,
+# más 25 s gastados en radiancias que no consume nadie.
+#
+# Para reactivarla basta con devolver esta línea a la lista de arriba; el resto
+# —run_heap_edr.sh, el renderizado de sondeos de run_polar2grid_edr.sh, las CPT
+# por nivel— está escrito y probado, y espera solo al producto.
+#     "$(tarea heap   "$DIR_HEAP/$CLAVE_HEAP.done"   run_heap_edr.sh        "$CLAVE_HEAP")" \
 
 ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
     "$(tarea lsr  "$DIR_LSR/$CLAVE.done"  run_lsr_edr.sh  "$CLAVE")" \
