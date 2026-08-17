@@ -59,8 +59,15 @@ es de un producto que su propio software no genera.
 
 ### 3. Un segundo reporte, este a Polar2Grid
 
-Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). Es un bug de su
-lector contra su propio formato v3r2 y tenemos la traza exacta. Sin redactar todavía.
+Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). **Redactado** en
+`docs/reporte_polar2grid_nucaps.md`. Le faltan **dos datos que solo están en tahan** y que el
+propio documento marca con `[PEGAR …]`: la traza completa y la versión de Satpy que trae el
+bundle. Con eso, revisar y enviar; el bloque de "PENDIENTE ANTES DE ENVIAR" se borra al
+mandarlo.
+
+Va con dos peticiones, no una: el `KeyError` —que es lo que bloquea— y, aparte, que un
+producto ilegible no tumbe la llamada entera, porque cuando muere ya se pagó el remuestreo.
+Si resulta que el todo-o-nada es deliberado, la segunda se cae sola y la primera sigue en pie.
 
 ### 4. Lo que se puede avanzar sin esperar a nadie — ESCRITO el 2026-08-17
 
