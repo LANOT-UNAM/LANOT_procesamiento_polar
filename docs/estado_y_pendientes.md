@@ -1253,6 +1253,27 @@ Dos que se ven especialmente prometedores: **`CloudMask`**, que reabre el enmasc
 pendiente 12 —aunque siga topando con las rejillas dinámicas—, y **`Dust`/`Smoke`**, que en
 esta región tienen uso operativo evidente.
 
+### 15. El diagrama de la cadena no muestra las ramas por sensor
+Anotado el 2026-08-17, sin hacer todavía.
+
+El diagrama de `CLAUDE.md` cuelga los once eslabones de Level 2 de un solo `cspp_sdr_v4.1.1.sif`,
+como si todos comieran de lo mismo. No es así: `run_sdr.sh` produce **cuatro flujos de sensor**
+—VIIRS, ATMS, CrIS y OMPS (con sus dos instrumentos, Nadir Mapper y Nadir Profiler)— y cada
+rama de Level 2 se alimenta de unos y no de otros. Leyéndolo hoy no se puede saber, por
+ejemplo, que HEAP no toca VIIRS, o que flood y ACSPO no tienen nada que ver con CrIS.
+
+Al rehacerlo conviene que se vea:
+- Qué sensor alimenta cada rama: VIIRS → atmos, lsr, cryo, acspo, fire, flood y los
+  renderizados de Level 1; CrIS **+** ATMS → heap; OMPS → omps.
+- Que HEAP es el único que consume **dos** sensores a la vez, y por eso su emparejamiento va
+  por traslape temporal con margen (`HEAP_MARGEN_ATMS`) y no por clave de pasada.
+- Que la **órbita no es común entre instrumentos** —el mismo sobrevuelo es `b45236` en VIIRS y
+  `b45237` en OMPS—, que es la razón por la que la clave de pasada de HEAP y OMPS va truncada.
+- Las dependencias que ya están dibujadas (ATMOS antes de lsr y cryo) siguen igual.
+
+Es documentación, no código: no bloquea nada, pero es de lo primero que lee alguien que llega
+al repositorio y hoy induce a error.
+
 ## Hallazgos que conviene no volver a descubrir
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:
