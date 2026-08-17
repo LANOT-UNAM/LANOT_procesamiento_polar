@@ -80,7 +80,7 @@ RAW (CCSDS de antena)
 
 `run_polar2grid_edr.sh` es el **renderizador único de Level 2**: ningún `run_*_edr.sh` debe llamar a Polar2Grid por su cuenta. Los scripts de EDR producen `.nc` y nada más; ahí están las rejillas, las paletas y la separación `geotiff/` ÷ `vistas/`.
 
-`cryo` y `lsr` consumen tanto SDR como los productos ATMOS, así que **ATMOS debe correr antes** que ellos. CLAVR-x y ASCI se descartaron: el nuevo CSPP ATMOS ya genera esos productos (ver `notas.txt`). NUCAPS **no** entró en ese descarte aunque una versión anterior de este archivo lo decía: son sondeos hiperespectrales de CrIS+ATMS, no productos de nube de VIIRS, y ATMOS no los cubre. Los produce `run_heap_edr.sh` con CSPP HEAP v3.0, que es el paquete que hoy distribuye el algoritmo NUCAPS.
+`cryo` y `lsr` consumen tanto SDR como los productos ATMOS, así que **ATMOS debe correr antes** que ellos. CLAVR-x y ASCI se descartaron por dos razones, no una: ya no se actualizan, y el nuevo CSPP ATMOS genera sus productos. (Estaba en `notas.txt`, que se borró el 2026-08-17 por superado; esto es lo único de ahí que no vivía en otro lado.) NUCAPS **no** entró en ese descarte aunque una versión anterior de este archivo lo decía: son sondeos hiperespectrales de CrIS+ATMS, no productos de nube de VIIRS, y ATMOS no los cubre. Los produce `run_heap_edr.sh` con CSPP HEAP v3.0, que es el paquete que hoy distribuye el algoritmo NUCAPS.
 
 ### Las tres familias de scripts
 

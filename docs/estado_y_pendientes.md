@@ -621,6 +621,22 @@ decisión por definitiva.
 
 ## Pendientes, en orden sugerido
 
+### 0. Infraestructura para producción — lo único que no es software
+
+Rescatado de `notas.txt` el 2026-08-17, antes de borrarlo. Era lo último que ese archivo
+listaba como faltante y no estaba anotado en ningún otro lado:
+
+- **Terminar de armar `/datawork` con los dos discos que faltan.** `/datawork/input/polar/raw`
+  es el buzón de RAW que leen `run_rt_stps.sh` y `barrer_pendientes.sh`, así que esto es
+  prerrequisito de la cadena completa, no un extra.
+- **Organizar el clúster con Slurm**, de acuerdo al plan. Los cinco `run_*_edr.sh` más nuevos
+  ya traen cabecera `#SBATCH` y usan `${SLURM_CPUS_PER_TASK:-N}` / `${SLURM_JOB_ID:-$$}` para
+  funcionar igual con o sin Slurm; los más antiguos no. El clúster todavía no está en
+  producción.
+
+Todo lo demás de esta lista es software y se puede avanzar sin esperar a esto, pero **para
+poner el sistema en producción hacen falta las dos cosas de arriba**.
+
 ### 1. Paletas — revisadas con datos el 2026-08-14
 `ndvi.cpt`, `evi.cpt` y `cloud_fraction.cpt` ya están en `LANOT_tools/colortables` y
 registradas en la tabla `PALETAS`. **En el servidor tienen que llegar a
