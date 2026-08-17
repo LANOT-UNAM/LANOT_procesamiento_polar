@@ -8,8 +8,10 @@ que faltaba de aquello. Del ozono queda pendiente solo la vista, que exige Polar
 (pendiente 8).
 
 El doceavo, **HEAP**, se escribió y se probó el 2026-08-15: sondeos NUCAPS de CrIS+ATMS,
-que van **más allá** de lo que hace el servidor viejo. Corre de punta a punta —30 productos
-de los 15 gránulos de una pasada, en 23 s— y lo que le falta es la vista. Ver el pendiente 4.
+que van **más allá** de lo que hace el servidor viejo. **Corregido el 2026-08-17: HEAP no
+produce sondeos.** Escribe radiancias limpiadas de nube y onda larga saliente, pero ni un
+`NUCAPS-EDR`, que es el producto. Y no es culpa de la cadena: los datos de prueba del propio
+CIMSS, con su propio comando, reproducen el fallo. Ver el pendiente 4.
 
 Acabo de descargar cspp-sounder-ql-1.4.tar.gz y su correspondiente manual CSPP_Sounder_QL_Installation_Guide_v1.4.pdf para crear una vista rápida de los productos de HEAP. Evaluar si vale la pena integrarlo a alguno de nuestros contenedores, tal vez al de heap.
 
@@ -652,16 +654,51 @@ y perdió su bandera `--no-render`.
 puerta de atrás —ahora del lado de Polar2Grid— y la vista salía con fondo rosa. Ya corregido
 a `$P2G_DATOS`; el detalle está en los hallazgos.
 
-### 4. HEAP (rama ATMS/CrIS) — CORRE con datos reales, 2026-08-15
+### 4. HEAP (rama ATMS/CrIS) — CORRE, pero NO produce sondeos (2026-08-17)
 
 La imagen (1.45 GB) está en `/opt/containers/cspp_heap_v3.0.sif` y la cadena entera corrió
 sobre la pasada `j01_d20260813_b45265`:
 
 ```
 CrIS 30 archivos (15 gránulos) · ATMS 42 archivos → 30 productos en 23 s
-  15 NUCAPS-ALL-HR   perfiles + CCR
+  15 NUCAPS-ALL-HR   radiancias limpiadas de nube (CCR)  ← NO son perfiles
   15 NUCAPS-OLR      onda larga saliente
 ```
+
+> **Esto se leyó mal durante dos días.** Se dio por hecho que `NUCAPS-ALL-HR` era "EDR y CCR
+> juntos" y que solo faltaba la vista. Es falso: un `ncdump` de ese archivo muestra
+> `CrIS_Radiances`, `ATMS_Brightness_Temps`, `Cloud_Fraction` y `Cloud_Height`, y **no tiene
+> `Pressure`, `Temperature`, `H2O_MR` ni `Stability`**. El "ALL" es por todos los FOV, no por
+> "todo junto". El producto —`NUCAPS-EDR`, los perfiles— **nunca se ha generado**.
+>
+> El indicio que se dejó pasar fue la duración: 15 gránulos en 23 s. Una recuperación NUCAPS
+> es físico-iterativa con transferencia radiativa y no corre a esa velocidad. Ese número se
+> celebró como logro cuando era la señal de que el paso caro no se ejecutaba.
+
+**No es la cadena, es el build.** Descartado en este orden, todo verificado en tahan:
+
+| Hipótesis | Cómo se descartó |
+|---|---|
+| La bandera `-o RO` mal formada | Con `-o R` desaparece el OLR: se parsea letra por letra |
+| Falta el ancillary GFS | `/data/ancillary/heap/2026_08_13_225` existía, el día correcto |
+| Gránulos rechazados por calidad | El log no menciona `retriev` **ni una sola vez** |
+| Nuestros insumos o nuestro staging | **El caso de prueba del fabricante reproduce el fallo** |
+
+La prueba definitiva es §3.3 del manual, con los datos y el comando de CIMSS
+(`run_heap.bash -s n21 -i ../input -o RO -p 4 -d $PWD/anc` sobre `nucaps_test_data`):
+
+| | Manual §3.3 | Lo que sale |
+|---|---|---|
+| Archivos | **48**, 16 por familia | **32** |
+| Familias | `NUCAPS-EDR`, `NUCAPS-CCR-AR`, `NUCAPS-OLR` | `NUCAPS-ALL-HR`, `NUCAPS-OLR` |
+| Duración | 1–3 min | 41 s |
+
+Ni siquiera el producto que sí sale coincide con lo documentado: el manual llama `NUCAPS-CCR-AR`
+al CCR y este build escribe `NUCAPS-ALL-HR`. **Va reporte a CIMSS.** Mientras tanto la rama de
+sondeos no tiene producto, y todo lo que cuelga de ella queda en pausa.
+
+`run_heap_edr.sh` ya no puede firmar en falso: exige `NUCAPS-EDR` por nombre, y su diagnóstico
+recoge lo ya descartado para que nadie repita el recorrido.
 
 **Los 15 gránulos salen**, pero costó encontrar por qué al principio salían 14. La
 recuperación necesita microondas que **envuelvan** al gránulo, no solo que lo toquen: con
@@ -721,11 +758,35 @@ Seis cosas del diseño que conviene tener presentes al depurar:
 
 Sin resolver, en orden:
 
-1. **La vista.** Los NUCAPS son retrievals por FOR —puntos dispersos de unos 50 km—, no un
-   swath de imagen, así que la rejilla de 750 m no viene al caso. Antes de decidir nada hay
-   que ver qué expone el lector `nucaps` de Polar2Grid 3.2 con `--list-products` sobre una
-   pasada real. Mientras tanto `run_heap_edr.sh` produce `.nc` y nada más, como el resto de
-   los `run_*_edr.sh`.
+1. **El producto**, que es lo que de verdad falta: sin `NUCAPS-EDR` no hay nada que ver. Ver
+   arriba. Todo lo demás de esta lista está río abajo de eso.
+
+   **La vista, en cambio, ya está resuelta de diseño** (2026-08-17). El lector `nucaps` de
+   Polar2Grid 3.2 **sí sirve**: probado con `--list-products` sobre un `NUCAPS-EDR_v3r2_n21`
+   real del paquete de muestra de Sounder QL, responde con `Topography`, `Surface_Pressure`,
+   `Skin_Temperature` y las 100 capas de `Temperature_*mb` y `H2O_MR_*mb` — incluidas
+   `_853mb`, `_707mb` y `_497mb`, que son 850/700/500 hPa. O sea que el camino es el de
+   siempre y **sin excepción al renderizador único**, a diferencia de flood:
+
+   ```
+   NUCAPS-EDR → polar2grid.sh -r nucaps → GeoTIFF float32 → geotiff2view + CPT → vista
+   ```
+
+   Tres cosas que anotar para cuando se implemente:
+   - **La lista por omisión son 203 productos** (100 niveles × 2 variables + 3). Hay que pasar
+     `-p` explícito o cada pasada escribe 203 GeoTIFF. También hay `--pressure-levels MIN MAX`
+     (por omisión 110–987) y `--no-mask-surface` / `--no-mask-quality`.
+   - **La rejilla no es la de 750 m**: los FOR son de ~50 km, así que hace falta una propia en
+     `config/grid.yaml`, del orden de 0.25°.
+   - **Polar2Grid no expone punto de rocío, humedad relativa, CAPE ni índice de levantamiento.**
+     Los dos índices no necesitan software de terceros: el propio `.nc` los describe
+     (`Stability:description = "1 CAPE; ... 10 Lifted Index (LI) @ 500 hPa"`, `_FillValue =
+     -9999.f`). Para el rocío y la HR hacen falta fórmulas sobre `H2O_MR`, y para el Skew-T,
+     `CSPP Sounder QL` —que tiene su propio contenedor pendiente— o un módulo con matplotlib.
+
+   El plan por fases completo, con la evaluación de Sounder QL (1.6 GB de conda-pack para
+   664 KB de código, GPLv3, y tres trampas de contenedor ya documentadas), quedó fuera del
+   repositorio; lo esencial está resumido aquí.
 2. **`update_heap_ancillary.sh` en cron**, semanal. Ahora sí urge: `/data/ancillary/heap` ya
    tiene datos y nadie los borra.
 3. **`level2/sounder` acumula en cada reproceso**, como `level2/atmosphere`: los `NUCAPS-*`
