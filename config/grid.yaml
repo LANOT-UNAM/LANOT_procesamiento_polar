@@ -35,6 +35,22 @@ wgs84_geo_375m:
   resolution:
     dy: 0.003619
     dx: 0.003619
+# Sondeos NUCAPS (lector `nucaps`). Nada que ver con VIIRS: la unidad del dato es
+# el FOR de CrIS, de unos 50 km, así que las rejillas de arriba sobremuestrean por
+# tres órdenes de magnitud. Medido el 2026-08-17 sobre 19 gránulos de muestra: la
+# rejilla dinámica de Polar2Grid (`wgs84_fit`) eligió 0.0057° —633 m— y produjo
+# 6523 × 6734 píxeles, o sea 44 Mpx para 2 280 puntos de dato reales, con huecos
+# negros entre huellas porque el vecino más cercano no alcanza a llenar.
+# A 5 km la misma escena sale en ~770 × 795 y cada FOR ocupa ~9 × 9 píxeles: se
+# conserva el aspecto de mosaico, que es lo honesto para un sondeo por FOR.
+# El valor es el escalado exacto de wgs84_geo_750m: 0.007238 × 5000/750.
+wgs84_geo_5km:
+  description: 'EPSG:4326 - WGS 84'
+  projection:
+    EPSG: 4326
+  resolution:
+    dy: 0.048253
+    dx: 0.048253
 wgs84_geo_1000m:
   description: 'EPSG:4326 - WGS 84'
   projection:
