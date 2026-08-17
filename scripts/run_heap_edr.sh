@@ -70,6 +70,7 @@
 #   HEAP_LOG_BASE    Raíz de logs     (def. /var/log/lanot/polares)
 #   HEAP_MARGEN_ATMS Margen al enlazar ATMS (def. 90 s). Con 0 se pierde el
 #                    primer gránulo de cada pasada: ver enlazar_atms().
+#   HEAP_SALIDA      Cadena de -o (def. RO: OLR + recuperación). Letra por letra.
 #   HEAP_OPTS        Banderas extra para run_heap.bash
 #
 # ==============================================================================
@@ -93,6 +94,14 @@ JOB_ID="${SLURM_JOB_ID:-$$}"
 # Segundos que se ensancha, a cada lado, la ventana con la que se enlazan los
 # SDR de ATMS. Ver enlazar_atms(). 0 = traslape estricto.
 MARGEN_ATMS="${HEAP_MARGEN_ATMS:-90}"
+
+# Qué familias pide el driver: O = OLR, R = recuperación, S = subsetter. La ayuda
+# del binario la documenta como "cadena de la forma ORS" con [choices: O, R, S] —
+# el PDF de diciembre dice OSR y describe R distinto, manda el binario. Se parsea
+# letra por letra: verificado en tahan el 2026-08-17, con -o R desaparece el OLR.
+# Variable y no literal porque es lo primero que se mueve al diagnosticar por qué
+# no salieron perfiles.
+SALIDA_HEAP="${HEAP_SALIDA:-RO}"
 
 # ==============================================================================
 # FUNCIONES
@@ -583,7 +592,7 @@ apptainer exec \
         export HDF5_USE_FILE_LOCKING=FALSE
         export LC_ALL=C
         source \$CSPP_HEAP_HOME/scripts/cspp_heap_env.sh
-        run_heap.bash -s $MISION -i /input -m HR_IRMW -o RO \
+        run_heap.bash -s $MISION -i /input -m HR_IRMW -o $SALIDA_HEAP \
                       -p $CORES -w /work -d /anc ${HEAP_OPTS:-}
     " >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
 
@@ -624,15 +633,27 @@ if [ "$NC_COUNT" -eq 0 ]; then
 fi
 
 # Las familias se cuentan por lo que DE VERDAD haya, no contra una lista fija de
-# patrones. El manual de instalación (§1.7) documenta tres —NUCAPS-EDR,
-# NUCAPS-CCR-AR y NUCAPS-OLR— pero en modo HR_IRMW la recuperación sale como un
-# solo archivo combinado, NUCAPS-ALL-HR, que el manual no menciona: EDR y CCR
-# juntos, "HR" por la alta resolución del modo. Verificado en tahan el
-# 2026-08-15: 14 NUCAPS-ALL-HR y 14 NUCAPS-OLR, un par por gránulo.
+# patrones: el manual (§1.7) documenta NUCAPS-EDR, NUCAPS-CCR-AR y NUCAPS-OLR, y
+# en modo HR_IRMW los nombres reales no son esos.
 #
-# Con los tres patrones a mano, esa corrida se reportaba como "EDR 0, CCR 0,
-# OLR 14" sobre 28 archivos: el marcador mentía y el resumen del orquestador
-# habría heredado la mentira.
+# CORREGIDO el 2026-08-17, y conviene leer por qué antes de volver a tocarlo.
+# Hasta hoy este bloque daba por hecho que NUCAPS-ALL-HR era "EDR y CCR juntos"
+# y contaba como recuperación todo lo que no fuera OLR. Es falso: un ncdump de
+# ese archivo en tahan muestra CrIS_Radiances, ATMS_Brightness_Temps,
+# Cloud_Fraction, Cloud_Height y Land_Fraction, y NO tiene Pressure, Temperature,
+# H2O_MR ni Stability. ALL-HR es el CCR —las radiancias limpiadas de nube, que
+# son la ENTRADA del algoritmo—; el "ALL" es por todos los FOV, no por "todo
+# junto". Con aquel criterio la etapa firmó marcadores de éxito durante dos días
+# sin haber producido un solo sondeo, que es justo lo que el eslabón existe para
+# producir.
+#
+# El otro indicio que se dejó pasar fue la duración: 15 gránulos en 22 s. Una
+# recuperación NUCAPS es físico-iterativa con transferencia radiativa y no corre
+# a esa velocidad; ese número no era un logro, era la señal de que el paso caro
+# nunca se ejecutó.
+#
+# Por eso el criterio ya no infiere: exige NUCAPS-EDR por nombre. Es la única
+# familia cuya ausencia significa, sin ambigüedad, que no hubo recuperación.
 
 declare -A FAMILIAS=()
 for f in "${PRODUCTOS[@]}"; do
@@ -641,28 +662,35 @@ for f in "${PRODUCTOS[@]}"; do
     FAMILIAS[$fam]=$(( ${FAMILIAS[$fam]:-0} + 1 ))
 done
 
-# Lo que no es OLR es recuperación (los perfiles), que es a lo que se viene.
-RECUPERACION=0
-for fam in "${!FAMILIAS[@]}"; do
-    case "$fam" in
-        *OLR*) ;;
-        *) RECUPERACION=$(( RECUPERACION + ${FAMILIAS[$fam]} )) ;;
-    esac
-done
+RECUPERACION=${FAMILIAS[NUCAPS-EDR]:-0}
 
-# Un montón de OLR sin un solo perfil no es una corrida buena, aunque el
-# conteo total sea distinto de cero. El criterio de los otros EDR —¿produjo
-# algo?— se queda corto aquí, porque HEAP entrega dos cosas y solo una importa.
+# Radiancias y OLR sin un solo perfil no es una corrida buena, por muchos
+# archivos que haya. El criterio de los otros EDR —¿produjo algo?— se queda
+# corto aquí, porque HEAP entrega varias cosas y solo una es el producto.
 if [ "$RECUPERACION" -eq 0 ]; then
-    echo "❌ ERROR: $NC_COUNT archivos, pero ninguno de recuperación."          | tee -a "$LOG_FILE"
-    echo "   Salió el OLR y no los perfiles, que son el producto principal."    | tee -a "$LOG_FILE"
+    echo "❌ ERROR: $NC_COUNT archivos, pero ningún NUCAPS-EDR."                | tee -a "$LOG_FILE"
+    echo "   Los perfiles son el producto; lo demás es entrada y subproducto."  | tee -a "$LOG_FILE"
     echo "   Familias encontradas:"                                            | tee -a "$LOG_FILE"
-    for fam in "${!FAMILIAS[@]}"; do
+    for fam in $(printf '%s\n' "${!FAMILIAS[@]}" | sort); do
         echo "     $fam: ${FAMILIAS[$fam]}"                                    | tee -a "$LOG_FILE"
     done
-    echo "   Busca los gránulos rechazados en el log:"                          | tee -a "$LOG_FILE"
-    echo "   grep -iE 'reject|quality|retriev' $LOG_FILE"                       | tee -a "$LOG_FILE"
-    echo "   (Si se pasó -o O por HEAP_OPTS, es lo esperado y no un fallo.)"    | tee -a "$LOG_FILE"
+    echo ""                                                                    | tee -a "$LOG_FILE"
+    echo "   Si salieron ALL-HR (el CCR) pero ningún EDR, la recuperación no"   | tee -a "$LOG_FILE"
+    echo "   llegó a correr. Lo verificado el 2026-08-17, para no repetirlo:"   | tee -a "$LOG_FILE"
+    echo "     · NO es la bandera -o: vale '${SALIDA_HEAP}' y se parsea letra"  | tee -a "$LOG_FILE"
+    echo "       por letra (con -o R desaparece el OLR, como debe)."            | tee -a "$LOG_FILE"
+    echo "     · NO es el ancillary: el caché tenía su directorio del día."     | tee -a "$LOG_FILE"
+    echo "     · NO son gránulos rechazados: el log no menciona 'retriev' ni"   | tee -a "$LOG_FILE"
+    echo "       una sola vez, así que el paso caro nunca se intentó."          | tee -a "$LOG_FILE"
+    echo "   Desconfía de la duración: 15 gránulos en ~25 s no es una"          | tee -a "$LOG_FILE"
+    echo "   recuperación físico-iterativa, es el preprocesador solo."          | tee -a "$LOG_FILE"
+    echo "   Siguiente paso, conservar el temporal del driver y mirar qué hizo" | tee -a "$LOG_FILE"
+    echo "   el wrapper de perl, que hoy es una caja negra en el log:"          | tee -a "$LOG_FILE"
+    echo "     HEAP_OPTS='--noclean -v' $0 -p $CLAVE --force"                   | tee -a "$LOG_FILE"
+    echo ""                                                                    | tee -a "$LOG_FILE"
+    echo "   Si en cambio hay EDR pero de menos, ahí sí revisa rechazados y"    | tee -a "$LOG_FILE"
+    echo "   ancillary: grep -iE 'reject|quality|gfs' $LOG_FILE"                | tee -a "$LOG_FILE"
+    echo "   (Si se pidió HEAP_SALIDA=O a propósito, esto es lo esperado.)"     | tee -a "$LOG_FILE"
     echo "   Se conservan $HOST_WORK y $STAGING_DIR"                            | tee -a "$LOG_FILE"
     trap - EXIT
     exit 1
