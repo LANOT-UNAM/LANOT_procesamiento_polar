@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-16**
+**Última actualización: 2026-08-17**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -13,10 +13,99 @@ produce sondeos.** Escribe radiancias limpiadas de nube y onda larga saliente, p
 `NUCAPS-EDR`, que es el producto. Y no es culpa de la cadena: los datos de prueba del propio
 CIMSS, con su propio comando, reproducen el fallo. Ver el pendiente 4.
 
-Acabo de descargar cspp-sounder-ql-1.4.tar.gz y su correspondiente manual CSPP_Sounder_QL_Installation_Guide_v1.4.pdf para crear una vista rápida de los productos de HEAP. Evaluar si vale la pena integrarlo a alguno de nuestros contenedores, tal vez al de heap.
+La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros contenedores
+**quedó contestada, y la respuesta es que no hace falta**: el lector `nucaps` de Polar2Grid
+3.2 ya rinde los sondeos, probado de punta a punta. Ver el pendiente 4.
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## Dónde quedó el 2026-08-17 (cierre de la sesión)
+
+**El día se fue en descubrir que HEAP nunca ha producido un sondeo**, y en comprobar —con los
+gránulos de muestra— que en cambio el renderizado sí funciona de punta a punta. Los detalles
+están en el pendiente 4; aquí queda solo qué hacer al retomar, y en qué orden.
+
+### 1. Camino crítico: el reporte a CIMSS
+
+Está escrito y versionado en **`docs/reporte_cimss_heap_v3.0.md`**. Revisar y enviar. Todo lo
+demás de sondeos está detrás de esto: sin `NUCAPS-EDR` no hay nada que renderizar sobre datos
+propios.
+
+Dos comandos opcionales que lo refuerzan, si se quiere antes de mandarlo (en tahan):
+
+```bash
+D=/opt/contenedores/nucaps_test_data
+ls "$D"/benchmark_edr/ | sed 's/_v3r.*//' | sort | uniq -c
+cd "$D" && ./nucaps_compare.bash benchmark_edr/ work/
+```
+
+Si `benchmark_edr/` contiene `NUCAPS-EDR_*`, el argumento se cierra solo: su propio benchmark
+es de un producto que su propio software no genera.
+
+### 2. Higiene, mientras CIMSS responde
+
+- **Desactivar `heap` en `procesar_pasada.sh`.** Ahora que la etapa falla de verdad (correcto),
+  cada pasada deja un `/data/tmp/heap_work_*` con 30 `.nc` que ya no se borran, y gasta 25 s en
+  producir radiancias que nadie consume.
+- **Borrar los `.done` de `/data/output/jpss/state/cspp-heap/`**: todos se firmaron con el
+  criterio viejo y afirman un éxito que no ocurrió.
+
+### 3. Un segundo reporte, este a Polar2Grid
+
+Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). Es un bug de su
+lector contra su propio formato v3r2 y tenemos la traza exacta. Sin redactar todavía.
+
+### 4. Lo que se puede avanzar sin esperar a nadie
+
+Hay 19 gránulos `NUCAPS-EDR_v3r2_n21` reales en
+`/opt/contenedores/sample_data/input/nucaps/` (de tahan; vienen del paquete de muestra de
+Sounder QL). Con eso el renderizado se puede **implementar y probar completo hoy**, de modo
+que el día que CIMSS destrabe HEAP la vista salga el mismo día. Tres piezas, y el orden
+importa por el costo de recompilar:
+
+1. **El bloque de sondeos en `run_polar2grid_edr.sh`** — `-p` explícito, `-g wgs84_geo_5km`
+   con `--grid-configs`, máscara de calidad puesta, y `vestir` con `geotiff2view`. **No toca
+   LANOT_tools, así que se prueba sin recompilar nada.** Empezar por aquí.
+2. **Los CPT de temperatura**, uno por nivel (ver hallazgo 6: los rangos difieren por nivel).
+3. **Las dos entradas de `metadata.py`** (producto y sensor `atms-cris`, hallazgo 5).
+
+(2) y (3) tocan `LANOT_tools` y arrastran la secuencia completa —commitear, **empujar**, subir
+el pin en los **dos** lugares del `.def`, recompilar `polar2grid_v3.2-mapdrawer.sif`—, que es
+la que ya costó dos compilaciones. **Juntarlas en una sola pasada**, no ir de a uno.
+
+### Órdenes que reproducen la prueba de hoy
+
+Para no reconstruirlas desde cero. En tahan, con la rejilla temporal ya escrita en
+`/data/tmp/grid_nucaps.yaml` (o usando `config/grid.yaml`, que ya trae `wgs84_geo_5km`):
+
+```bash
+IN=/opt/contenedores/sample_data/input/nucaps
+OUT=/data/tmp/prueba_nucaps5km
+
+apptainer exec --bind "$IN:$IN" --bind "$OUT:/output" \
+    --bind /data/tmp:/data/tmp --pwd /output \
+    /opt/containers/polar2grid_v3.2-mapdrawer.sif \
+    polar2grid.sh -r nucaps -w geotiff \
+        --grid-configs /data/tmp/grid_nucaps.yaml -g wgs84_geo_5km \
+        -p Temperature_853mb Temperature_707mb Temperature_497mb Skin_Temperature \
+        --dtype float32 --no-enhance \
+        -f "$IN"/NUCAPS-EDR_v3r2_n21_*.nc
+
+apptainer exec --bind "$OUT:$OUT" \
+    /opt/containers/polar2grid_v3.2-mapdrawer.sif \
+    geotiff2view "$OUT"/noaa21_atms-cris_Temperature_497mb_20260630_184728_wgs84_geo_5km.tif \
+        --percentiles 2,98 --layer COASTLINE:white:1.0 \
+        --logo-pos 0 --timestamp-pos 3 -j -o "$OUT"/vista.jpg
+```
+
+Dos tropiezos que costaron un intento cada uno: **`-o` no existe** en `polar2grid.sh` (el
+escritor nombra la salida y la deja en el `pwd`; para separar corridas, cambiar el directorio
+montado en `/output`), y **el glob hay que expandirlo en el host**, o sea montar el directorio
+de entrada sobre sí mismo — si se pasa `-f /input/*.nc` llega el asterisco literal y responde
+`No filenames found for reader: nucaps`.
 
 ---
 
