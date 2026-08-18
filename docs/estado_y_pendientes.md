@@ -173,20 +173,40 @@ GeoTIFF, que es dato y no cambia con la paleta. El que sirve carga el CPT con
 La otra lectura de la tabla: el 47.8 % de válidos es idéntico en los cuatro productos, que es lo
 que se espera si quien decide es la máscara de calidad y no cada campo por su cuenta.
 
-### Para que la vista de sondeos quede lista en tahan
+### Para que la vista de sondeos quede lista en tahan — HECHO salvo lo visual
 
-En este orden, y **nada de esto se puede hacer desde bucefalo**:
+Se hizo el mismo 2026-08-17: `git push`, `git pull` en los dos repos, `sudo ./install.sh` y
+recompilación de `polar2grid_v3.2-mapdrawer.sif`. Comprobado que la imagen tomó el pin nuevo,
+por dos caminos:
 
-1. `git push` en **LANOT_tools** (Alejandro). El pin del `.def` ya apunta al commit nuevo, así
-   que sin empujar la compilación no lo encuentra.
-2. En tahan, `git pull` en los dos repos y `sudo ./install.sh` en LANOT_tools, que instala las
-   CPT nuevas en `/usr/local/share/lanot/colortables`. **Las CPT no necesitan recompilar**: el
-   host se monta encima del directorio de la imagen.
-3. `sudo apptainer build polar2grid_v3.2-mapdrawer.sif …` — esto **sí** hace falta, por
-   `metadata.py`, que viaja dentro del `.sif`. Sin recompilar, las vistas saldrían con la
-   paleta y la barra correctas pero sin nombre de producto ni sensor.
-4. Reproducir la prueba de renderizado con los 19 gránulos de muestra (las órdenes están más
-   abajo) y mirar que la etiqueta diga ahora "NOAA-21 CrIS+ATMS Temp 500 hPa".
+```bash
+apptainer inspect /opt/containers/polar2grid_v3.2-mapdrawer.sif | grep -i lanot_tools
+#   LANOT_tools_commit: edb225339b79123e47bc2a137d30b5528a2dab31
+
+apptainer exec /opt/containers/polar2grid_v3.2-mapdrawer.sif \
+  /opt/lanot-tools/venv/bin/python -c "
+from metadata import Metadata
+m = Metadata()
+m.enrich_from_filename('noaa21_atms-cris_Temperature_497mb_20260630_184728_wgs84_geo_5km.tif')
+hp = bool(m.get('product') or m.get('band'))
+print(m.format_timestamp(include_satellite=True, include_sensor=not hp, include_product=hp))"
+#   NOAA-21 Temp 500 hPa 2026/06/30 18:47Z
+```
+
+La segunda es la que vale: reproduce la llamada que hace `geotiff2view` al dibujar. La primera
+puede engañar si alguien edita `%labels` sin mover el pin del `%post` — están juntos por eso.
+
+**La etiqueta NO lleva el sensor**, y conviene no volver a esperarlo: `geotiff2view.py:698` pasa
+`include_sensor=not has_product`, o sea que el sensor es un **respaldo** para cuando no hay
+producto, no un añadido. La entrada `atms-cris` de `metadata.py` sirve igual —es lo que evita
+que un producto sin match salga como "NOAA-21" a secas— pero hoy no se ve en ninguna de las
+cuatro vistas.
+
+**Lo único que queda pendiente de toda la rama de sondeos es visual**, y no tiene forma objetiva
+de comprobarse: traerse un JPG y mirar que el logo no tape dato y que la barra de color se lea a
+tamaño natural. Es justo lo que motivó quitarle el `-s 0.5`.
+
+Y falta reinstalar las dos CPT corregidas (`87251ca`, `fbcaef8`), que no necesitan recompilar.
 
 ### Órdenes que reproducen la prueba de hoy
 
