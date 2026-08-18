@@ -541,7 +541,22 @@ def escribir_categoria(destino, categoria, titulo, fichas_por_pasada, lleva_pale
         fh.write("\n".join(cuerpo) + "\n")
 
 
-def escribir_indice(destino, pasadas, resumen_categorias, generado):
+def copiar_anexo(destino, ruta, titulo):
+    """Copia un directorio ya armado dentro de la galería y devuelve su enlace.
+
+    Sirve para colgar de la galería material que no sale de la cadena — una
+    comparativa de paletas, una nota— sin que este script tenga que saber nada
+    de su contenido. La única exigencia es que traiga su propio index.html y
+    que sea autocontenido, igual que el resto: nada de rutas absolutas.
+    """
+    nombre = os.path.basename(os.path.normpath(ruta))
+    if not os.path.isfile(os.path.join(ruta, "index.html")):
+        raise SystemExit(f"ERROR: el anexo {ruta} no tiene index.html")
+    shutil.copytree(ruta, os.path.join(destino, nombre), dirs_exist_ok=True)
+    return nombre, titulo
+
+
+def escribir_indice(destino, pasadas, resumen_categorias, generado, anexos=()):
     """El índice raíz: las pasadas publicadas y las categorías, con su conteo."""
     titulo = "Vistas VIIRS — LANOT/UNAM"
     cuerpo = [CABECERA.format(titulo=_esc(titulo), css="estilo.css"),
@@ -558,6 +573,14 @@ def escribir_indice(destino, pasadas, resumen_categorias, generado):
                       f'{_esc(titulo_cat)}</a></td>'
                       f'<td>{cuenta} vista{"s" if cuenta != 1 else ""}</td></tr>')
     cuerpo.append('</table>')
+
+    if anexos:
+        cuerpo.append('<h2>Además</h2>')
+        cuerpo.append('<table class="tabla">')
+        for enlace, titulo in anexos:
+            cuerpo.append(f'  <tr><td><a href="{_esc(enlace)}/index.html">'
+                          f'{_esc(titulo)}</a></td><td>anexo</td></tr>')
+        cuerpo.append('</table>')
 
     cuerpo.append(f'<p class="aviso">Generado el {generado}. '
                   'Las imágenes son las vistas decoradas de la cadena operativa de satélites '
@@ -579,7 +602,7 @@ def miniatura(origen, salida, lado):
         img.save(salida, "JPEG", quality=82, optimize=True)
 
 
-def publicar(destino, pasadas, paletas, tz_offset, lado):
+def publicar(destino, pasadas, paletas, tz_offset, lado, anexos_pedidos=()):
     """Copia, redimensiona y escribe el HTML. Devuelve el resumen."""
     os.makedirs(destino, exist_ok=True)
     with open(os.path.join(destino, "estilo.css"), "w", encoding="utf-8") as fh:
@@ -622,12 +645,15 @@ def publicar(destino, pasadas, paletas, tz_offset, lado):
     # datetime.now(timezone.utc) y no utcnow(): el venv del contenedor se
     # construye sobre el python3 de Rocky 8, así que el código tiene que ser
     # conservador, y utcnow() además está deprecado en los intérpretes nuevos.
+    anexos = [copiar_anexo(destino, ruta, titulo)
+              for ruta, titulo in anexos_pedidos]
+
     generado = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M") + "Z"
     escribir_indice(destino,
                     [(p, cuenta_por_pasada[p.clave]) for p in pasadas],
-                    resumen_categorias, generado)
+                    resumen_categorias, generado, anexos)
 
-    return resumen_categorias, copiadas, sin_producto
+    return resumen_categorias, copiadas, sin_producto, anexos
 
 
 # ==============================================================================
@@ -655,7 +681,24 @@ def main():
                     help="Lado mayor de las miniaturas, en píxeles (def. 480)")
     ap.add_argument("--dry-run", action="store_true",
                     help="Enseña qué publicaría y no escribe nada")
+    ap.add_argument("--anexo", action="append", default=[], metavar="RUTA:TÍTULO",
+                    help="Cuelga de la galería un directorio ya armado, con su "
+                         "propio index.html. Repetible")
     args = ap.parse_args()
+
+    anexos_pedidos = []
+    for spec in args.anexo:
+        # rpartition y no split: la ruta puede llevar ':' aunque sea raro, y el
+        # título casi seguro lleva espacios pero no dos puntos.
+        ruta, _, titulo = spec.rpartition(":")
+        if not ruta or not titulo:
+            print(f"ERROR: --anexo mal formado: {spec!r} (se espera RUTA:TÍTULO)",
+                  file=sys.stderr)
+            return 1
+        if not os.path.isdir(ruta):
+            print(f"ERROR: el anexo no existe: {ruta}", file=sys.stderr)
+            return 1
+        anexos_pedidos.append((ruta, titulo))
 
     script_edr = args.script_edr or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "run_polar2grid_edr.sh")
@@ -706,12 +749,15 @@ def main():
         print(f"  ⚠ no se pudo leer la tabla PALETAS de {script_edr}: "
               "las fichas saldrán sin nota de paleta")
 
-    resumen, copiadas, sin_producto = publicar(
-        args.destino, elegidas, paletas, args.tz_offset, args.miniatura)
+    resumen, copiadas, sin_producto, anexos = publicar(
+        args.destino, elegidas, paletas, args.tz_offset, args.miniatura,
+        anexos_pedidos)
 
     print(f"\nPublicadas {copiadas} vistas en {len(resumen)} categorías:")
     for categoria, titulo, cuenta in resumen:
         print(f"  · {categoria}: {cuenta}")
+    for enlace, titulo in anexos:
+        print(f"  · anexo {enlace}/: {titulo}")
 
     if sin_producto:
         print(f"\n  ⚠ {len(sin_producto)} vista(s) sin nombre de producto — les falta su "

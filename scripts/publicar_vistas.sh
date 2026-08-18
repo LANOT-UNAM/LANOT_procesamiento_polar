@@ -68,6 +68,11 @@ DESTINO="${PUB_DESTINO:-}"
 FORCE=0
 DRY_RUN=0
 ARGS_PY=()
+# Cada anexo necesita su propio bind: el .py lo copia desde dentro del
+# contenedor, así que la ruta del host tiene que existir ahí. Se monta en
+# /anexos/<n> y al .py se le pasa esa ruta, no la del host.
+BINDS_ANEXO=()
+NOMBRES_ANEXO=()
 
 # ==============================================================================
 # FUNCIONES
@@ -84,6 +89,8 @@ Opciones:
   -n, --dry-run     No escribe nada; tampoco exige que la cadena esté quieta
   -f, --force       Rehace un destino existente y salta el candado de la cadena
   -d, --destino DIR Carpeta de salida (def. /data/publicacion/vistas_AAAAMMDD)
+      --anexo R:T   Cuelga de la galería el directorio R, ya armado y con su
+                    propio index.html, bajo el título T. Repetible
   -h, --help        Muestra esta ayuda
 
 Se reenvían a publicar_vistas.py, que las documenta con --help:
@@ -129,6 +136,19 @@ while [ $# -gt 0 ]; do
         -d|--destino)
             [ $# -ge 2 ] || { echo "ERROR: --destino necesita un directorio" >&2; exit 1; }
             DESTINO="$2"; shift 2 ;;
+        --anexo)
+            [ $# -ge 2 ] || { echo "ERROR: --anexo necesita RUTA:TÍTULO" >&2; exit 1; }
+            ruta_anexo="${2%:*}"; titulo_anexo="${2##*:}"
+            if [ ! -d "$ruta_anexo" ]; then
+                echo "ERROR: el anexo no existe: $ruta_anexo" >&2; exit 1
+            fi
+            ruta_anexo="$(cd "$ruta_anexo" && pwd)"
+            # El nombre del directorio se conserva: es el que da la URL.
+            interna="/anexos/$(basename "$ruta_anexo")"
+            BINDS_ANEXO+=(--bind "$ruta_anexo:$interna:ro")
+            ARGS_PY+=(--anexo "$interna:$titulo_anexo")
+            NOMBRES_ANEXO+=("$(basename "$ruta_anexo")")
+            shift 2 ;;
         *) ARGS_PY+=("$1"); shift ;;
     esac
 done
@@ -266,6 +286,7 @@ apptainer exec \
     --bind "$DESTINO:/publicacion" \
     --bind "$SCRIPT_DIR:/publicador:ro" \
     "${BIND_CPT[@]+"${BIND_CPT[@]}"}" \
+    "${BINDS_ANEXO[@]+"${BINDS_ANEXO[@]}"}" \
     "$SIF_P2G" \
     /opt/lanot-tools/venv/bin/python /publicador/publicar_vistas.py \
     --vistas /vistas --destino /publicacion \
@@ -284,8 +305,26 @@ if [ "$CODIGO" -ne 0 ]; then
     exit "$CODIGO"
 fi
 
-JPG=$(find "$DESTINO" -mindepth 2 -maxdepth 2 -name '*.jpg' | wc -l)
-CATEGORIAS=$(find "$DESTINO" -mindepth 1 -maxdepth 1 -type d | wc -l)
+# Los anexos se excluyen del conteo: sus imágenes no son vistas de la cadena y
+# contarlas inflaría el resumen (y el de la galería del 17 pasaba de 23 a 33).
+# No se usa -prune: -mindepth es opción global y find la aplica antes que la
+# poda, así que la combinación no filtra nada. Se descarta por ruta, que además
+# se lee de un vistazo.
+sin_anexos() {
+    local nombre
+    if [ "${#NOMBRES_ANEXO[@]}" -eq 0 ]; then cat; return; fi
+    local filtro=""
+    for nombre in "${NOMBRES_ANEXO[@]}"; do
+        # (/|$) para que descarte tanto el directorio del anexo como su
+        # contenido: sin el $ el propio directorio se colaba en el conteo de
+        # categorías.
+        filtro="${filtro:+$filtro|}^$DESTINO/$nombre(/|\$)"
+    done
+    grep -Ev "$filtro"
+}
+
+JPG=$(find "$DESTINO" -mindepth 2 -maxdepth 2 -name '*.jpg' | sin_anexos | wc -l)
+CATEGORIAS=$(find "$DESTINO" -mindepth 1 -maxdepth 1 -type d | sin_anexos | wc -l)
 PESO=$(du -sh "$DESTINO" 2>/dev/null | cut -f1)
 
 echo "" | tee -a "$LOG_FILE"
