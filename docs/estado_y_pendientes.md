@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-17**
+**Última actualización: 2026-08-18**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -19,6 +19,155 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## Dónde quedó el 2026-08-18 (cierre de la sesión)
+
+**Las vistas salieron del servidor.** Están publicadas en
+`https://vistas.lanot.unam.mx/polariac/`, con las dos pasadas de NOAA-20 del 17: la diurna
+(19:36Z) y la nocturna (08:25Z), la del `dynamic_dnb` que se quería presumir. La galería la
+arma `scripts/publicar_vistas.sh` + `publicar_vistas.py`.
+
+### La galería, y por qué el pie de foto sale de LANOT_tools
+
+El publicador corre **dentro** del contenedor de Polar2Grid, con el intérprete del venv
+(`/opt/lanot-tools/venv/bin/python`), y no por comodidad: el nombre del producto sale de la
+**misma** `product_map` con la que `geotiff2view` rotula la imagen, y la nota de la paleta
+del **mismo** CPT con el que la coloreó. Así el HTML y el JPG no se pueden contradecir, y un
+producto sin entrada en `product_map` se delata en los dos lados a la vez.
+
+La carpeta es **autocontenida y portátil** —copias reales de los JPG, rutas relativas, cero
+recursos externos— porque se copia a mano al servidor web. Se comprueba con
+`find … -type l` (vacío) y un `grep` de URL externas. `--anexo RUTA:TÍTULO` cuelga de la
+galería un directorio ya armado con su propio `index.html`.
+
+Dos cosas que solo aparecieron con datos reales:
+
+- **Las vistas de inundaciones no llevan sufijo de rejilla** —`…_flood_20260817_193624.jpg`—
+  porque su GeoTIFF lo hace `flood2tif.sh` y no Polar2Grid. El patrón del sello temporal
+  exigía guion bajo final y las descartaba en silencio; ahora el separador se mira con
+  lookahead y acepta punto.
+- **`enrich_from_filename` busca el producto en la RUTA COMPLETA como respaldo.** Por eso
+  `confidence_cat`, que no tiene entrada propia en `product_map`, sale rotulado "Fire": lo
+  aporta el directorio `/output_fire_tif` que le pasa el renderizador. Pasando solo el
+  basename, la ficha decía otra cosa que el JPG.
+
+### El logo NO se corta — cierra el pendiente menor del punto 9
+
+`lanot_negro_sn.png` **es** el logotipo completo: L-A-N, el globo como O y el satélite como
+T. El recuadro de lo no transparente es (32, 31, 1168, 252) sobre 1188×282 —márgenes
+simétricos— y `mapdrawer.py:862` lo pega en x=10 con el ancho entero. Lo que se leía como
+"LAN seguido de dos iconos" era la marca entera. El diseño es así.
+
+### Presión de tope de nube, publicada por fin
+
+`CldTopPres` era la única variable de `JRR-CloudHeight` que no pedíamos, aunque el dato se
+generaba en cada pasada y su entrada en `PALETAS` existía desde siempre. Se agregó a
+`ATMOS_DATOS`; el lector `viirs_edr` descubre las variables del archivo dinámicamente
+(`satpy/readers/viirs_edr.py:225`), así que no hizo falta nada más.
+
+Se pinta con `cld_top_press.cpt`, que es **la misma** con la que `hpsatviews` pinta el
+producto CTP de ABI (`paper/create_fig2.sh:47`), así que las vistas de GOES y las polares
+quedan comparables. Su rango 100–1050 hPa le queda casi perfecto al dato medido sobre la
+pasada diurna: **0,23 % por debajo del piso y 0 % por encima**.
+
+**Y de ahí salió un fallo de la cadena.** La primera vista salió con el **fondo blanco**, el
+57 % de la escena. El motivo está escrito en el propio CPT: su `B` es blanco y significa
+"< 100 hPa", mientras que su `N` es negro y el comentario dice literalmente "No Data /
+Cielo Despejado". `run_polar2grid_edr.sh` pasaba `-b` a `geotiff2view` **siempre**, forzando
+`B`. Para esta paleta está mal dos veces: pinta el cielo despejado de blanco *y* del mismo
+color que el extremo de 100 hPa de la rampa. GOES no lo sufre porque `hpsv` honra `N`.
+
+La excepción es `CPT_CON_NODATA_PROPIO`, lista **explícita** y no una heurística sobre el
+archivo: que un `N` "parezca" fondo no dice si el autor lo pensó para eso, y equivocarse
+tiñe la escena entera. Al agregar una CPT cuyo `N` sea el fondo que se quiere, agregarla ahí.
+
+### Dos trampas de despliegue, las dos a punto de costar la sesión
+
+- **`/opt/contenedores` ÷ `/opt/containers`.** `construir.sh` compila en el primero y los
+  `run_*.sh` leen del segundo. Se diferencian en una letra, y una imagen recién compilada no
+  entra en producción hasta copiarla a mano.
+- **El pin otra vez.** Se empujó el commit de LANOT_tools y se lanzó el build sin mover
+  `LANOT_TOOLS_COMMIT`, que seguía dos commits atrás: habría compilado sin error y la vista
+  de presión habría salido rotulada "NOAA-20 VIIRS". Es el mismo patrón del 2026-08-14. Ya
+  hay guarda: `%post` y `%test` comprueban que `product_map` conozca `cldtoppres`, y está
+  medido que con el pin viejo salen con código 1 y `set -e` detiene la compilación.
+
+Tras recompilar y re-renderizar las dos pasadas, **los productos anteriores salieron byte a
+byte del mismo tamaño**: el salto de pin `8bc8f69` → `2df2fbc` no alteró nada de lo que ya
+funcionaba.
+
+### Las paletas de nubes: revisadas, medidas, y una decisión pendiente
+
+Alejandro notó que temperatura y altura de tope se ven casi iguales. No era impresión: **son
+una sola paleta usada dos veces**, emparejada por un gradiente constante de 5,0 K/km —ocho
+de los diez colores de `cld_height_acha.cpt` son los de `cld_temp_acha.cpt`, con 0 m↔295 K,
+6 km↔270 K y 14 km↔230 K—. El emparejamiento era deliberado; se decidió **separarlas**,
+porque el costo lo paga cualquiera que mire la galería y el beneficio no lo explota nadie.
+
+Medido sobre las dos pasadas del 17, `cld_temp_acha.cpt` tiene dos defectos:
+
+| tramo | ΔE medio entre escalones | croma |
+|---|---|---|
+| 180–240 K (convección profunda) | **13,5** | 0 → 37 |
+| 240–295 K (nube baja) | **23,5** | 32 → 45 |
+
+y su techo de 295 K **recorta el 13,7 % del dato** (el máximo real es 320 K). Los primeros
+10 K son ΔE = 0,0: dos blancos idénticos. Además su color más cálido es negro, el mismo del
+cielo despejado, así que un tercio de la escena es invisible.
+
+**Por qué importa, y es el argumento que decide: las estructuras que se pierden son
+tormentas.** Entre 180 y 260 K la paleta actual recorre **106 ΔE** de camino visual; la de
+GOES, **836** — ocho veces más para el mismo rango físico. En 200–260 K, dos nubes que
+difieren 10 K se separan en la actual tan poco como **9,8 ΔE**, por debajo del umbral en que
+el ojo las distingue, frente a **37–166** en la de GOES. Se ve en el Golfo de California y
+en el extremo norte de la pasada diurna: lo que en la actual es una mancha pálida sin forma,
+en la de GOES resuelve en un sistema con su núcleo y sus anillos.
+
+Hay seis opciones comparadas en el anexo de la galería, con la misma vara para todas:
+
+| Opción | Rango | Discriminación a 10 K | Dato fuera |
+|---|---|---|---|
+| En producción hoy | 180–295 K | ΔE 19 | 13,7 % |
+| **La de GOES (`atmosrainbow`)** | **180–320 K** | **ΔE 48** | **0,0 %** |
+| Conservadora | 180–313 K | ΔE 19 | 0,4 % |
+| Viridis invertida | 180–313 K | ΔE 18 | 0,4 % |
+| Cividis invertida | 180–313 K | ΔE 13 | 0,4 % |
+| Inferno invertida | 180–313 K | ΔE 21 | 0,4 % |
+
+La **favorita es la de GOES**: `atmosrainbow` (`hpsatviews/src/palette.c:11`), la que
+`create_nocturnal_pseudocolor()` aplica a la temperatura de brillo de ABI C13, que es la
+misma magnitud física. Gana en discriminación, no recorta nada, ya está probada, y sobre
+todo **hace comparables las vistas de GOES y las polares**: un solo código de color que
+aprender. No es una rampa sino un código de dos regímenes —gris para la nube baja, arcoíris
+reservado a los topes bajo 253 K—, así que no se ordena por intuición sin conocerlo.
+
+Dos avisos medidos sobre nuestro dato, que en GOES no molestan: tiene una **banda de negro
+puro en 201,7–202,5 K** —allá se lee como el núcleo más frío porque va rodeada de rojo, aquí
+se confundiría con el cielo despejado— y el **blanco se repite** en 180–195 K y 255–275 K.
+Lo primero se arregla dándole al fondo un color propio, sin tocar la paleta; lo segundo es
+inherente al código.
+
+La **conservadora** es el resultado más útil para decidir: mantener el vocabulario actual
+corrige el techo y hace visible la nube baja, pero **no** arregla el extremo frío (ΔE 9,8
+entre las primeras clases), porque esos pasteles son intrínsecamente parecidos. El cambio de
+aspecto no es capricho: el mínimo cambio no basta.
+
+Se descartó una propuesta de curva IR realzada estilo BD porque **cada valor especial choca
+con uno del rango**: blanco = 180 K y también 245 K, `N` = rojo puro = 200 K exacto. Y su
+justificación era de otro producto —"silencia el ruido de la superficie"—: `CldTopTemp` es
+recuperado, solo existe donde hay nube (32–43 % de la escena), así que ahí no hay superficie
+que silenciar y el tramo que aplanaba a gris es **nube baja**.
+
+### Lo que sigue, en orden
+
+1. **Decidir la paleta de temperatura**, con los colegas, sobre el anexo publicado.
+2. **El `B` de `cld_height_acha.cpt`**: hoy `B`, `N` y el escalón de 0 m son los tres
+   `(0,0,0)`, así que cielo despejado y nube apoyada en el suelo se dibujan igual. Es el
+   mismo defecto que se acaba de corregir en presión, y ya hay precedente de cómo.
+3. `cld_top_press.cpt` como paleta de presión queda **cerrada**; la entrada muerta de
+   `PALETAS` dejó de serlo.
 
 ---
 
@@ -1269,8 +1418,12 @@ que resuelve contra `/usr/local/share/lanot/docs/recortes_coordenadas.csv` (ya v
 contenedor). Falta decidir qué región usar por producto — probablemente una para México y
 otra más amplia para los productos oceánicos como la SST.
 
-Pendiente menor del mismo tema: confirmar si el logo se está cortando en el borde
-izquierdo o si el diseño es así. Se ve como "LAN" seguido de dos iconos.
+Pendiente menor del mismo tema: ~~confirmar si el logo se está cortando en el borde
+izquierdo o si el diseño es así~~. **CERRADO el 2026-08-18: el diseño es así.**
+`lanot_negro_sn.png` es el logotipo completo —L-A-N, el globo como O y el satélite como T—,
+su recuadro no transparente va de (32, 31) a (1168, 252) sobre un lienzo de 1188×282, o sea
+con márgenes simétricos, y `mapdrawer.py:862` lo pega en x=10 con el ancho entero. No se
+corta en ninguna vista.
 
 ### 10. El README está una generación atrás
 Es la puerta de entrada del repositorio y describe la primera fase de la migración. Lo
