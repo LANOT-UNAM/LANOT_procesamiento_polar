@@ -29,7 +29,7 @@
 # script lee las mismas *_STATE_DIR para poder leer los marcadores.
 #   MAX_PARALELO   Etapas simultáneas por nivel (def. 3)
 #   LOCK_FILE      Candado global (def. /data/tmp/lanot_polares.lock)
-#   ORQ_LOG_BASE   Logs (def. /var/log/lanot/polares/orquestador)
+#   CADENA_LOG_BASE Logs (def. /var/log/lanot/polares/cadena)
 #   SCRIPTS_DIR    De dónde salen los run_*.sh (def. junto a este script)
 # ==============================================================================
 
@@ -40,7 +40,12 @@ SCRIPTS_DIR="${SCRIPTS_DIR:-$SCRIPT_DIR}"
 
 MAX_PARALELO="${MAX_PARALELO:-3}"
 LOCK_FILE="${LOCK_FILE:-/data/tmp/lanot_polares.lock}"
-ORQ_LOG_BASE="${ORQ_LOG_BASE:-/var/log/lanot/polares/orquestador}"
+# "cadena" y no "orquestador": este directorio lo comparten los tres scripts
+# de coordinación —recibe.sh, este y barrer_pendientes.sh—, y lo que tienen en
+# común no es orquestar sino operar sobre la cadena entera. Las carpetas
+# hermanas se llaman como el software de su etapa (rt-stps, cspp-sdr,
+# polar2grid); ésta, como el nivel al que trabaja.
+CADENA_LOG_BASE="${CADENA_LOG_BASE:-/var/log/lanot/polares/cadena}"
 
 ESTADO="${ESTADO_BASE:-/data/output/jpss/state}"
 LEVEL0="${RTSTPS_OUTPUT_DIR:-/data/output/jpss/level0}"
@@ -371,19 +376,19 @@ fi
 
 INICIO=$(date +%s)
 SELLO=$(date '+%Y%m%d_%H%M%S')
-TRABAJO="$(mktemp -d "${TMPDIR:-/tmp}/orquestador_${SELLO}_XXXX")"
+TRABAJO="$(mktemp -d "${TMPDIR:-/tmp}/cadena_${SELLO}_XXXX")"
 trap 'rm -rf "$TRABAJO"' EXIT
 
-mkdir -p "$ORQ_LOG_BASE" 2>/dev/null || true
+mkdir -p "$CADENA_LOG_BASE" 2>/dev/null || true
 ETIQUETA_LOG="${CLAVE_PEDIDA:-$(basename "${RAW:-sin_raw}")}"
-LOG="$ORQ_LOG_BASE/${SELLO}_${ETIQUETA_LOG}.log"
+LOG="$CADENA_LOG_BASE/${SELLO}_${ETIQUETA_LOG}.log"
 
 # Todo lo que sigue va a la vez a la terminal y al log. Si el directorio de log
 # no se puede escribir se sigue sin log, que es preferible a no procesar.
 if : > "$LOG" 2>/dev/null; then
     exec > >(tee -a "$LOG") 2>&1
 else
-    LOG="(sin log: no se pudo escribir en $ORQ_LOG_BASE)"
+    LOG="(sin log: no se pudo escribir en $CADENA_LOG_BASE)"
 fi
 
 titulo "CADENA POLAR | $(ahora)"
@@ -547,6 +552,6 @@ else
     echo "  Etapas con fallo: $fallos  (las demás siguieron; ver arriba)"
     echo "  Recordatorio: LSR falla en toda pasada nocturna, y es esperado."
 fi
-echo "  Log del orquestador: $LOG"
+echo "  Log de la pasada: $LOG"
 
 exit 0

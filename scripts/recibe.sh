@@ -33,7 +33,7 @@ set -u  # Abortar si hay variables no definidas
 # ============================================================================
 
 # Directorio centralizado de logs (según plan de migración sección 1.1)
-LOG_DIR="${ORQ_LOG_BASE:-/var/log/lanot/polares/orquestador}"
+LOG_DIR="${CADENA_LOG_BASE:-/var/log/lanot/polares/cadena}"
 LOG_FILE="${LOG_DIR}/$(date '+%Y%m%d')_recibe.log"
 
 # Sin esto, el primer `tee -a` del script fallaba en un servidor recién montado.
@@ -87,7 +87,7 @@ echo "[$(marca)] RECIBIDO: $FILENAME" >> "$LOG_FILE"
 if [[ $FILENAME =~ ^chain[26]- ]]; then
     echo "[$(marca)] TIPO: Satélite moderno (NPP/JPSS) -> Procesamiento con contenedores" >> "$LOG_FILE"
     
-    # Ejecutar orquestador de contenedores en background
+    # Encadenar la pasada en segundo plano
     # El operador &> redirige stdout y stderr al log específico
     nohup "$SCRIPT_MODERNO" "$RAW_FILE" < /dev/null \
           &> "${LOG_DIR}/$(date '+%Y%m%d_%H%M%S')_${FILENAME}.log" &

@@ -762,6 +762,13 @@ Tres cosas que se aprendieron de la corrida:
   costuras de gránulos truncados, o interferencia de antena, que se ven igual. **Preguntar por el
   estado de la antena antes de buscarlo en el código.**
 
+El directorio de logs de esa capa pasó de `orquestador/` a **`cadena/`** el mismo día. El nombre
+viejo describía a un solo script, pero ahí escriben tres —`recibe.sh`, `procesar_pasada.sh` y
+`barrer_pendientes.sh`—, y lo que comparten no es orquestar sino operar sobre la cadena entera,
+frente a las carpetas hermanas, que se llaman como el software de su etapa (`rt-stps`,
+`cspp-sdr`, `cspp-edr`, `polar2grid`). La variable de entorno es ahora `CADENA_LOG_BASE`. En
+tahan el directorio se movió con `mv`, así que los logs viejos siguen ahí.
+
 Y es la primera vez que se ve `--font-bg` sobre un producto real de VIIRS: el título se lee
 limpio sobre nube brillante, que es el caso que un sondeo no podía probar.
 

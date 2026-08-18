@@ -38,7 +38,7 @@
 #
 #   1. La 3.0 RETIRÓ el soporte a S-NPP (§1.2): solo n21, j01, m03 y m01. Una
 #      pasada de NPP sale con un aviso y código 0 —no es un fallo, es que no hay
-#      trabajo posible—, para que el orquestador no la cuente como error.
+#      trabajo posible—, para que procesar_pasada.sh no la cuente como error.
 #
 #   2. El nombre del satélite NO es el de los SDR: HEAP pide 'n21' donde CSPP
 #      SDR escribe 'j02'. NOAA-20 sí coincide en los dos lados.

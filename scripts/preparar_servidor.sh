@@ -112,7 +112,7 @@ DIRS_775=(
     /var/log/lanot/polares/cspp-sdr
     /var/log/lanot/polares/cspp-edr
     /var/log/lanot/polares/polar2grid
-    /var/log/lanot/polares/orquestador
+    /var/log/lanot/polares/cadena
     # Un caché de ancillary POR SOFTWARE: delete_old_anc.sh de ATMOS borra todo
     # lo de más de 14 días del directorio que se le indique, así que apuntarlo al
     # caché de SDR se lo llevaría entero.

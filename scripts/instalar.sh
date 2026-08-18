@@ -11,7 +11,7 @@
 # para los logs, /usr/local/share/lanot para las paletas, /opt/lanot-tools para
 # LANOT_tools. Deja sitio para /opt/lanot/goes y /opt/lanot/metop.
 #
-#   /opt/lanot/polares/scripts/   los run_*.sh, el orquestador, recibe.sh
+#   /opt/lanot/polares/scripts/   los run_*.sh, procesar_pasada.sh, recibe.sh
 #   /opt/lanot/polares/config/    grid.yaml y los XML de RT-STPS
 #   /opt/lanot/polares/VERSION    de qué commit salió esto
 #

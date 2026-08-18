@@ -26,7 +26,7 @@
 #   - El barrido toma SU PROPIO candado, distinto del de la pasada. Un barrido
 #     largo —una tanda de RAW atrasados puede durar más que el intervalo de
 #     cron— no se solapa consigo mismo.
-#   - Si aun así el orquestador encuentra tomado el candado de la pasada (porque
+#   - Si aun así procesar_pasada.sh encuentra tomado el candado de la pasada (porque
 #     alguien la lanzó a mano), devuelve 75 y eso NO cuenta como intento. Con
 #     salida 0 y sin marcador sería indistinguible de un fallo, y tres choques
 #     de candado bastarían para marcar .fallido un RAW bueno.
@@ -37,7 +37,7 @@
 #   RTSTPS_MIN_AGE_MIN Edad mínima (min) (def. 1)
 #   MAX_INTENTOS       Antes de rendirse (def. 3)
 #   BARRIDO_LOCK       Candado propio    (def. /data/tmp/lanot_barrido.lock)
-#   SCRIPTS_DIR        De dónde sale el orquestador (def. junto a este script)
+#   SCRIPTS_DIR        De dónde sale procesar_pasada.sh (def. junto a este script)
 # ==============================================================================
 
 set -uo pipefail
@@ -51,7 +51,7 @@ MIN_AGE_MIN="${RTSTPS_MIN_AGE_MIN:-1}"
 MAX_INTENTOS="${MAX_INTENTOS:-3}"
 BARRIDO_LOCK="${BARRIDO_LOCK:-/data/tmp/lanot_barrido.lock}"
 
-ORQUESTADOR="$SCRIPTS_DIR/procesar_pasada.sh"
+PROCESAR_PASADA="$SCRIPTS_DIR/procesar_pasada.sh"
 
 # El que devuelve procesar_pasada.sh cuando el candado de la pasada está tomado.
 CODIGO_OCUPADO=75
@@ -91,8 +91,8 @@ if [ ! -d "$INPUT_DIR" ]; then
     echo "ERROR: no existe el buzón de RAW: $INPUT_DIR" >&2
     exit 1
 fi
-if [ ! -x "$ORQUESTADOR" ]; then
-    echo "ERROR: no está el orquestador: $ORQUESTADOR" >&2
+if [ ! -x "$PROCESAR_PASADA" ]; then
+    echo "ERROR: no está procesar_pasada.sh: $PROCESAR_PASADA" >&2
     exit 1
 fi
 
@@ -137,7 +137,7 @@ while IFS= read -r raw; do
 
     echo "  → $base (intento $((intentos + 1)) de $MAX_INTENTOS)"
     codigo=0
-    "$ORQUESTADOR" "$raw" || codigo=$?
+    "$PROCESAR_PASADA" "$raw" || codigo=$?
 
     # Contención de candado: ni éxito ni fallo. No se cuenta el intento y se
     # corta el barrido, porque lo que viene detrás va a chocar igual.

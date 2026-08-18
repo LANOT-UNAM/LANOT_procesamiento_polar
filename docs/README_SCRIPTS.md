@@ -105,7 +105,7 @@ Este sistema procesa datos de satélites polares mediante dos flujos paralelos:
 └── procesar_cadena_completa.sh # Orquestador de contenedores
 
 /var/log/lanot/polares/         # Logs centralizados
-├── orquestador/                # Logs de recibe.sh y coordinación
+├── cadena/                     # Logs de recibe.sh y coordinación
 │   └── YYYYMMDD_*.log
 ├── rt-stps/                    # Logs de RT-STPS
 │   └── YYYYMMDD_HHMMSS_*.log
@@ -238,7 +238,7 @@ ls -lh /data/raw/chain2-20251216_142300.raw
 /home/lanotadm/bin/recibe.sh /data/raw/chain2-20251216_142300.raw
 
 # 3. Monitorear progreso en tiempo real
-tail -f /var/log/lanot/polares/orquestador/$(date +%Y%m%d)_*.log
+tail -f /var/log/lanot/polares/cadena/$(date +%Y%m%d)_*.log
 ```
 
 ### Procesamiento Directo (Saltando `recibe.sh`)
@@ -373,7 +373,7 @@ tail -1 /data/ancillary/common/leapsec.dat
 # Ejecutar todos los lunes a las 3 AM
 0 3 * * 1 apptainer exec /opt/containers/cspp_sdr_v4.1.sif \
     ancillary_download.sh /data/ancillary 2>&1 | \
-    tee -a /var/log/lanot/polares/orquestador/ancillary_update.log
+    tee -a /var/log/lanot/polares/cadena/ancillary_update.log
 ```
 
 ### 3. Limpieza de Logs Antiguos
@@ -409,10 +409,10 @@ find /data/products/level1 -name "*.h5" -mtime +30 -delete
 
 ```bash
 # Ver actividad del día
-cat /var/log/lanot/polares/orquestador/$(date +%Y%m%d)_recibe.log
+cat /var/log/lanot/polares/cadena/$(date +%Y%m%d)_recibe.log
 
 # Buscar errores en todas las ejecuciones del día
-grep -i error /var/log/lanot/polares/orquestador/$(date +%Y%m%d)_*.log
+grep -i error /var/log/lanot/polares/cadena/$(date +%Y%m%d)_*.log
 
 # Contar procesamiento exitoso vs fallidos (últimos 7 días)
 find /var/log/lanot/polares -name "*.log" -mtime -7 | \
