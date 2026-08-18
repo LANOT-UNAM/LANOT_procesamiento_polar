@@ -1444,6 +1444,59 @@ Al rehacerlo conviene que se vea:
 Es documentación, no código: no bloquea nada, pero es de lo primero que lee alguien que llega
 al repositorio y hoy induce a error.
 
+### 16. Alinear la decoración de las vistas con las de GOES — DECIDIDO A MEDIAS
+Anotado el 2026-08-17. **No aplicar todavía**: falta resolver la legibilidad, ver abajo.
+
+Las vistas L2 de GOES (`LANOT_procesamiento_goes/crea_vistas_l2.sh`) ponen la fecha **abajo a
+la izquierda** sobre una caja de fondo, con los números de la barra **dentro** de la rampa. Las
+polares la ponen arriba a la derecha, encima del dato. La diferencia no era una decisión de
+diseño: **`geotiff2view` iba detrás de `mapdrawer` en dos pasos de CLI**, y las dos capacidades
+existían en la biblioteca desde antes.
+
+| Capacidad | En `draw_fecha`/`draw_legend` | `mapdrawer` | `geotiff2view` |
+|---|---|---|---|
+| Caja tras la fecha | `bg_color` | `--font-bg` | agregada el 2026-08-17 (`8bc8f69`) |
+| Números dentro de la barra | `text_pos` | `--colorbar-text-pos` | agregada el 2026-08-17 (`72f5cd3`) |
+
+El cambio que quedaría pendiente, en las **dos** `DECORACION` (`run_polar2grid_edr.sh` y
+`run_polar2grid_l1.sh`):
+
+```diff
+-    --timestamp-pos 1
++    --timestamp-pos 2
+     --font-color white
+-    --font-bg black
++    --font-bg gray
++    --colorbar-text-pos middle
+```
+
+Probado en bucefalo sobre la vista de sondeos de 500 hPa: sale limpio, el mapa queda **sin nada
+encima** y es la disposición que ya se publica en GOES. `--timestamp-pos 2` sin `middle` NO
+sirve —la fecha cae sobre los números de la barra y quedan ilegibles los dos, medido el mismo
+día—, así que las dos banderas van juntas o ninguna.
+
+**Lo que lo bloquea**: con `middle` los números se dibujan **sobre la paleta**, y con texto
+blanco se pierden en las zonas claras. No es un caso raro — **las 23 CPT del repositorio tienen
+anclas claras**, y `cld_temp_acha.cpt` (9 de 30, arranca en blanco puro) perdería los números en
+todo el extremo frío. O sea que `middle` no se puede aplicar a ciegas a todos los productos.
+
+Tres salidas, de menos a más robusta:
+
+1. **Por producto**: `middle` solo donde la paleta es oscura. Deja las vistas desiguales entre sí,
+   que es justo lo que este pendiente quiere quitar.
+2. **Color del texto por paleta**: `draw_legend` ya acepta `color` (`colorpalettetable.py:336`),
+   pero **ninguna de las dos herramientas lo expone**. Habría que sacarlo a la CLI y elegir uno
+   por CPT: 23 decisiones a mano, y cada CPT nueva vuelve a plantearla.
+3. **Contorno en el texto** (`stroke_width`/`stroke_fill` de PIL, que Pillow soporta desde la
+   6.2): una sola vez en `draw_legend` y los números se leen sobre cualquier fondo. Es la que yo
+   haría; de paso arregla `mapdrawer`, y por lo tanto las vistas de GOES, que **hoy ya usan
+   `middle`** con `cld_height_acha`, `modis_lst` y `aod550` — las tres con anclas claras. Vale la
+   pena mirar una vista publicada de LST o AOD antes de suponer que allá el problema no existe.
+
+Y de paso, la divergencia de estilo que es **más visible que la fecha** y que nadie ha decidido:
+las capas van en **blanco** en GOES y en **amarillo** en las polares. Si se va a unificar la
+decoración, esto es lo primero que se nota.
+
 ## Hallazgos que conviene no volver a descubrir
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:
