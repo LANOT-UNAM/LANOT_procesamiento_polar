@@ -1497,6 +1497,34 @@ Y de paso, la divergencia de estilo que es **más visible que la fecha** y que n
 las capas van en **blanco** en GOES y en **amarillo** en las polares. Si se va a unificar la
 decoración, esto es lo primero que se nota.
 
+### 17. El resumen del orquestador miente con OMPS (y mentiría con HEAP)
+Anotado el 2026-08-17, sin arreglar.
+
+En la corrida de `j01_d20260817_b45321` el resumen dio **`omps  ya estaba`**, y es falso: OMPS
+corrió en esa misma corrida, tardó 28 s, dejó 38 productos y escribió su marcador
+`j01_d20260817_b45322.done` a las 19:54.
+
+La causa está en las claves. `procesar_pasada.sh` decide el estado comparando el mtime del
+marcador antes y después de la etapa (`sin-cambio` → "ya estaba", línea 234), y el nombre lo da
+`marcador_de`, que para OMPS devuelve `$DIR_OMPS/$CLAVE_OMPS.done` con la clave **truncada**
+(`j01_d20260817`). Pero `run_omps_edr.sh` escribe la clave **completa, con su propia órbita**
+(`j01_d20260817_b45322`), que resuelve de los archivos y que el orquestador no puede saber de
+antemano — de ahí la clave truncada en primer lugar. O sea que vigila un nombre que nunca
+existe, no ve cambio y concluye que no hubo trabajo.
+
+Es la misma clase de mentira que ya costó una lectura equivocada con HEAP —"el marcador, del que
+sale el resumen del orquestador, mentía"— y `CLAVE_HEAP` es literalmente `CLAVE_OMPS`, así que
+en cuanto HEAP vuelva a la cadena hará lo mismo.
+
+**No es grave por lo que hace sino por lo que oculta**: el código de salida se revisa antes, así
+que una etapa que falla nunca se reporta como buena. Lo que se pierde es lo contrario — una
+etapa que sí trabajó y se reporta como si no— y con ella la duración y los conteos, que en el
+resumen salen vacíos.
+
+El arreglo que propongo: que `marcador_de` resuelva por glob el marcador más reciente que case
+con `${CLAVE_OMPS}_b*.done`, y usar la misma función en las dos tomas de mtime para que la
+comparación siga siendo simétrica. Sin tocar `run_omps_edr.sh`, que hace lo correcto.
+
 ## Hallazgos que conviene no volver a descubrir
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:

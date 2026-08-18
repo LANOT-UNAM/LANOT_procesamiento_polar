@@ -219,10 +219,22 @@ echo "[$TIMESTAMP] Configuración XML: $XML_TARGET"
 # ============================================================================
 # El marcador se escribe únicamente cuando RT-STPS termina con éxito, así que
 # una pasada fallida se reintenta sola en la siguiente ejecución.
+#
+# Y se exige además que sea MÁS NUEVO que el crudo, porque la antena RECICLA los
+# nombres: en operación el crudo nuevo sobrescribe al anterior, dando por hecho
+# que ése ya se consumió. Con la comprobación por sola existencia, el segundo
+# 'chain6-9_pass59' —otro sobrevuelo, mismo nombre— se saltaría en silencio
+# contra el marcador del primero, y la pasada se perdería sin que nada lo
+# reporte como error. Es el único eslabón expuesto a esto: de RDR en adelante los
+# nombres llevan fecha, hora y órbita, y de Level 2 en adelante la clave es
+# satélite + fecha + órbita. Ninguno se recicla; el del crudo sí.
+#
+# Efecto secundario útil en desarrollo: basta sobrescribir el crudo para que se
+# reprocese, sin --force.
 
 MARKER="${STATE_DIR}/${FILENAME}.done"
 
-if [ -f "$MARKER" ] && [ "$FORCE" -eq 0 ]; then
+if [ -f "$MARKER" ] && [ "$MARKER" -nt "$INPUT_FILE" ] && [ "$FORCE" -eq 0 ]; then
     echo ""
     echo "ℹ  $FILENAME ya fue procesado:"
     while IFS= read -r linea; do
