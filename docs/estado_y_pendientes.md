@@ -98,7 +98,7 @@ en tahan", abajo.
    es con lo que se probó), máscara de calidad puesta, y `vestir` con `geotiff2view`. Entra al
    staging **solo** `NUCAPS-EDR*`, emparejado por ventana temporal y no por órbita, y con la
    deduplicación por `_c<sello>` que ya usaban ATMOS y LSR.
-2. **Los CPT de temperatura**, uno por nivel — hecho: `nucaps_temp_850.cpt` (270–300 K),
+2. **Los CPT de temperatura**, uno por nivel — hecho: `nucaps_temp_850.cpt` (270–305 K),
    `nucaps_temp_700.cpt` (260–290), `nucaps_temp_500.cpt` (245–275) y `nucaps_skin_temp.cpt`
    (265–325). Mismos colores que `sst.cpt`, para que las vistas de temperatura de LANOT se
    lean igual; lo único que cambia entre niveles es el rango, que es lo que no se puede
@@ -135,9 +135,22 @@ escribe en el árbol de producción.
 | `Skin_Temperature` | 47.8 % | 279.4 | 303.8 | 315.2 | **319.3** | 265–315 | 72 %, **saturaba** |
 | `Temperature_497mb` | 47.8 % | 259.6 | 265.3 | 267.8 | 270.1 | 245–275 | 27 % |
 | `Temperature_707mb` | 47.8 % | 275.4 | 282.8 | 286.7 | 288.4 | 260–290 | 38 % |
-| `Temperature_853mb` | 47.8 % | 283.6 | 291.9 | 296.9 | 301.6 | 270–300 | 44 % |
+| `Temperature_853mb` | 47.8 % | 283.6 | 291.9 | 296.9 | **301.6** | 270–300 | 44 %, **saturaba** |
 
-**Los tres niveles de presión se dejan como están, y la ocupación baja no es un defecto.** Están
+Dos correcciones, y las dos por el mismo criterio: lo que se mira es **`max` contra el techo**,
+no `p98`. Con `p98` los dos casos pasaban desapercibidos.
+
+**El skin estaba mal de concepto**: se dimensionó como si fuera un campo de atmósfera libre. No
+lo es —tiene ciclo diurno y depende del tipo de superficie—, así que su variación es mucho más
+ancha que la de cualquier nivel. Pasa a **265–325**, paso de 6 K.
+
+**El techo de 850 hPa sube a 305** (paso de 3.5 K, que no es redondo porque son once colores; da
+igual, las etiquetas de la barra las alinea el código y no los cortes del CPT). Los 301.6 K de
+esta escena solos no lo ameritarían —para eso está el último color—, pero junio no es el caso
+extremo: sobre el desierto en mayo ese nivel pasa de 305 K, y una ola de calor es justo cuando
+alguien mira el producto.
+
+**Los otros dos niveles se dejan como están, y la ocupación baja no es un defecto.** Están
 sesgados al frío a propósito: ésta es una escena de junio y en enero los mismos campos ocupan la
 mitad de abajo de la rampa. Apretarlos por lo que se ve hoy sería optimizar la vista de verano a
 costa de la de invierno, que es justo lo que la paleta fija está para evitar. Lo que sí es
@@ -145,14 +158,17 @@ intrínseco: **el rango de una escena a nivel fijo es estrecho** (8 K de p2 a p9
 que ninguna paleta fija va a dar mucho contraste ahí. Es el precio de que dos pasadas se puedan
 comparar, y se paga a sabiendas.
 
-**El skin sí estaba mal**, y era un error de concepto: se dimensionó como si fuera un campo de
-atmósfera libre. No lo es —tiene ciclo diurno y depende del tipo de superficie—, así que su
-variación es mucho más ancha que la de cualquier nivel. Con el techo en 315 y `max` en 319.3,
-todo lo más caliente (desierto y ciudad al mediodía) se apelmazaba en un solo color, porque
-`ColorPaletteTable.apply` satura al último color en vez de usar el color F. Pasa a **265–325**,
-paso de 6 K: 325 deja aire arriba para un mediodía de mayo, 265 cubre la madrugada, y la escena
-medida ocupa el 60 %. **No hay que recompilar**: las CPT se montan desde el host, o sea
+Que saturar no se note es parte del problema: **`ColorPaletteTable.apply` recorta al último
+color en vez de usar el color F**, así que un techo corto no se ve como un aviso sino como una
+zona plana. Tenerlo presente al escribir cualquier CPT nueva.
+
+**No hay que recompilar** por ninguna de las dos: las CPT se montan desde el host, o sea
 `git pull` + `sudo ./install.sh` en tahan y volver a correr la prueba.
+
+Y una advertencia sobre el propio guion de verificación: la primera versión llevaba los rangos
+**escritos a mano**, así que no podía comprobar la instalación — las estadísticas salen del
+GeoTIFF, que es dato y no cambia con la paleta. El que sirve carga el CPT con
+`ColorPaletteTable` desde `/usr/local/share/lanot/colortables` y compara contra `c.max_val`.
 
 La otra lectura de la tabla: el 47.8 % de válidos es idéntico en los cuatro productos, que es lo
 que se espera si quien decide es la máscara de calidad y no cada campo por su cuenta.
