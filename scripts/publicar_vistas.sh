@@ -138,7 +138,11 @@ while [ $# -gt 0 ]; do
             DESTINO="$2"; shift 2 ;;
         --anexo)
             [ $# -ge 2 ] || { echo "ERROR: --anexo necesita RUTA:TÍTULO" >&2; exit 1; }
-            ruta_anexo="${2%:*}"; titulo_anexo="${2##*:}"
+            # Se parte por el PRIMER dos puntos: un título con dos puntos es de
+            # lo más normal ("Paletas de nubes: comparativa y presión") y una
+            # ruta con dos puntos es rarísima. La primera versión partía por el
+            # último y se tragaba media frase como parte de la ruta.
+            ruta_anexo="${2%%:*}"; titulo_anexo="${2#*:}"
             if [ ! -d "$ruta_anexo" ]; then
                 echo "ERROR: el anexo no existe: $ruta_anexo" >&2; exit 1
             fi

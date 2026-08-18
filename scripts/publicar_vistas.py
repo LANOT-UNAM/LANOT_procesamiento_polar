@@ -688,9 +688,12 @@ def main():
 
     anexos_pedidos = []
     for spec in args.anexo:
-        # rpartition y no split: la ruta puede llevar ':' aunque sea raro, y el
-        # título casi seguro lleva espacios pero no dos puntos.
-        ruta, _, titulo = spec.rpartition(":")
+        # partition y no rpartition: se parte por el PRIMER dos puntos. La
+        # versión anterior partía por el último, con el argumento de que una
+        # ruta puede llevar ':' y un título no; el primer título real que se le
+        # pasó lo desmintió ("Paletas de nubes: comparativa y presión de tope"),
+        # y una ruta con dos puntos es mucho más rara que un título con ellos.
+        ruta, _, titulo = spec.partition(":")
         if not ruta or not titulo:
             print(f"ERROR: --anexo mal formado: {spec!r} (se espera RUTA:TÍTULO)",
                   file=sys.stderr)

@@ -269,6 +269,22 @@ resolver_pasada() {
                         | sort | head -1)
 }
 
+# Paletas cuyo color N sí es un fondo válido para "sin dato". Es lista explícita
+# y no una heurística sobre el archivo: que un N "parezca" fondo no dice si el
+# autor lo pensó para eso, y equivocarse tiñe la escena entera. Al agregar una
+# CPT cuyo N sea el color de fondo que se quiere, agrégala también aquí.
+CPT_CON_NODATA_PROPIO=(
+    cld_top_press.cpt
+)
+
+honra_su_nodata() {
+    local cpt="$1" c
+    for c in "${CPT_CON_NODATA_PROPIO[@]}"; do
+        [ "$c" = "$cpt" ] && return 0
+    done
+    return 1
+}
+
 # Imprime el CPT que le toca a un GeoTIFF, o devuelve 1 si no hay ninguno.
 paleta_de() {
     local nombre="$1" par
@@ -723,7 +739,7 @@ if [ "$EDR_COUNT" -gt 0 ]; then
     #
     # Si resulta que la vista de tipo de nube no la usa nadie, basta quitar
     # CloudType de esta línea; lo demás sigue igual.
-    ATMOS_DATOS="AOD550 CldBaseHght CldTopHght CldTopTemp CloudLayer CloudPhase"
+    ATMOS_DATOS="AOD550 CldBaseHght CldTopHght CldTopTemp CldTopPres CloudLayer CloudPhase"
     ATMOS_DATOS="$ATMOS_DATOS Total_Cloud_Fraction CloudType"
 
     en_contenedor "Productos atmosféricos (EDR)" \
@@ -868,7 +884,19 @@ vestir() {
                 echo "  · sin paleta, no se genera vista: $nombre" >> "$LOG_FILE"
                 continue
             fi
-            orden=(geotiff2view "$montaje_tif/$nombre" -b -p "$cpt" "${DECORACION[@]}")
+            # -b hace que el "sin dato" se pinte con el color B del CPT. Se pasa
+            # a casi todas porque su N no sirve como fondo —el de
+            # cld_temp_acha.cpt es rojo puro—, pero NO a las que sí declaran un
+            # N correcto: en cld_top_press.cpt, B es blanco y significa
+            # "< 100 hPa", mientras que N es negro y su comentario dice
+            # literalmente "No Data / Cielo Despejado". Forzando -b, el 57 % de
+            # cielo despejado salía BLANCO y además del mismo color que el
+            # extremo de 100 hPa de la rampa. Sin la bandera sale negro, como en
+            # las vistas de GOES, que usan esa misma paleta a través de hpsv
+            # —el cual honra N—.
+            orden=(geotiff2view "$montaje_tif/$nombre")
+            honra_su_nodata "$cpt" || orden+=(-b)
+            orden+=(-p "$cpt" "${DECORACION[@]}")
         fi
         orden+=("${extra_args[@]}" -o "$montaje_img/${nombre%.*}.jpg")
 
