@@ -160,13 +160,39 @@ justificación era de otro producto —"silencia el ruido de la superficie"—: 
 recuperado, solo existe donde hay nube (32–43 % de la escena), así que ahí no hay superficie
 que silenciar y el tramo que aplanaba a gris es **nube baja**.
 
+### La decisión: `atmosrainbow`, con el fondo en negro (2026-08-18)
+
+Se eligió la de GOES. Está transcrita en `LANOT_tools/colortables/atmosrainbow.cpt` (commit
+`4bf323d`) y `run_polar2grid_edr.sh` ya la pide para `CldTopTemp`; `cld_temp_acha.cpt` se
+conserva intacta porque la usa la cadena vieja. Tres decisiones que la transcripción tuvo
+que tomar, porque el CPT no puede decir todo lo que dice la tabla en C:
+
+- **Rango 180–320 K**, no 170–380. Recortar al rango que el dato ocupa de verdad (0,0 %
+  fuera, medido) no gasta entradas del LUT en temperaturas que `CldTopTemp` no alcanza. Los
+  colores a cada temperatura son los mismos: el recorte mueve los extremos, no la escala.
+  Verificado entrada por entrada contra la tabla de `hpsatviews`: **error máximo de 1,7
+  niveles sobre 255**.
+- **El alpha no viaja, y no hace falta.** La tabla en C lo tiene decayendo de 1,0 a 0 por
+  encima de 259 K, pero ahí es un velo sobre la superficie, porque se aplica a temperatura
+  de brillo, que existe en toda la escena. En `CldTopTemp` ese tramo no es superficie que
+  velar: es **nube baja**, y va opaca. Recortar la paleta al tramo opaco habría sido peor
+  que no cambiarla: `geotiff2view` recorta el sobre-rango con `np.clip` y nunca cae en `F`
+  (`geotiff2view.py:210,221`), así que los 260–320 K se habrían pintado todos del último
+  color, en blanco, que es el mismo del extremo frío.
+- **`N` es negro**, como en las vistas de GOES, y no un color propio. El riesgo medido era
+  que el negro también es un valor de la escala —el núcleo de 201,7 K—, pero sobre la vista
+  real de G19 no se confunde: el núcleo frío va siempre rodeado de rojo y ocupa unos pocos
+  píxeles, mientras que el fondo es el 32 % de la escena. Y un fondo distinto al de GOES
+  habría roto lo único por lo que se adoptó esta paleta, que es que las dos vistas se lean
+  igual. `atmosrainbow.cpt` va en `CPT_CON_NODATA_PROPIO` porque su `N` es exactamente el
+  fondo que se quiere, que es el criterio de esa lista.
+
 ### Lo que sigue, en orden
 
-1. **Decidir la paleta de temperatura**, con los colegas, sobre el anexo publicado.
-2. **El `B` de `cld_height_acha.cpt`**: hoy `B`, `N` y el escalón de 0 m son los tres
+1. **El `B` de `cld_height_acha.cpt`**: hoy `B`, `N` y el escalón de 0 m son los tres
    `(0,0,0)`, así que cielo despejado y nube apoyada en el suelo se dibujan igual. Es el
    mismo defecto que se acaba de corregir en presión, y ya hay precedente de cómo.
-3. `cld_top_press.cpt` como paleta de presión queda **cerrada**; la entrada muerta de
+2. `cld_top_press.cpt` como paleta de presión queda **cerrada**; la entrada muerta de
    `PALETAS` dejó de serlo.
 
 ---

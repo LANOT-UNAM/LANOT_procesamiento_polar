@@ -130,7 +130,11 @@ JOB_ID="${SLURM_JOB_ID:-$$}"
 # valid_range 0..62), así que sus valores son combinaciones y no una escala.
 PALETAS=(
     "sst:sst.cpt"
-    "CldTopTemp:cld_temp_acha.cpt"
+    # atmosrainbow.cpt y no cld_temp_acha.cpt: es la paleta que GOES ya usa para
+    # la misma magnitud, así que las dos vistas se leen con un solo código de
+    # color. Y discrimina ocho veces mejor en 180-260 K, que es donde están las
+    # tormentas. cld_temp_acha.cpt se conserva porque la usa la cadena vieja.
+    "CldTopTemp:atmosrainbow.cpt"
     "CldTopHght:cld_height_acha.cpt"
     "CldBaseHght:cld_height_acha.cpt"
     "CldTopPres:cld_top_press.cpt"
@@ -275,6 +279,7 @@ resolver_pasada() {
 # CPT cuyo N sea el color de fondo que se quiere, agrégala también aquí.
 CPT_CON_NODATA_PROPIO=(
     cld_top_press.cpt
+    atmosrainbow.cpt
 )
 
 honra_su_nodata() {
@@ -885,15 +890,17 @@ vestir() {
                 continue
             fi
             # -b hace que el "sin dato" se pinte con el color B del CPT. Se pasa
-            # a casi todas porque su N no sirve como fondo —el de
-            # cld_temp_acha.cpt es rojo puro—, pero NO a las que sí declaran un
-            # N correcto: en cld_top_press.cpt, B es blanco y significa
-            # "< 100 hPa", mientras que N es negro y su comentario dice
-            # literalmente "No Data / Cielo Despejado". Forzando -b, el 57 % de
-            # cielo despejado salía BLANCO y además del mismo color que el
-            # extremo de 100 hPa de la rampa. Sin la bandera sale negro, como en
-            # las vistas de GOES, que usan esa misma paleta a través de hpsv
-            # —el cual honra N—.
+            # a casi todas porque su N no sirve como fondo —el de cld_emiss.cpt
+            # es rojo puro—, pero NO a las que sí declaran un N correcto: en
+            # cld_top_press.cpt, B es blanco y significa "< 100 hPa", mientras
+            # que N es negro y su comentario dice literalmente "No Data / Cielo
+            # Despejado". Forzando -b, el 57 % de cielo despejado salía BLANCO y
+            # además del mismo color que el extremo de 100 hPa de la rampa. Sin
+            # la bandera sale negro, como en las vistas de GOES, que usan esa
+            # misma paleta a través de hpsv —el cual honra N—.
+            #
+            # atmosrainbow.cpt está en el mismo caso: su N es el negro con el que
+            # GOES dibuja el cielo despejado en esa misma paleta.
             orden=(geotiff2view "$montaje_tif/$nombre")
             honra_su_nodata "$cpt" || orden+=(-b)
             orden+=(-p "$cpt" "${DECORACION[@]}")
