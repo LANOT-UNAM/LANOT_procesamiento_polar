@@ -721,6 +721,50 @@ de "produjo algo". Las convenciones comunes están en `CLAUDE.md`.
 
 ---
 
+## La cadena completa, de RAW a vistas — 2026-08-17
+
+**Primera corrida del orquestador de punta a punta sobre una pasada nueva.** Hasta hoy los doce
+eslabones se habían probado uno por uno; `procesar_pasada.sh` solo se había ejercitado en
+`--dry-run`. Pasada `j01_d20260817_b45321` (NOAA-20, 13:36 CST, diurna), **29m 04s**, las diez
+etapas en `ok`.
+
+| Etapa | Duración | Productos |
+|---|---|---|
+| `rt_stps` | — | 5 RDR |
+| `sdr` (5 sensores) | — | VIIRS 28, ATMS 63, CrIS 32, OMPS-NM 38, OMPS-NP 40 |
+| `atmos` | 6m 57s | 108 |
+| `acspo` | 1m 31s | 1 |
+| `fire` | 2m 44s | 9 |
+| `flood` | 4m 36s | 9 + 1 geotiff fusionado |
+| `omps` | 28s | 38 |
+| `p2g_l1` | 3m 14s | **59 geotiff, 3 vistas** |
+| `lsr` | 1m 34s | 9 |
+| `cryo` | 19s | 18 |
+| `p2g_edr` | 3m 22s | **26 geotiff, 11 vistas** |
+
+Los conteos de renderizado **coinciden con la referencia** del 11 y 13 de agosto (59/3 y 25/11).
+El GeoTIFF de más en Level 2 es `CloudType`, que se agregó el 14 y no estaba en aquella medición;
+por eso también son 7 vistas de ATMOS y no 6.
+
+La estimación previa a la corrida —25 min por ruta crítica, 30 con holgura, calculada de las
+duraciones de los marcadores— salió a 29m 04s. Vale la pena recordar el método: las duraciones
+de Level 2 están en los marcadores, y para RT-STPS y SDR, que no las registran, se sacan del
+mtime del log menos la hora que lleva su nombre.
+
+Tres cosas que se aprendieron de la corrida:
+
+- **`lsr` dio 1 vista y no 2**, y está bien: el EVI salió sin un solo píxel válido y
+  `geotiff2view` devolvió 3, así que no se publicó un JPG en negro. Es el diseño funcionando.
+- **`omps` se reportó como "ya estaba" habiendo corrido.** Defecto del resumen, no de la etapa:
+  ver el pendiente 17.
+- **Las vistas traen franjas negras horizontales al pie**, idénticas en el RGB y en el DNB. Como
+  esos dos no comparten lector, el origen está en los SDR y no en el renderizado: son las
+  costuras de gránulos truncados, o interferencia de antena, que se ven igual. **Preguntar por el
+  estado de la antena antes de buscarlo en el código.**
+
+Y es la primera vez que se ve `--font-bg` sobre un producto real de VIIRS: el título se lee
+limpio sobre nube brillante, que es el caso que un sondeo no podía probar.
+
 ## Tareas programadas
 
 Qué debe quedar en el `crontab` de `lanotadm`. **Ninguna está confirmada como activa**:
