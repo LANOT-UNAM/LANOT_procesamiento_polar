@@ -202,9 +202,44 @@ producto, no un añadido. La entrada `atms-cris` de `metadata.py` sirve igual �
 que un producto sin match salga como "NOAA-21" a secas— pero hoy no se ve en ninguna de las
 cuatro vistas.
 
-**Lo único que queda pendiente de toda la rama de sondeos es visual**, y no tiene forma objetiva
-de comprobarse: traerse un JPG y mirar que el logo no tape dato y que la barra de color se lea a
-tamaño natural. Es justo lo que motivó quitarle el `-s 0.5`.
+### La revisión visual, hecha — y de ahí salió `--font-bg`
+
+Se trajeron dos JPG y se miraron. **Lo que estaba bien**: la etiqueta correcta, la barra de color
+legible a tamaño natural (a la mitad esos números habrían quedado marginales, o sea que quitar el
+`-s 0.5` era necesario), el logo sobre negro sin tapar dato, y el encuadre con Mexico completo y
+la barra en la franja que libera `--lat-south 11`. El skin ya no satura: rojo sobre tierra al
+noroeste, verde sobre el Golfo, cian donde hay nube.
+
+**Lo que estaba mal**: en la vista de 500 hPa el título va en blanco sobre el amarillo brillante
+del dato y no se lee. Y **no es de sondeos**: es de cualquier producto cuyo swath llegue a la
+esquina superior derecha, que es donde `--timestamp-pos 1` pone la fecha.
+
+Mover la fecha no es salida, y esto se midió en vez de suponerse: **`--timestamp-pos 2` no la
+pone en la esquina inferior izquierda del mapa sino al pie de la imagen, encima de la barra de
+color** — el título y las etiquetas `245 250 255…` quedan superpuestos e ilegibles los dos. Por
+la misma razón cae la 3, y la 0 la ocupa el logo. **La 1 es la única esquina libre**, no una
+preferencia.
+
+La solución ya existía a medias: `draw_fecha` sabe dibujar una caja oscura semitransparente
+detrás de la fecha (alfa 140) y `mapdrawer` la expone como `--font-bg`; lo que faltaba era el
+paso por la CLI de `geotiff2view`, que llamaba sin `bg_color`. Agregado en LANOT_tools `8bc8f69`,
+por omisión `None` para que nada cambie si no se pide. Probado **en bucefalo**, sin tocar tahan y
+sin recompilar: aquí están `/usr/local/share/lanot/{logos,gpkg}` y las dependencias, así que
+`python3 geotiff2view.py` renderiza un GeoTIFF traído por `scp`.
+
+**Decidido: `--font-bg black` va en las DOS `DECORACION`** (Level 1 y Level 2), no solo en
+sondeos. El problema es compartido y la inconsistencia entre productos se nota más que la caja.
+
+> **ORDEN OBLIGATORIO AL DESPLEGAR ESTO.** Las `DECORACION` ahora piden una bandera que el `.sif`
+> de hoy no tiene, y esto **no degrada**: `geotiff2view` muere con `unrecognized arguments:
+> --font-bg black` en **todas** las vistas de las dos etapas. Los GeoTIFF sí se escriben, así que
+> la pasada se marca como hecha con cero vistas. Primero **recompilar** el contenedor, y solo
+> después `scripts/instalar.sh`.
+
+Un tropiezo del método, el tercero del día: la primera comparación antes/después salió sin
+`NOAA-21 Temp 500 hPa` en la etiqueta, y no era culpa del cambio — al traer el GeoTIFF por `scp`
+se le había puesto otro nombre, y `metadata.py` saca producto y satélite **del nombre del
+archivo**. Renombrar un archivo de prueba no es inocuo.
 
 Y falta reinstalar las dos CPT corregidas (`87251ca`, `fbcaef8`), que no necesitan recompilar.
 

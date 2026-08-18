@@ -179,6 +179,14 @@ DECORACION=(
     --font-size 0.025
     --timestamp-pos 1
     --font-color white
+    # Caja oscura semitransparente detrás de la fecha. Sin ella el título va en
+    # blanco sobre el dato, y donde el swath llega a la esquina superior derecha
+    # —que es donde cae, y la ÚNICA esquina libre: con el logo en 0 y la barra de
+    # color abajo, las posiciones 0, 2 y 3 están ocupadas— sobre amarillo
+    # brillante no se lee. Verificado el 2026-08-17 con la vista de sondeos de
+    # 500 hPa; el problema no es de sondeos, es de cualquier producto cuyo dato
+    # llegue a esa esquina.
+    --font-bg black
     -s 0.5
     -j
     --lat-south 11
