@@ -48,6 +48,7 @@ DUENO="${DUENO:-lanotadm:lanotadm}"
 EXCLUIDOS=(
     instalar.sh
     preparar_servidor.sh
+    generar_xml.py
 )
 
 # ==============================================================================
@@ -138,7 +139,12 @@ correr install -d -m 755 "$PREFIX/config"
 
 echo "Scripts:"
 n_sh=0
-for f in "$SCRIPT_DIR"/*.sh; do
+# También los .py, y no solo los .sh: publicar_vistas.sh monta su directorio
+# dentro del contenedor esperando encontrar ahí a publicar_vistas.py, así que si
+# el compañero no se instala, la herramienta no funciona en producción. Antes el
+# glob dejaba fuera a generar_xml.py por accidente; ahora hay que excluirlo a
+# propósito, que es lo que dice la lista de arriba.
+for f in "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/*.py; do
     [ -e "$f" ] || continue
     base="$(basename "$f")"
     if excluido "$base"; then

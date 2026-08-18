@@ -20,3 +20,7 @@ temp/
 # Ignorar archivos del sistema
 .DS_Store
 
+
+# Cachés de Python: scripts/publicar_vistas.py se compila al importarse
+__pycache__/
+*.pyc
