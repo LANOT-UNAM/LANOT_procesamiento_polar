@@ -100,7 +100,7 @@ en tahan", abajo.
    deduplicación por `_c<sello>` que ya usaban ATMOS y LSR.
 2. **Los CPT de temperatura**, uno por nivel — hecho: `nucaps_temp_850.cpt` (270–300 K),
    `nucaps_temp_700.cpt` (260–290), `nucaps_temp_500.cpt` (245–275) y `nucaps_skin_temp.cpt`
-   (265–315). Mismos colores que `sst.cpt`, para que las vistas de temperatura de LANOT se
+   (265–325). Mismos colores que `sst.cpt`, para que las vistas de temperatura de LANOT se
    lean igual; lo único que cambia entre niveles es el rango, que es lo que no se puede
    compartir. **Rango fijo y no percentiles**: la temperatura a nivel fijo es un campo con
    rango climatológico estable, así que la paleta fija es justo lo que hace comparables dos
@@ -121,6 +121,41 @@ tanto ganan (argparse se queda con la última).
 Verificado en bucefalo con un `apptainer` simulado: el staging deja los 3 gránulos de la
 ventana y descarta el reproceso duplicado, el que cae fuera, el de otro satélite y las familias
 `NUCAPS-ALL-HR`/`NUCAPS-OLR`; salen los cuatro GeoTIFF con su CPT correcto y el `-s 1` final.
+
+### Los rangos de las paletas, medidos — 2026-08-17, en tahan
+
+`run_polar2grid_edr.sh` corrió entero contra los 19 gránulos de muestra, inventándole una
+pasada: un `GMTCO` vacío `j02_d20260630` basta para que la ventana los alcance, y los demás
+conjuntos, al no tener nada de esa fecha, se saltan solos. **4 GeoTIFF y 4 vistas en 43 s.**
+Con `P2G_STATE_DIR` y `P2G_LOG_BASE` desviados a `/data/tmp`, que si no el marcador falso se
+escribe en el árbol de producción.
+
+| Producto | válidos | p2 | media | p98 | max | CPT | ocupa |
+|---|---|---|---|---|---|---|---|
+| `Skin_Temperature` | 47.8 % | 279.4 | 303.8 | 315.2 | **319.3** | 265–315 | 72 %, **saturaba** |
+| `Temperature_497mb` | 47.8 % | 259.6 | 265.3 | 267.8 | 270.1 | 245–275 | 27 % |
+| `Temperature_707mb` | 47.8 % | 275.4 | 282.8 | 286.7 | 288.4 | 260–290 | 38 % |
+| `Temperature_853mb` | 47.8 % | 283.6 | 291.9 | 296.9 | 301.6 | 270–300 | 44 % |
+
+**Los tres niveles de presión se dejan como están, y la ocupación baja no es un defecto.** Están
+sesgados al frío a propósito: ésta es una escena de junio y en enero los mismos campos ocupan la
+mitad de abajo de la rampa. Apretarlos por lo que se ve hoy sería optimizar la vista de verano a
+costa de la de invierno, que es justo lo que la paleta fija está para evitar. Lo que sí es
+intrínseco: **el rango de una escena a nivel fijo es estrecho** (8 K de p2 a p98 en 500 hPa), así
+que ninguna paleta fija va a dar mucho contraste ahí. Es el precio de que dos pasadas se puedan
+comparar, y se paga a sabiendas.
+
+**El skin sí estaba mal**, y era un error de concepto: se dimensionó como si fuera un campo de
+atmósfera libre. No lo es —tiene ciclo diurno y depende del tipo de superficie—, así que su
+variación es mucho más ancha que la de cualquier nivel. Con el techo en 315 y `max` en 319.3,
+todo lo más caliente (desierto y ciudad al mediodía) se apelmazaba en un solo color, porque
+`ColorPaletteTable.apply` satura al último color en vez de usar el color F. Pasa a **265–325**,
+paso de 6 K: 325 deja aire arriba para un mediodía de mayo, 265 cubre la madrugada, y la escena
+medida ocupa el 60 %. **No hay que recompilar**: las CPT se montan desde el host, o sea
+`git pull` + `sudo ./install.sh` en tahan y volver a correr la prueba.
+
+La otra lectura de la tabla: el 47.8 % de válidos es idéntico en los cuatro productos, que es lo
+que se espera si quien decide es la máscara de calidad y no cada campo por su cuenta.
 
 ### Para que la vista de sondeos quede lista en tahan
 
