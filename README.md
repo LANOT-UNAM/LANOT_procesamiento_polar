@@ -39,16 +39,19 @@ graph TD
     D --> E[RT-STPS v7.0]
     E -->|RAW → Level 0 / RDR| F[CSPP SDR v4.1.1]
 
-    F -->|VIIRS| G[ATMOS · ACSPO<br/>Active Fire · Flood]
-    F -->|CrIS + ATMS| N[CSPP HEAP v3.0<br/>sondeos NUCAPS]
-    F -->|OMPS NM + NP| O[CSPP OMPS L2<br/>V8TOz · V8PRO]
+    F -->|VIIRS| V[SV* · GMTCO*]
+    F -->|CrIS + ATMS| S[SCRIF* · GCRSO*<br/>TATMS* · GATMO*]
+    F -->|OMPS NM + NP| Q[GOTCO* · GONPO*]
 
+    V --> G[ATMOS · ACSPO<br/>Active Fire · Flood]
     G -->|ATMOS primero| L[CSPP LSR · CSPP CRYO]
+    S --> N[CSPP HEAP v3.0<br/>sondeos NUCAPS]
+    Q --> O[CSPP OMPS L2<br/>V8TOz · V8PRO]
 
-    F -->|VIIRS · Level 1 → GeoTIFF + vistas| H[Polar2Grid v3.2 + LANOT_tools]
+    V -->|Level 1 → GeoTIFF + vistas| H[Polar2Grid v3.2 + LANOT_tools]
     G -->|Level 2 → GeoTIFF + vistas| H
     L --> H
-    N -.->|escrito — espera NUCAPS-EDR| H
+    N -.->|espera NUCAPS-EDR| H
     O -.->|espera Polar2Grid 3.3| H
     end
 
