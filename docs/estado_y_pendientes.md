@@ -1657,30 +1657,50 @@ Dos que se ven especialmente prometedores: **`CloudMask`**, que reabre el enmasc
 pendiente 12 —aunque siga topando con las rejillas dinámicas—, y **`Dust`/`Smoke`**, que en
 esta región tienen uso operativo evidente.
 
-### 15. El diagrama de la cadena no muestra las ramas por sensor — README HECHO, falta `CLAUDE.md`
-Anotado el 2026-08-17. **El del README se rehizo el 2026-08-24**, con las cuatro ramas de sensor
-saliendo de CSPP SDR, la de NUCAPS separada y colgando de CrIS **+** ATMS, y las dos ramas que hoy
-no publican vista dibujadas punteadas con su motivo. Debajo del diagrama quedó el texto que dice
-qué sensor alimenta a qué, que HEAP es el único que consume dos, y que la órbita no es común entre
-instrumentos. **Falta el de `CLAUDE.md`**, que tiene el mismo defecto y es el que se describe abajo.
+### 15. Los dos diagramas de la cadena — CERRADO el 2026-08-24
+Anotado el 2026-08-17. Los dos colgaban los once eslabones de Level 2 de un solo
+`cspp_sdr_v4.1.1.sif`, como si todos comieran de lo mismo, y de ahí no se podía saber que HEAP
+no toca VIIRS ni que flood y ACSPO no tienen nada que ver con CrIS. Rehechos los dos, con las
+cuatro ramas de sensor explícitas y lo que se pedía: qué sensor alimenta a qué, que HEAP es el
+único que consume **dos** a la vez —de ahí el traslape con margen (`HEAP_MARGEN_ATMS`) en vez de
+clave de pasada— y que la órbita no es común entre instrumentos.
 
-El diagrama de `CLAUDE.md` cuelga los once eslabones de Level 2 de un solo `cspp_sdr_v4.1.1.sif`,
-como si todos comieran de lo mismo. No es así: `run_sdr.sh` produce **cuatro flujos de sensor**
-—VIIRS, ATMS, CrIS y OMPS (con sus dos instrumentos, Nadir Mapper y Nadir Profiler)— y cada
-rama de Level 2 se alimenta de unos y no de otros. Leyéndolo hoy no se puede saber, por
-ejemplo, que HEAP no toca VIIRS, o que flood y ACSPO no tienen nada que ver con CrIS.
+**El del README** (Mermaid) dibuja los tres flujos de SDR como nodos propios y de cada uno cuelga
+su rama; punteadas las dos que hoy no publican vista, con su motivo. Se **renderizó** con
+`mmdc` antes de darlo por bueno, y menos mal: con las ramas saliendo directo del nodo de SDR, la
+etiqueta del renderizado de Level 1 aterrizaba debajo de `OMPS NM + NP`, como si fuera de esa
+rama. Eso no se ve leyendo el bloque.
 
-Al rehacerlo conviene que se vea:
-- Qué sensor alimenta cada rama: VIIRS → atmos, lsr, cryo, acspo, fire, flood y los
-  renderizados de Level 1; CrIS **+** ATMS → heap; OMPS → omps.
-- Que HEAP es el único que consume **dos** sensores a la vez, y por eso su emparejamiento va
-  por traslape temporal con margen (`HEAP_MARGEN_ATMS`) y no por clave de pasada.
-- Que la **órbita no es común entre instrumentos** —el mismo sobrevuelo es `b45236` en VIIRS y
-  `b45237` en OMPS—, que es la razón por la que la clave de pasada de HEAP y OMPS va truncada.
-- Las dependencias que ya están dibujadas (ATMOS antes de lsr y cryo) siguen igual.
+`mmdc` está instalado en bucefalo desde el 2026-08-24, pero de fábrica falla con
+`Could not find chrome-headless-shell`: puppeteer no trae navegador descargado. No hace falta
+bajarlo, hay Chrome del sistema —basta apuntarlo con un archivo de config:
 
-Es documentación, no código: no bloquea nada, pero es de lo primero que lee alguien que llega
-al repositorio y hoy induce a error.
+````bash
+cat > puppeteer.json <<'EOF'
+{ "executablePath": "/usr/bin/google-chrome-stable",
+  "args": ["--no-sandbox", "--disable-dev-shm-usage"] }
+EOF
+# la cerca de cuatro backticks es porque el sed lleva backticks dentro
+sed -n '/^```mermaid$/,/^```$/p' README.md | sed '1d;$d' > cadena.mmd
+mmdc -p puppeteer.json -i cadena.mmd -o cadena.png -w 1600 -b white
+````
+
+Se descartó PlantUML para esto: GitHub no lo renderiza en markdown, así que obligaría a
+versionar el SVG generado —en un repositorio que no tiene una sola imagen versionada— o a
+depender de un servidor de render ajeno.
+
+**El de `CLAUDE.md`** (ASCII) tenía además dos errores que no eran de estructura y que se
+encontraron al rehacerlo:
+
+- Listaba el Level 1 como `SV*, GMTCO*, SATMS*, SCRIS*, SOMTC*`. `SATMS` y `SCRIS` **no son lo
+  que la cadena consume**: `run_heap_edr.sh` enlaza `SCRIF*`/`GCRSO*` y `TATMS*`/`GATMO*`. Son
+  nombres que CSPP SDR sí emite, así que el error no saltaba a la vista, pero mandaba a buscar
+  archivos equivocados. Ahora cada rama lista los suyos.
+- **Flood no aparecía**, pese a que `contenedores/cspp_flood_v2.0.def` existe desde el 2026-08-14
+  y la prosa de abajo del propio diagrama lo explica. Eran ocho eslabones dibujados de nueve.
+
+De paso, LSR y CRYO cuelgan ahora de ATMOS en el árbol, en vez de decirlo con un `[requiere
+ATMOS]` al margen.
 
 ### 16. Alinear la decoración de las vistas con las de GOES — DECIDIDO A MEDIAS
 Anotado el 2026-08-17. **No aplicar todavía**: falta resolver la legibilidad, ver abajo.

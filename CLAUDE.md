@@ -61,17 +61,31 @@ sudo ./scripts/instalar.sh
 ```
 RAW (CCSDS de antena)
   └─ rt_stps_7.0.sif ────────────────► Level 0 / RDR (.h5)
-       └─ cspp_sdr_v4.1.1.sif ───────► Level 1 / SDR (SV*, GMTCO*, SATMS*, SCRIS*, SOMTC* .h5)
-            ├─ polar2grid_v3.2-mapdrawer.sif ► geotiff/{m_bands,i_bands,dnb,rgb} + vistas/{dnb,rgb}
-            ├─ cspp_omps_l2_v1.0.sif ────► Level 2 omps (V8TOZ-EDR*, V8PRO-EDR* .nc)
-            ├─ cspp_atmos_edr_v1.0.sif ──► Level 2 atmosphere (JRR-*.nc)
-            ├─ cspp_lsr_v2.0.sif ────────► Level 2 lsr (SurfRefl_*.nc)  [requiere ATMOS]
-            ├─ cspp_cryo_edr_v1.0.sif ───► Level 2 cryosphere           [requiere ATMOS]
-            ├─ cspp_acspo_v3.0.sif ──────► Level 2 acspo (SST)
-            ├─ cspp_active_fire_v2.1.sif ► Level 2 fires (AFIMG_*.nc)
-            └─ cspp_heap_v3.0.sif ───────► Level 2 sounder (NUCAPS-{ALL-HR,OLR}*.nc)
-                                            [CrIS + ATMS; no S-NPP; DESACTIVADO,
-                                             el build no genera NUCAPS-EDR]
+       └─ cspp_sdr_v4.1.1.sif ───────► Level 1 / SDR, en CUATRO FLUJOS DE SENSOR (.h5).
+            │                          Cada rama de Level 2 come de unos y no de otros:
+            │
+            ├─ VIIRS  SV*, GMTCO*, GITCO*, GDNBO*
+            │    ├─ polar2grid_v3.2-mapdrawer.sif ► geotiff/{m_bands,i_bands,dnb,rgb} + vistas/{dnb,rgb}
+            │    ├─ cspp_atmos_edr_v1.0.sif ──► Level 2 atmosphere (JRR-*.nc)
+            │    │    ├─ cspp_lsr_v2.0.sif ───► Level 2 lsr (SurfRefl_*.nc)   [SDR + ATMOS]
+            │    │    └─ cspp_cryo_edr_v1.0.sif ► Level 2 cryosphere          [SDR + ATMOS]
+            │    ├─ cspp_acspo_v3.0.sif ──────► Level 2 acspo (SST)
+            │    ├─ cspp_active_fire_v2.1.sif ► Level 2 fires (AFIMG_*.nc)
+            │    └─ cspp_flood_v2.0.sif ──────► Level 2 flood (VIIRS-Flood_v2r0*.nc)
+            │
+            ├─ CrIS + ATMS  SCRIF*/GCRSO*  +  TATMS*/GATMO*
+            │    └─ cspp_heap_v3.0.sif ──────► Level 2 sounder (NUCAPS-{ALL-HR,OLR}*.nc)
+            │         [la ÚNICA rama que come DOS sensores a la vez, y por eso empareja por
+            │          traslape de intervalos con margen (HEAP_MARGEN_ATMS) y no por clave de
+            │          pasada. No S-NPP. DESACTIVADO: el build no genera NUCAPS-EDR]
+            │
+            └─ OMPS  SOMTC*/GOTCO* (Nadir Mapper)  +  SOMPS*/GONPO* (Nadir Profiler)
+                 └─ cspp_omps_l2_v1.0.sif ───► Level 2 omps (V8TOZ-EDR*, V8PRO-EDR* .nc)
+
+  Los cuatro flujos salen de run_sdr.sh, que se invoca una vez por sensor (y DOS por OMPS:
+  --sensor omps_nm y --sensor omps_np). La órbita del nombre NO es común entre instrumentos
+  —el mismo sobrevuelo es b45236 en VIIRS y b45237 en OMPS—, así que sirve como clave dentro
+  de un instrumento pero nunca para cruzar de uno a otro: para eso, tiempo.
 
   Los productos de Level 2 los renderiza run_polar2grid_edr.sh, con
   polar2grid_v3.2-mapdrawer.sif ► geotiff/{atmos,lsr,acspo,fire,sounder} + vistas/…
