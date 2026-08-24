@@ -36,6 +36,20 @@ run_heap.bash -s n21 -i ../input -o RO -p 4 -d $PWD/anc
 | `NUCAPS-ALL-HR_v3r2_*` | not documented | **16** |
 | Wall time | 1–3 min | 41 s |
 
+## Your own benchmark has the two products we never get
+
+The test data ships with a `benchmark_edr/` directory, whose contents are exactly the 48
+files §3.3 describes:
+
+```
+  16  NUCAPS-CCR-AR_v3r2_*
+  16  NUCAPS-EDR_v3r2_*
+  16  NUCAPS-OLR_v3r2_*
+```
+
+So the reference output for this very test case contains the two products our run does not
+produce, and does not contain `NUCAPS-ALL-HR`, the only one it does.
+
 Exit status was 0. The full driver log is:
 
 ```
@@ -74,9 +88,13 @@ and variables including `CrIS_Radiances`, `ATMS_Brightness_Temps`, `Cloud_Fracti
 genuine `NUCAPS-EDR_v3r2` file (from the CSPP Sounder QL v1.4 sample data) has
 `Number_of_P_Levels = 100` and the full set of retrieved profiles.
 
-1. Is `NUCAPS-ALL-HR` an expected v3.0 output, replacing `NUCAPS-CCR-AR`?
-2. If so, is the absence of `NUCAPS-EDR` a separate problem, or are both symptoms of the
-   same missing step?
+Since it appears neither in §1.7 nor in `benchmark_edr/`, we do not think it is a
+documented replacement for `NUCAPS-CCR-AR`.
+
+1. What is `NUCAPS-ALL-HR`, and under what circumstances does the software write it
+   instead of the three documented products?
+2. Is its presence a symptom of the same missing step that leaves us without
+   `NUCAPS-EDR` and `NUCAPS-CCR-AR`, or an unrelated matter?
 
 ## What we ruled out first
 

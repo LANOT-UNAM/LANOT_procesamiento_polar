@@ -209,16 +209,20 @@ Está escrito y versionado en **`docs/reporte_cimss_heap_v3.0.md`**. Revisar y e
 demás de sondeos está detrás de esto: sin `NUCAPS-EDR` no hay nada que renderizar sobre datos
 propios.
 
-Dos comandos opcionales que lo refuerzan, si se quiere antes de mandarlo (en tahan):
+**Corrido el 2026-08-24 en tahan, y cerró el argumento:** `benchmark_edr/` trae los 48
+archivos documentados —16 `NUCAPS-CCR-AR`, 16 `NUCAPS-EDR`, 16 `NUCAPS-OLR`— o sea los dos
+productos que nuestra corrida no produce, y **ninguno** `NUCAPS-ALL-HR`, que es el único que
+sí produce. Su propio benchmark es de un producto que su propio software no genera. Ya está
+incorporado al reporte, que además dejó de preguntar si `NUCAPS-ALL-HR` sustituye al CCR-AR
+—no está ni en §1.7 ni en el benchmark— y ahora pregunta qué es y cuándo se escribe.
 
 ```bash
 D=/opt/contenedores/nucaps_test_data
 ls "$D"/benchmark_edr/ | sed 's/_v3r.*//' | sort | uniq -c
-cd "$D" && ./nucaps_compare.bash benchmark_edr/ work/
 ```
 
-Si `benchmark_edr/` contiene `NUCAPS-EDR_*`, el argumento se cierra solo: su propio benchmark
-es de un producto que su propio software no genera.
+Queda sin correr el otro, que compara contenido y ya no hace falta para el reporte:
+`cd "$D" && ./nucaps_compare.bash benchmark_edr/ work/`.
 
 ### 2. Higiene, mientras CIMSS responde
 
