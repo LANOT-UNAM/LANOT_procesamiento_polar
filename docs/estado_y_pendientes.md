@@ -1456,9 +1456,9 @@ Es la puerta de entrada del repositorio y describe la primera fase de la migraci
 concreto que hay que corregir:
 
 - Dice que el orquestador es `procesar_cadena_completa.sh`, que **no está en uso**.
-- El diagrama Mermaid muestra tres contenedores y termina en Polar2Grid **v3.1**; hoy son
-  doce recetas, la cadena llega a Level 2 y las vistas salen de
-  `polar2grid_v3.2-mapdrawer`.
+- ~~El diagrama Mermaid muestra tres contenedores y termina en Polar2Grid **v3.1**.~~
+  **Rehecho el 2026-08-24** (ver pendiente 15): ya trae las cuatro ramas de sensor, las dos
+  que no publican vista y por qué. Lo demás de esta lista sigue igual.
 - Las instrucciones de compilación listan tarballs viejos (`CSPP_SDR_V4.1.tar.gz`,
   `CSPP_POLAR2GRID_V3.1.tar.gz`) y mandan a `apptainer build` a mano, sin mencionar las
   imágenes base ni `contenedores/construir.sh`, que resuelve el orden.
@@ -1653,8 +1653,12 @@ Dos que se ven especialmente prometedores: **`CloudMask`**, que reabre el enmasc
 pendiente 12 —aunque siga topando con las rejillas dinámicas—, y **`Dust`/`Smoke`**, que en
 esta región tienen uso operativo evidente.
 
-### 15. El diagrama de la cadena no muestra las ramas por sensor
-Anotado el 2026-08-17, sin hacer todavía.
+### 15. El diagrama de la cadena no muestra las ramas por sensor — README HECHO, falta `CLAUDE.md`
+Anotado el 2026-08-17. **El del README se rehizo el 2026-08-24**, con las cuatro ramas de sensor
+saliendo de CSPP SDR, la de NUCAPS separada y colgando de CrIS **+** ATMS, y las dos ramas que hoy
+no publican vista dibujadas punteadas con su motivo. Debajo del diagrama quedó el texto que dice
+qué sensor alimenta a qué, que HEAP es el único que consume dos, y que la órbita no es común entre
+instrumentos. **Falta el de `CLAUDE.md`**, que tiene el mismo defecto y es el que se describe abajo.
 
 El diagrama de `CLAUDE.md` cuelga los once eslabones de Level 2 de un solo `cspp_sdr_v4.1.1.sif`,
 como si todos comieran de lo mismo. No es así: `run_sdr.sh` produce **cuatro flujos de sensor**

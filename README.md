@@ -37,14 +37,44 @@ graph TD
 
     subgraph "Entorno Apptainer (LANOT)"
     D --> E[RT-STPS v7.0]
-    E -->|RAW → Level 0| F[CSPP SDR v4.1.1]
-    F -->|Level 0 → Level 1| G[ATMOS · ACSPO · Active Fire<br/>Flood · OMPS · LSR · CRYO]
-    F -->|Level 1 → GeoTIFF + vistas| H[Polar2Grid v3.2 + LANOT_tools]
+    E -->|RAW → Level 0 / RDR| F[CSPP SDR v4.1.1]
+
+    F -->|VIIRS| G[ATMOS · ACSPO<br/>Active Fire · Flood]
+    F -->|CrIS + ATMS| N[CSPP HEAP v3.0<br/>sondeos NUCAPS]
+    F -->|OMPS NM + NP| O[CSPP OMPS L2<br/>V8TOz · V8PRO]
+
+    G -->|ATMOS primero| L[CSPP LSR · CSPP CRYO]
+
+    F -->|VIIRS · Level 1 → GeoTIFF + vistas| H[Polar2Grid v3.2 + LANOT_tools]
     G -->|Level 2 → GeoTIFF + vistas| H
+    L --> H
+    N -.->|escrito — espera NUCAPS-EDR| H
+    O -.->|espera Polar2Grid 3.3| H
     end
 
     H -->|GeoTIFF y JPG| I[Almacenamiento Final / Distribución]
 ```
+
+**Las ramas de Level 2 no comen todas de lo mismo.** CSPP SDR produce cuatro flujos de sensor y
+cada rama se alimenta de unos y no de otros:
+
+* **VIIRS** → ATMOS, ACSPO, Active Fire, Flood, LSR, CRYO y los renderizados de Level 1.
+* **CrIS + ATMS** → los sondeos hiperespectrales de **NUCAPS**, hoy en CSPP HEAP v3.0. Es la
+  única rama que consume **dos** sensores a la vez, y por eso el emparejamiento va por traslape
+  de intervalos con margen (`HEAP_MARGEN_ATMS`) y no por clave de pasada. NUCAPS **no** sale de
+  VIIRS ni lo cubre ATMOS.
+* **OMPS** → ozono, con sus dos instrumentos —Nadir Mapper y Nadir Profiler— procesados en
+  llamadas separadas de `run_sdr.sh`.
+
+Las dos flechas punteadas son ramas completas que hoy no publican vista, cada una por su motivo:
+CSPP HEAP v3.0 no produce `NUCAPS-EDR` —reportado a CIMSS, y por eso la etapa está comentada en
+`procesar_pasada.sh`— y Polar2Grid no trae lector de OMPS hasta la 3.3, que todavía no existe como
+bundle. El renderizado de sondeos, en cambio, está escrito y probado de punta a punta con gránulos
+de muestra: espera solo al producto.
+
+**La órbita no es común entre instrumentos**: el mismo sobrevuelo es `b45236` en VIIRS y `b45237`
+en OMPS. Sirve como clave dentro de un instrumento, nunca para cruzar de uno a otro — para eso,
+tiempo.
 
 `geotiff/` son datos (float32) y `vistas/` son JPG decorados con logo y sello de tiempo: no se mezclan.
 
