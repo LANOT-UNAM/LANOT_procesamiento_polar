@@ -1727,8 +1727,8 @@ Y de paso, la divergencia de estilo que es **más visible que la fecha** y que n
 las capas van en **blanco** en GOES y en **amarillo** en las polares. Si se va a unificar la
 decoración, esto es lo primero que se nota.
 
-### 17. El resumen del orquestador miente con OMPS (y mentiría con HEAP)
-Anotado el 2026-08-17, sin arreglar.
+### 17. El resumen del orquestador mentía con OMPS — ARREGLADO el 2026-08-24
+Anotado el 2026-08-17, arreglado el 2026-08-24.
 
 En la corrida de `j01_d20260817_b45321` el resumen dio **`omps  ya estaba`**, y es falso: OMPS
 corrió en esa misma corrida, tardó 28 s, dejó 38 productos y escribió su marcador
@@ -1751,9 +1751,37 @@ que una etapa que falla nunca se reporta como buena. Lo que se pierde es lo cont
 etapa que sí trabajó y se reporta como si no— y con ella la duración y los conteos, que en el
 resumen salen vacíos.
 
-El arreglo que propongo: que `marcador_de` resuelva por glob el marcador más reciente que case
-con `${CLAVE_OMPS}_b*.done`, y usar la misma función en las dos tomas de mtime para que la
-comparación siga siendo simétrica. Sin tocar `run_omps_edr.sh`, que hace lo correcto.
+**Lo que se hizo**, en `procesar_pasada.sh` y sin tocar `run_omps_edr.sh`, que hace lo correcto:
+
+1. `marcador_reciente()`, nueva: busca por glob `${prefijo}_b*.done` en el directorio de estado
+   y devuelve el más reciente por mtime. Si no hay ninguno devuelve el nombre truncado, que no
+   existe y por lo tanto pesa 0 en la comparación — que es justo lo que se quiere decir.
+   `marcador_de` la usa para `omps` y `heap`; las otras diez etapas siguen con su nombre exacto.
+2. **El marcador dejó de viajar en la tarea.** Era la causa de fondo: la tupla llevaba
+   `etiqueta <TAB> marcador <TAB> script <TAB> arg...`, así que el nombre se fijaba al armar la
+   tarea y `marcador_de` lo volvía a calcular al cosechar. Dos fuentes para el mismo dato, y con
+   OMPS discrepaban siempre. Ahora la tupla es `etiqueta <TAB> script <TAB> arg...` y las dos
+   tomas de mtime —la de antes, en `ejecutar_nivel`, y la de después, en `cosechar_tanda`— pasan
+   forzosamente por `marcador_de`. `armar_tarea` perdió un parámetro y las trece llamadas
+   quedaron más cortas.
+
+Varias pasadas del mismo día comparten la clave truncada (`j01_d20260817`), pero eso no rompe la
+comparación: el marcador que escribe la corrida en curso es forzosamente el más nuevo de los que
+casan, así que el glob lo encuentra.
+
+**Probado en bucefalo** con stubs en lugar de los `run_*.sh` (`SCRIPTS_DIR`, `ESTADO_BASE`,
+`RTSTPS_OUTPUT_DIR` y `SDR_LEVEL1_VIIRS` apuntando a un árbol de juguete), en los cuatro casos
+que importan:
+
+| Caso | Antes | Ahora |
+|---|---|---|
+| OMPS corre por primera vez (le dan `j01_d20260817`, escribe `…_b45322`) | `ya estaba`, sin duración ni conteos | `ok  0m 28s  productos=38` |
+| Se repite la misma pasada | `ya estaba` | `ya estaba` (correcto: no reescribió nada) |
+| Segunda pasada del mismo día, con `…_b45322` ya en el directorio | `ya estaba` | `ok` — el glob encuentra el nuevo `…_b45337`, más reciente |
+| Cadena entera desde un RAW (rt_stps + dos SDR + los nueve de Level 2) | — | las doce etapas `ok`, sin regresión |
+
+Cuando HEAP vuelva a la lista queda arreglado de nacimiento: `CLAVE_HEAP` es `CLAVE_OMPS` y
+`marcador_de` ya lo trata igual.
 
 ## Hallazgos que conviene no volver a descubrir
 

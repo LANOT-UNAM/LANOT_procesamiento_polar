@@ -145,10 +145,14 @@ clave_sensor() {
 # ------------------------------------------------------------------ ejecución
 #
 # Una tarea es una cadena con campos separados por tabulador:
-#   etiqueta <TAB> marcador <TAB> script <TAB> arg...
+#   etiqueta <TAB> script <TAB> arg...
 # El marcador se mira antes y después para distinguir "corrió y produjo" de "ya
 # estaba hecho", que por código de salida son indistinguibles: los doce
-# devuelven 0 en los dos casos.
+# devuelven 0 en los dos casos. NO viaja en la tarea: lo resuelve marcador_de a
+# partir de la etiqueta, y por eso las dos tomas de mtime miran forzosamente el
+# mismo archivo. Cuando el marcador viajaba en la tarea, el nombre vigilado y el
+# que el script escribe podían diferir —con OMPS diferían siempre— y el resumen
+# reportaba "ya estaba" para una etapa que acababa de trabajar.
 
 correr_tarea() {
     local tarea="$1" salida="$2"
@@ -157,9 +161,9 @@ correr_tarea() {
 
     IFS=$'\t' read -r -a campos <<< "$tarea"
     etiqueta="${campos[0]}"
-    marcador="${campos[1]}"
-    script="${campos[2]}"
-    args=("${campos[@]:3}")
+    script="${campos[1]}"
+    args=("${campos[@]:2}")
+    marcador="$(marcador_de "$etiqueta")"
 
     {
         echo "--- $etiqueta: $(basename "$script") ${args[*]}"
@@ -187,10 +191,12 @@ ejecutar_nivel() {
 
     for tarea in "${tareas[@]}"; do
         etiqueta="$(echo "$tarea" | cut -f1)"
-        marcador="$(echo "$tarea" | cut -f2)"
+        marcador="$(marcador_de "$etiqueta")"
         salida="$TRABAJO/$etiqueta.log"
 
         # Sello del marcador ANTES, para saber después si esta corrida lo tocó.
+        # La misma función que al cosechar: si las dos tomas no resuelven el
+        # mismo nombre, la comparación no dice nada.
         if [ -f "$marcador" ]; then
             marcadores+=("$(stat -c %Y "$marcador" 2>/dev/null || echo 0)")
         else
@@ -246,6 +252,32 @@ cosechar_tanda() {
     pids=(); etiquetas=(); salidas=(); marcadores=()
 }
 
+# El marcador de OMPS y de HEAP no se puede nombrar de antemano. A esas dos
+# etapas se les pasa la clave TRUNCADA (j01_d20260817), porque su órbita no es
+# la de VIIRS y solo ellas pueden resolverla contra los archivos que de verdad
+# tienen; el .done que escriben lleva la clave completa, con SU órbita
+# (j01_d20260817_b45322). Vigilar el nombre truncado es vigilar un archivo que
+# nunca existe: en la pasada j01_d20260817_b45321 el resumen dio "ya estaba"
+# para un OMPS que acababa de dejar 38 productos en 28 s.
+#
+# Así que se busca por glob y gana el más reciente. Varias pasadas del mismo día
+# comparten la clave truncada, pero el marcador que escribe ESTA corrida es
+# forzosamente el más nuevo, así que la comparación de mtime sigue siendo
+# correcta. Sin ninguno se devuelve el nombre truncado, que no existe y por lo
+# tanto pesa 0 en la comparación: es exactamente lo que se quiere decir.
+marcador_reciente() {
+    local dir="$1" prefijo="$2" m sello reciente="" mejor=0
+    for m in "$dir/${prefijo}"_b*.done; do
+        [ -f "$m" ] || continue
+        sello="$(stat -c %Y "$m" 2>/dev/null || echo 0)"
+        if [ "$sello" -ge "$mejor" ]; then
+            mejor="$sello"
+            reciente="$m"
+        fi
+    done
+    echo "${reciente:-$dir/${prefijo}.done}"
+}
+
 # El marcador de una etiqueta, para releerlo al cosechar.
 marcador_de() {
     case "$1" in
@@ -255,8 +287,8 @@ marcador_de() {
         acspo)    echo "$DIR_ACSPO/$CLAVE.done"              ;;
         fire)     echo "$DIR_FIRE/$CLAVE.done"               ;;
         flood)    echo "$DIR_FLOOD/$CLAVE.done"              ;;
-        omps)     echo "$DIR_OMPS/$CLAVE_OMPS.done"          ;;
-        heap)     echo "$DIR_HEAP/$CLAVE_HEAP.done"          ;;
+        omps)     marcador_reciente "$DIR_OMPS" "$CLAVE_OMPS" ;;
+        heap)     marcador_reciente "$DIR_HEAP" "$CLAVE_HEAP" ;;
         lsr)      echo "$DIR_LSR/$CLAVE.done"                ;;
         cryo)     echo "$DIR_CRYO/$CLAVE.done"               ;;
         p2g_l1)   echo "$DIR_P2G_L1/$CLAVE.done"             ;;
@@ -334,9 +366,9 @@ fi
 # "${OPT[@]:-}" con el array vacío mete un campo vacío, y ese campo llega al
 # run_*.sh como un argumento de más que rechaza por no reconocido.
 armar_tarea() {
-    local etiqueta="$1" marcador="$2" script="$3"; shift 3
+    local etiqueta="$1" script="$2"; shift 2
     local s
-    s="$(printf '%s\t%s\t%s' "$etiqueta" "$marcador" "$script")"
+    s="$(printf '%s\t%s' "$etiqueta" "$script")"
     local a
     for a in "$@"; do
         s="$s$(printf '\t%s' "$a")"
@@ -410,8 +442,7 @@ CLAVE_HEAP=""
 
 if [ -n "$RAW" ]; then
     ejecutar_nivel "RT-STPS" \
-        "$(armar_tarea rt_stps "$DIR_RTSTPS/$(basename "$RAW").done" \
-                       "$SCRIPTS_DIR/run_rt_stps.sh" "$RAW")"
+        "$(armar_tarea rt_stps "$SCRIPTS_DIR/run_rt_stps.sh" "$RAW")"
 
     # Los RDR que acaba de producir. Se nombran explícitamente en vez de dejar
     # que run_sdr.sh autoseleccione: su filtro de edad mínima (1 min) haría que
@@ -420,13 +451,13 @@ if [ -n "$RAW" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
         echo ""
         echo "  [dry-run] aquí se buscarían los RDR nuevos en $LEVEL0"
-        TAREAS_SDR=("$(armar_tarea sdr_EJEMPLO.h5 "$DIR_SDR/EJEMPLO.h5.done" \
+        TAREAS_SDR=("$(armar_tarea sdr_EJEMPLO.h5 \
                                    "$SCRIPTS_DIR/run_sdr.sh" "$LEVEL0/EJEMPLO.h5")")
     else
         while IFS= read -r rdr; do
             base="$(basename "$rdr")"
             clave_sensor "$base" >/dev/null || continue
-            TAREAS_SDR+=("$(armar_tarea "sdr_$base" "$DIR_SDR/$base.done" \
+            TAREAS_SDR+=("$(armar_tarea "sdr_$base" \
                                         "$SCRIPTS_DIR/run_sdr.sh" "$rdr")")
         done < <(find "$LEVEL0" -maxdepth 1 -type f -name '*.h5' -newer "$MARCA" 2>/dev/null | sort)
     fi
@@ -476,17 +507,17 @@ echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS; etapa desactiv
 # ==============================================================================
 
 tarea() {
-    # etiqueta, marcador, script, clave
-    armar_tarea "$1" "$2" "$SCRIPTS_DIR/$3" -p "$4"
+    # etiqueta, script, clave
+    armar_tarea "$1" "$SCRIPTS_DIR/$2" -p "$3"
 }
 
 ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
-    "$(tarea atmos  "$DIR_ATMOS/$CLAVE.done"       run_atmos_edr.sh       "$CLAVE")" \
-    "$(tarea acspo  "$DIR_ACSPO/$CLAVE.done"       run_acspo_edr.sh       "$CLAVE")" \
-    "$(tarea fire   "$DIR_FIRE/$CLAVE.done"        run_active_fire_edr.sh "$CLAVE")" \
-    "$(tarea flood  "$DIR_FLOOD/$CLAVE.done"       run_flood_edr.sh       "$CLAVE")" \
-    "$(tarea omps   "$DIR_OMPS/$CLAVE_OMPS.done"   run_omps_edr.sh        "$CLAVE_OMPS")" \
-    "$(tarea p2g_l1 "$DIR_P2G_L1/$CLAVE.done"      run_polar2grid_l1.sh   "$CLAVE")"
+    "$(tarea atmos  run_atmos_edr.sh       "$CLAVE")" \
+    "$(tarea acspo  run_acspo_edr.sh       "$CLAVE")" \
+    "$(tarea fire   run_active_fire_edr.sh "$CLAVE")" \
+    "$(tarea flood  run_flood_edr.sh       "$CLAVE")" \
+    "$(tarea omps   run_omps_edr.sh        "$CLAVE_OMPS")" \
+    "$(tarea p2g_l1 run_polar2grid_l1.sh   "$CLAVE")"
 
 # HEAP queda FUERA de la cadena desde el 2026-08-17, mientras CIMSS responde.
 # CSPP HEAP v3.0 no produce NUCAPS-EDR —ni con los datos de prueba del propio
@@ -498,14 +529,14 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
 # Para reactivarla basta con devolver esta línea a la lista de arriba; el resto
 # —run_heap_edr.sh, el renderizado de sondeos de run_polar2grid_edr.sh, las CPT
 # por nivel— está escrito y probado, y espera solo al producto.
-#     "$(tarea heap   "$DIR_HEAP/$CLAVE_HEAP.done"   run_heap_edr.sh        "$CLAVE_HEAP")" \
+#     "$(tarea heap   run_heap_edr.sh        "$CLAVE_HEAP")" \
 
 ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
-    "$(tarea lsr  "$DIR_LSR/$CLAVE.done"  run_lsr_edr.sh  "$CLAVE")" \
-    "$(tarea cryo "$DIR_CRYO/$CLAVE.done" run_cryo_edr.sh "$CLAVE")"
+    "$(tarea lsr  run_lsr_edr.sh  "$CLAVE")" \
+    "$(tarea cryo run_cryo_edr.sh "$CLAVE")"
 
 ejecutar_nivel "Nivel 4 — renderizado de Level 2" \
-    "$(tarea p2g_edr "$DIR_P2G_EDR/$CLAVE.done" run_polar2grid_edr.sh "$CLAVE")"
+    "$(tarea p2g_edr run_polar2grid_edr.sh "$CLAVE")"
 
 # ==============================================================================
 # RESUMEN
