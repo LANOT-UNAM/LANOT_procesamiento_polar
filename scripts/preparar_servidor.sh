@@ -329,7 +329,26 @@ fase_3_atmos() { desplegar_estaticos viirs_atmos "[3/7] Estático de CSPP ATMOS"
 # árbol de instalación tiene que ser escribible, porque el Fortran de la
 # recuperación abre 'fort.40' dentro de él. Con el bundle en el .sif la corrida
 # termina en 0 sin escribir un solo sondeo. Ver contenedores/cspp_heap_v3.0.def.
-fase_7_heap()  { desplegar_estaticos heap         "[7/7] Bundle de CSPP HEAP"; }
+fase_7_heap() {
+    desplegar_estaticos heap "[7/7] Bundle de CSPP HEAP" || return 1
+
+    # Los demás estáticos son DATOS: basta con poder leerlos. Este es SOFTWARE, y
+    # el chown -R al dueño de /data/opt deja los ejecutables fuera del alcance de
+    # quien corra la cadena si su usuario no es ese. El síntoma no dice
+    # "permisos" en ningún sitio visible: el preprocesador muere con
+    #     sh: .../Common_Bin/main_nucaps_preprocessor: Permission denied
+    # en un log interno del gránulo, y el wrapper devuelve 0 igualmente. Visto
+    # en tahan el 2026-08-29, la primera vez que se corrió con el bundle
+    # desplegado en /data/opt en vez de extraído a mano.
+    #
+    # a+rX con equis MAYÚSCULA: lectura para todos, y ejecución solo en
+    # directorios y en lo que ya fuera ejecutable para alguien. Con x minúscula
+    # se volvería ejecutable cada tabla de coeficientes del paquete.
+    if [ -d "$RAIZ/data/opt/CSPP_HEAP_3_0" ]; then
+        echo "  → permisos: a+rX sobre el bundle (es software, no datos)"
+        correr chmod -R a+rX "$RAIZ/data/opt/CSPP_HEAP_3_0"
+    fi
+}
 
 # ------------------------------------------------------------------- fase 4
 fase_4_xml() {
