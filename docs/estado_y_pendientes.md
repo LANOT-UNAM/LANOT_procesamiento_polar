@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-18**
+**Última actualización: 2026-08-29**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -19,6 +19,75 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## Dónde quedó el 2026-08-29 (cierre de la sesión)
+
+**El parche de `nucaps` está en producción y la cadena entera se revalidó con él.** SSEC
+contestó el reporte y mergeó [pytroll/satpy#3450](https://github.com/pytroll/satpy/pull/3450)
+(ver pendiente 3, cerrado); `polar2grid_v3.2-mapdrawer.def` lo aplica en el `%post` hasta que
+llegue Polar2Grid 3.3. La imagen se recompiló y se instaló en `/opt/containers`.
+
+### Segunda corrida de punta a punta — `j01_d20260828_b45477`
+
+NOAA-20, 19:30Z del 28, **33m 29s**, las quince etapas en `ok`. Es la primera pasada completa
+con la imagen parcheada, y sirvió de prueba de no-regresión de la recompilación entera —que es
+donde estaba el riesgo real, porque el `%post` reinstala GDAL y reclona LANOT_tools.
+
+| Etapa | 2026-08-17 | 2026-08-29 |
+|---|---|---|
+| `rt_stps` | — | 2m 51s · 5 RDR |
+| `sdr` viirs | — · 28 | 8m 47s · 28 |
+| `sdr` atms | — · 63 | 1m 16s · 63 |
+| `sdr` cris | — · 32 | 3m 06s · 30 |
+| `sdr` omps-nm / -np | — · 38 / 40 | 1m 20s / 44s · 38 / 38 |
+| `atmos` | 6m 57s · 108 | 8m 29s · 120 |
+| `acspo` | 1m 31s · 1 | 2m 37s · 1 |
+| `fire` | 2m 44s · 9 | 2m 55s · 10 |
+| `flood` | 4m 36s · 9 + 1 tif | 4m 46s · 10 + 1 tif |
+| `omps` | 28s · 38 | 1m 35s · 38 (19 V8TOz + 19 V8PRO) |
+| `p2g_l1` | 3m 14s · **59 geotiff, 3 vistas** | 4m 17s · **59 geotiff (M 36, I 14, dnb 7, rgb 2), 3 vistas** |
+| `lsr` | 1m 34s · 9 | 1m 38s · 10 |
+| `cryo` | 19s · 18 | 21s · 20 |
+| `p2g_edr` | 3m 22s · 26 geotiff, 11 vistas | 3m 52s · 27 geotiff (atmos 9, lsr 14, sst 1, fire 3), 12 vistas |
+| **total** | **29m 04s** | **33m 29s** |
+
+**Level 1 es la comparación que vale**, porque son bandas fijas y no dependen de la escena:
+59 geotiff con el mismo desglose y 3 vistas, idéntico a la referencia. Los conteos de Level 2
+**no son comparables**: la escena es otra y ATMOS entregó 120 productos contra 108, de ahí que
+salgan 27 GeoTIFF y no 26.
+
+**Las duraciones subieron ~20-70 % y no es del parche.** La prueba está en las etapas que ni
+siquiera tocan la imagen de Polar2Grid: `acspo` 1m 31s → 2m 37s y `omps` 28s → 1m 35s corren en
+sus propios contenedores CSPP. Lo que se movió es la máquina o el volumen de datos, no el
+software; `p2g_l1` subió en la misma proporción que las demás.
+
+### La no-regresión de Level 2, y el método que NO sirve
+
+Se re-renderizó la misma pasada con la imagen anterior (guardada como
+`/opt/contenedores/polar2grid_v3.2-mapdrawer.sif.pre3450`) hacia `/data/tmp/ab/viejo`, usando
+`P2G_CONTAINER` + `P2G_GEOTIFF`/`P2G_VISTAS`/`P2G_STATE_DIR` para no tocar el árbol de
+productos. Resultado: **los 27 GeoTIFF con checksum idéntico**, más los mismos conteos y el
+mismo desglose.
+
+Pero el primer intento se hizo con `cmp` y salió con **doce archivos "distintos"**, lo que
+costó un desvío. Lo que lo aclaró fue el experimento de control —la imagen nueva contra sí
+misma—, que dio **quince "distintos", y no los mismos doce**. O sea que la lista cambia de
+corrida en corrida. Está en los hallazgos, abajo; el método bueno es
+`gdalinfo -checksum`.
+
+### Lo que sigue abierto
+
+- **La prueba del fix en sí**: los gránulos de muestra de CSPP Sounder QL pidiendo
+  `H2O_MR_853mb`, que antes daba `KeyError` y 0 tif y ahora debe dar 5. El RAW nuevo no puede
+  probarla, porque no hay sondeos.
+- **HEAP sigue sin producir `NUCAPS-EDR`** con ancillary reciente: la corrida del 29 dio
+  `SONDEOS: 0 productos en la ventana` y la etapa ni se lanzó. No sorprende — `update_heap_ancillary.sh`
+  **solo poda, no descarga** (HEAP baja su GFS solo, con `lftp`), así que haber corrido los tres
+  updates no cambia su entrada. El pendiente 4 sigue igual.
+- **La respuesta al hilo de SSEC**, redactada al final de `docs/reporte_polar2grid_nucaps.md`:
+  revisar y publicar.
 
 ---
 
@@ -1855,6 +1924,19 @@ Cuando HEAP vuelva a la lista queda arreglado de nacimiento: `CLAVE_HEAP` es `CL
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:
 
+- **Los GeoTIFF de Polar2Grid NO son reproducibles bit a bit: no compararlos con `cmp` ni
+  `md5sum`.** Dos corridas de la misma pasada, con la misma imagen y la misma entrada,
+  producen archivos que difieren en más de un millón de bytes y cuya primera diferencia
+  aparece en el byte 3231, o sea en el directorio TIFF — pero cuyo `gdalinfo -checksum`, que
+  se calcula sobre los píxeles, es **idéntico**. La causa es que el escritor escribe por
+  bloques con dask en paralelo y comprimido: el orden en que terminan los hilos cambia los
+  offsets y el particionado de los bloques comprimidos, no los datos. Se midió el 2026-08-29
+  al validar la imagen parcheada: `cmp` señaló doce archivos, el control de la imagen nueva
+  contra sí misma señaló **quince, y no los mismos doce**, y el barrido por checksum dio los
+  27 iguales. Un detalle que lo remata: en el control aparece el `EVI`, que no tiene un solo
+  píxel válido. Ojo con generalizar al revés: los `.nc` de CSPP sí son reproducibles (ver el
+  hallazgo del EVI, donde LSR reprodujo los once `.nc` con tamaño idéntico al byte); esto es
+  específico del escritor de Polar2Grid.
 - **`config/grid.yaml` define `itrf2008_lcc_375m` dos veces**, la segunda con resolución
   de 1000 m. En YAML gana la última, así que esa rejilla hoy vale 1000 m y no existe
   ninguna llamada `itrf2008_lcc_1000m`. Probablemente sea un error de dedo al agregarla.
