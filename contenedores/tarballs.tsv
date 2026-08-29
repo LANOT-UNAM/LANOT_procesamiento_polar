@@ -48,7 +48,12 @@ bundle	acspo	3.0	CSPP_ACSPO_V3.0.tar.gz	cimss	cspp_acspo_v3.0	-	-	-
 bundle	viirs_fire	2.1	cspp-active-fire-noaa_2.1.tar.gz	cimss	cspp_active_fire_v2.1	-	-	-
 bundle	viirs_flood	2.0	cspp-viirs-flood_2.0.tar.gz	cimss	cspp_flood_v2.0	-	-	-
 bundle	omps_edr	1.0	cspp_omps_l2-1.0.tar.gz	cimss	cspp_omps_l2_v1.0	-	-	-
-bundle	heap	3.0	CSPP_HEAP_V3.0.tar.gz	cimss	cspp_heap_v3.0	-	-	-
+# HEAP es el único paquete cuyo bundle NO entra en su .sif: su árbol de instalación
+# tiene que ser escribible (airsb103.exe abre 'fort.40' ahí dentro), así que va al host
+# y se monta. Por eso su rol es 'estatico' y su receta es '-'. Ojo al desplegarlo con
+# --conservar-tarballs si no quieres volver a pasar por el registro de CIMSS: a
+# diferencia de los demás estáticos, este es la única copia del software.
+estatico	heap	3.0	CSPP_HEAP_V3.0.tar.gz	cimss	-	/data/opt	/data/opt/CSPP_HEAP_3_0/scripts/run_heap.bash	-
 estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_npp.tar.gz	cimss	-	/data/opt	-	-
 estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j01.tar.gz	cimss	-	/data/opt	-	-
 estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j02.tar.gz	cimss	-	/data/opt	-	-

@@ -158,6 +158,60 @@ suite. (Receta, por si hace falta repetirlo: `pip install --target` de `pytest` 
 aparte —el bundle no lo trae y no hay que tocarlo—, una copia del árbol `satpy` hecha con
 `cp -rs` para poder sustituir un solo archivo, y `PYTHONPATH` delante.)
 
+### HEAP: la causa era nuestra, y era el sistema de archivos de solo lectura
+
+**El fallo de los sondeos no era de CIMSS.** Se encontró el 2026-08-29 haciendo lo que kathys
+pidió —correr con `--noclean`—, que es lo que por primera vez conservó los logs internos de
+cada módulo. En `TMP_*/swath_001/granule_001/HEAP_Retrieval.log`:
+
+```
+At line 330 of file read_nl.F (unit = 40)
+Fortran runtime error: Cannot open file 'fort.40': Read-only file system
+FATAL: Error in HEAP_Retrieval.pl: Error running airsb103.exe
+```
+
+`airsb103.exe` abre una unidad Fortran sin nombre dentro del árbol de instalación. Con el
+bundle dentro del `.sif`, que es de solo lectura, muere ahí; eso aborta `HEAP_Retrieval.pl` y
+con él los conversores a NetCDF, así que no salen `NUCAPS-EDR` ni `NUCAPS-CCR-AR` — el `OLR`
+sobrevive porque lo escribe `main_cris_olr`. Y el wrapper se traga el error: código 0,
+`EXECUTION COMPLETED SUCCESSFULLY`, 40 s en vez de 2 min.
+
+**La prueba llegó antes que la explicación:** el mismo `.sif`, con el bundle montado desde
+`/data/tmp` en vez de instalado dentro, entrega **las cinco familias** —16 `NUCAPS-EDR`, 16
+`NUCAPS-CCR-AR`, 16 `NUCAPS-CCR`, 16 `NUCAPS-ALL-HR`, 16 `NUCAPS-OLR`— en 1m 59s, dentro del
+rango que declara §3.3.
+
+Se descartaron por el camino, y conviene que conste para no repetirlas: el sistema operativo
+(el host es Rocky 10.2 y los binarios ni cargan fuera del contenedor, así que el experimento
+que pidió kathys no era realizable), el symlink `/opt/cspp_heap` (falla igual con la ruta
+real), el contenido del bundle instalado (los dos árboles tienen los mismos 15793 archivos,
+idénticos salvo un `.pyc`), `--writable-tmpfs` (que no lo arregla, y además hace desaparecer
+hasta los productos que sí salían) y la escritura en el árbol al terminar (el `find` de
+archivos nuevos da 0 porque el `fort.40` **nunca llega a crearse** — una refutación mal hecha
+que costó media hora y descartó la hipótesis correcta).
+
+**Dos afirmaciones nuestras que esto corrige**, y las dos están en el reporte enviado:
+
+- *"El log no menciona `retriev` ni una vez, así que el paso caro nunca se intenta."* Falso: se
+  intenta. `HEAP_Retrieval.log` y `nucaps_retrieval.log` existen también en las corridas que
+  fallan. Aquella frase describía el log del **wrapper**, el único que sobrevivía sin
+  `--noclean`.
+- *"El caso de prueba del fabricante reproduce el fallo, luego no es nuestra cadena."* El
+  razonamiento tenía un agujero: el caso de prueba del fabricante descarta **nuestros
+  insumos**, no **nuestra instalación**. Siempre lo corrimos dentro del mismo `.sif` roto.
+
+**El arreglo:** el bundle sale de la imagen y vive en el host. `cspp_heap_v3.0.def` ya no lo
+instala —aporta solo Rocky 8, perl, lftp y los puntos de montaje—, `preparar_servidor.sh` gana
+una **fase 7** que lo despliega en `/data/opt`, y `run_heap_edr.sh` lo monta con `--bind` sobre
+`/opt/cspp_heap`. Es exactamente la configuración que se probó, y encaja con el contrato
+host↔contenedor que ya sigue el resto de la cadena.
+
+**Lo que falta:** recompilar la imagen, desplegar la fase 7, correr `run_heap_edr.sh` sobre una
+pasada propia con CrIS y ATMS —`j01_d20260829_b45492` los tiene—, y solo entonces reactivar la
+etapa en `procesar_pasada.sh`. Y escribirle a kathys: su software no tiene nada malo y está
+dedicando tiempo a un problema ajeno.
+
+
 ### Lo que sigue abierto
 
 - **Publicar vapor de agua exigiría todavía su CPT y su entrada en `product_map`** de

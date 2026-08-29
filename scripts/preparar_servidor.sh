@@ -194,7 +194,7 @@ desplegado() {
 
 # ------------------------------------------------------------------- fase 1
 fase_1_directorios() {
-    paso "[1/6] Directorios, dueño y permisos"
+    paso "[1/7] Directorios, dueño y permisos"
     local d faltaban=0
 
     for d in "${DIRS_755[@]}" "${DIRS_775[@]}"; do
@@ -307,12 +307,18 @@ desplegar_estaticos() {
     return 0
 }
 
-fase_2_sdr()   { desplegar_estaticos jpss_sdr    "[2/6] Estático de CSPP SDR"; }
-fase_3_atmos() { desplegar_estaticos viirs_atmos "[3/6] Estático de CSPP ATMOS"; }
+fase_2_sdr()   { desplegar_estaticos jpss_sdr    "[2/7] Estático de CSPP SDR"; }
+fase_3_atmos() { desplegar_estaticos viirs_atmos "[3/7] Estático de CSPP ATMOS"; }
+
+# HEAP no despliega un estático sino el software entero, y es deliberado: su
+# árbol de instalación tiene que ser escribible, porque el Fortran de la
+# recuperación abre 'fort.40' dentro de él. Con el bundle en el .sif la corrida
+# termina en 0 sin escribir un solo sondeo. Ver contenedores/cspp_heap_v3.0.def.
+fase_7_heap()  { desplegar_estaticos heap         "[7/7] Bundle de CSPP HEAP"; }
 
 # ------------------------------------------------------------------- fase 4
 fase_4_xml() {
-    paso "[4/6] XML de RT-STPS"
+    paso "[4/7] XML de RT-STPS"
     local destino="$RAIZ/data/opt/RT-STPS/rt-stps/config"
     local xml n=0
 
@@ -354,7 +360,7 @@ fase_4_xml() {
 # fuente con el formato que RT-STPS espera. Aquí hay una sola fuente y, si no
 # está, la fase falla.
 fase_5_leapsec() {
-    paso "[5/6] leapsec.dat"
+    paso "[5/7] leapsec.dat"
     local destino="$RAIZ/data/ancillary/common/leapsec.dat"
     local tmp
 
@@ -391,7 +397,7 @@ fase_5_leapsec() {
 
 # ------------------------------------------------------------------- fase 6
 fase_6_cache() {
-    paso "[6/6] Primer llenado de los cachés de ancillary"
+    paso "[6/7] Primer llenado de los cachés de ancillary"
     local s fallos=0
 
     for s in update_sdr_daily.sh update_atmos_ancillary.sh; do
@@ -526,12 +532,12 @@ if [ "$DRY_RUN" -eq 0 ] && [ "$EUID" -ne 0 ] && [ -z "$RAIZ" ]; then
     exit 1
 fi
 
-FASES=(fase_1_directorios fase_2_sdr fase_3_atmos fase_4_xml fase_5_leapsec fase_6_cache)
+FASES=(fase_1_directorios fase_2_sdr fase_3_atmos fase_4_xml fase_5_leapsec fase_6_cache fase_7_heap)
 
 if [ -n "$SOLO" ]; then
     case "$SOLO" in
-        [1-6]) ;;
-        *) echo "ERROR: --solo acepta 1..6, no '$SOLO'" >&2; exit 1 ;;
+        [1-7]) ;;
+        *) echo "ERROR: --solo acepta 1..7, no '$SOLO'" >&2; exit 1 ;;
     esac
     "${FASES[$((SOLO - 1))]}"
     exit $?
@@ -544,7 +550,7 @@ done
 
 paso "Resumen"
 if [ "$FALLOS" -eq 0 ]; then
-    echo "  Las seis fases terminaron bien."
+    echo "  Las siete fases terminaron bien."
     echo ""
     echo "  Siguiente paso: instalar el código de operación."
     echo "    sudo ./scripts/instalar.sh"

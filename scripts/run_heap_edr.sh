@@ -69,6 +69,7 @@
 #   HEAP_OUT         Salida .nc       (def. /data/output/jpss/level2/sounder)
 #   HEAP_STATE_DIR   Marcadores .done (def. /data/output/jpss/state/cspp-heap)
 #   HEAP_CONTAINER   Imagen .sif      (def. /opt/containers/cspp_heap_v3.0.sif)
+#   HEAP_HOME_HOST   Bundle en el host(def. /data/opt/CSPP_HEAP_3_0)
 #   HEAP_CACHE       Caché dinámico   (def. /data/ancillary/heap)
 #   HEAP_WORK_BASE   Raíz de trabajo  (def. /data/tmp)
 #   HEAP_LOG_BASE    Raíz de logs     (def. /var/log/lanot/polares)
@@ -82,6 +83,16 @@
 set -euo pipefail
 
 SIF_HEAP="${HEAP_CONTAINER:-/opt/containers/cspp_heap_v3.0.sif}"
+
+# El bundle de HEAP vive en el HOST, no en la imagen, y esto no es una manía de
+# despliegue: su árbol de instalación tiene que ser ESCRIBIBLE. airsb103.exe —el
+# Fortran de la recuperación— abre una unidad sin nombre dentro de él, y con el
+# bundle en el .sif muere con "Cannot open file 'fort.40': Read-only file
+# system". Eso tumba HEAP_Retrieval.pl y con él los conversores a NetCDF: no
+# salen NUCAPS-EDR ni NUCAPS-CCR-AR, solo el OLR, y el wrapper devuelve 0 sin
+# una queja. Costó dos semanas y un reporte equivocado a CIMSS (2026-08-29).
+# Se despliega con preparar_servidor.sh --solo 7.
+HOST_HEAP_HOME="${HEAP_HOME_HOST:-/data/opt/CSPP_HEAP_3_0}"
 
 HOST_CRIS_IN="${HEAP_CRIS_IN:-/data/output/jpss/level1/cris}"
 HOST_ATMS_IN="${HEAP_ATMS_IN:-/data/output/jpss/level1/atms}"
@@ -493,6 +504,13 @@ fi
 # VALIDACIÓN DEL AMBIENTE
 # ==============================================================================
 
+if [ ! -x "$HOST_HEAP_HOME/scripts/run_heap.bash" ]; then
+    echo "ERROR: No está el bundle de HEAP en el host: $HOST_HEAP_HOME" >&2
+    echo "       Va montado, no dentro del .sif (ver la nota de arriba)." >&2
+    echo "       Despliégalo con: sudo ./scripts/preparar_servidor.sh --solo 7" >&2
+    exit 1
+fi
+
 if [ ! -f "$SIF_HEAP" ]; then
     echo "ERROR: Contenedor no encontrado: $SIF_HEAP" >&2
     exit 1
@@ -586,6 +604,7 @@ echo ">>> Ejecutando run_heap.bash (misión $MISION, modo HR_IRMW)..." | tee -a 
 
 EXIT_CODE=0
 apptainer exec \
+    --bind "$HOST_HEAP_HOME:/opt/cspp_heap" \
     --bind "$STAGING_DIR:/input" \
     --bind "$HOST_CRIS_IN:$HOST_CRIS_IN" \
     --bind "$HOST_ATMS_IN:$HOST_ATMS_IN" \

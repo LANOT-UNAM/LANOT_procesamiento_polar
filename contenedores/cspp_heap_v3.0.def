@@ -48,10 +48,28 @@ From: lanot_base_rocky8.sif
     2. El nombre del satélite NO es el de los SDR: HEAP pide 'n21' donde CSPP
        SDR escribe 'j02'. NOAA-20 sí coincide ('j01' de los dos lados).
 
+    EL BUNDLE NO VIVE EN ESTA IMAGEN, y es la única receta de la familia donde
+    pasa. Se despliega en /data/opt/CSPP_HEAP_3_0 (preparar_servidor.sh, fase 7)
+    y run_heap_edr.sh lo monta sobre /opt/cspp_heap. La imagen aporta solo el
+    sistema —Rocky 8, perl, lftp— y los puntos de montaje.
+
+    LA RAZÓN, que costó dos semanas de reporte equivocado a CIMSS: el árbol de
+    instalación de HEAP tiene que ser ESCRIBIBLE. El ejecutable Fortran de la
+    recuperación, airsb103.exe, abre una unidad sin nombre y con el bundle
+    dentro del .sif muere con
+
+        Fortran runtime error: Cannot open file 'fort.40': Read-only file system
+
+    Eso aborta HEAP_Retrieval.pl y con él los conversores a NetCDF, así que no
+    salen NUCAPS-EDR ni NUCAPS-CCR-AR — solo el OLR, que lo escribe otro módulo.
+    Y el wrapper se traga el error: código 0, 'EXECUTION COMPLETED SUCCESSFULLY'
+    y 40 segundos en vez de 2 minutos. Verificado en tahan el 2026-08-29: el
+    mismo .sif, con el bundle montado desde disco, entrega las cinco familias.
+
     El caché de ancillary dinámico (GFS 0.5° en GRIB2) va montado en /anc y se
-    pasa con -d /anc. No se usa el default de CSPP_DYNAMIC_ANCIL_DIR, que es
-    $CSPP_HEAP_HOME/data/dynanc: eso queda dentro del .sif, que es de solo
-    lectura. Ver scripts/run_heap_edr.sh.
+    pasa con -d /anc. Era el primer aviso de todo esto —el default,
+    $CSPP_HEAP_HOME/data/dynanc, también caía dentro del .sif— y se trató como
+    una peculiaridad del ancillary en vez de como el síntoma que era.
 
     Verificación tras compilar:  apptainer test cspp_heap_v3.0.sif
 
@@ -60,9 +78,6 @@ From: lanot_base_rocky8.sif
       cd nucaps_test_data && mkdir -p work/anc && cd work
       run_heap.bash -s n21 -i ../input -o RO -p 4 -d $PWD/anc
       # deben salir 48 NetCDF, 16 por tipo
-
-%files
-    CSPP_HEAP_V3.0.tar.gz /opt/
 
 %post
     # Sin esto, un fallo a media receta no detiene la compilación:
@@ -74,28 +89,10 @@ From: lanot_base_rocky8.sif
     dnf install -y --setopt=install_weak_deps=False perl lftp
     dnf clean all && rm -rf /var/cache/dnf
 
-    cd /opt
-    echo "--- Descomprimiendo CSPP HEAP v3.0 ---"
-    tar -zxf CSPP_HEAP_V3.0.tar.gz
-    rm -f CSPP_HEAP_V3.0.tar.gz
-
-    # El manual (§2.2) indica que la extracción crea CSPP_HEAP_3_0
-    REAL_FOLDER="CSPP_HEAP_3_0"
-
-    if [ ! -d "$REAL_FOLDER" ]; then
-        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
-        ls -la
-        exit 1
-    fi
-
-    # Enlace genérico, para que los scripts no dependan del nombre exacto que
-    # produzca el tarball de la siguiente versión
-    ln -s "$REAL_FOLDER" cspp_heap
-
-    # Puntos de montaje genéricos: el script del contenedor no ve rutas del
-    # host. /anc es propio de esta receta: es el caché de ancillary dinámico,
-    # que no puede vivir dentro de la imagen (ver %help).
-    mkdir -p /input /output /work /anc
+    # Puntos de montaje. /opt/cspp_heap va VACÍO a propósito: ahí se monta el
+    # bundle desde /data/opt, que es lo que hace escribible su árbol de
+    # instalación (ver %help). /anc es el caché de ancillary dinámico.
+    mkdir -p /input /output /work /anc /opt/cspp_heap
 
 %environment
     export CSPP_HEAP_HOME=/opt/cspp_heap
@@ -109,21 +106,35 @@ From: lanot_base_rocky8.sif
     # error y seguiría de largo dando la impresión de que todo está bien.
     set -e
 
+    # El bundle NO está aquí: se monta desde /data/opt en tiempo de ejecución,
+    # así que lo único que esta imagen puede comprobar es que el punto de
+    # montaje exista y esté vacío. Si algún día vuelve a tener contenido,
+    # alguien reintrodujo la extracción en el %post y el fallo del fort.40
+    # volverá con él.
     test -d /opt/cspp_heap
-    echo "  OK /opt/cspp_heap -> $(readlink /opt/cspp_heap)"
+    [ -z "$(ls -A /opt/cspp_heap)" ]
+    echo "  OK /opt/cspp_heap existe y está vacío (el bundle va montado)"
 
-    test -f /opt/cspp_heap/scripts/cspp_heap_env.sh
-    echo "  OK cspp_heap_env.sh"
-
-    test -x /opt/cspp_heap/scripts/run_heap.bash
-    echo "  OK run_heap.bash"
+    for d in /input /output /work /anc; do
+        test -d "$d"
+    done
+    echo "  OK puntos de montaje"
 
     # §1.3 pide perl y lftp; sin ellos el fallo aparecería a media pasada
     command -v perl > /dev/null
     command -v lftp > /dev/null
     echo "  OK perl y lftp"
 
-    # La ayuda del driver. Se comprueba la SALIDA y no el código: varios
+    # La ayuda del driver: solo si hay un bundle montado. 'apptainer test' se
+    # corre normalmente sin binds, así que lo habitual es que esto se salte; con
+    # --bind /data/opt/CSPP_HEAP_3_0:/opt/cspp_heap sí se ejercita.
+    if [ ! -f /opt/cspp_heap/scripts/cspp_heap_env.sh ]; then
+        echo "  ○ sin bundle montado: no se prueba run_heap.bash"
+        echo "    (apptainer test --bind /data/opt/CSPP_HEAP_3_0:/opt/cspp_heap ... para probarlo)"
+        exit 0
+    fi
+
+    # Se comprueba la SALIDA y no el código: varios
     # ejecutables de CSPP terminan -h con código distinto de 0.
     #
     # En una variable y NO en un archivo temporal. La primera versión escribía a
