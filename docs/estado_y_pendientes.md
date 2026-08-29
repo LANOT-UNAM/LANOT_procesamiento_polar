@@ -2051,6 +2051,16 @@ Cosas que costaron trabajo y no son evidentes leyendo el código:
   creación antes de buscar, en las **tres** copias de la función (`run_polar2grid_edr.sh`,
   `run_lsr_edr.sh`, `run_cryo_edr.sh`) — en LSR y cryo no se manifestaba, pero solo porque los
   `JRR-*` llevan el campo `s` antes que el `_c` y `head -1` acertaba por orden de aparición.
+  **No llegó a producción, y se comprobó en vez de suponerse.** Faltaban los GeoTIFF de
+  incendios de tres fechas (`20260508`, `20260811`, `20260814`), pero ninguna es víctima suya:
+  las dos primeras se procesaron cuatro días y un día después de observadas —`_c20260512` y
+  `_c20260812`—, así que el sello no podía confundirse; y en la del 14, aunque `_d` y `_c`
+  coinciden, el log de aquella corrida
+  (`p2g_20260814_161626_j01_d20260814_b45273.log`) **no menciona `FIRE:` ni una vez**: el
+  bloque de incendios se agregó ese mismo día (`ace41d7`) y llegó a tahan después. Desde
+  entonces todas las pasadas se procesaron con crudos de días anteriores, así que la primera
+  vez que coincidieron observación y creación fue la de NPP del 29 — el bug se estrenó y se
+  corrigió el mismo día.
 - **Los GeoTIFF de Polar2Grid NO son reproducibles bit a bit: no compararlos con `cmp` ni
   `md5sum`.** Dos corridas de la misma pasada, con la misma imagen y la misma entrada,
   producen archivos que difieren en más de un millón de bytes y cuya primera diferencia
