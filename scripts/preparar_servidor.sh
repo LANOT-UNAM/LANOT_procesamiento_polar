@@ -345,8 +345,31 @@ fase_7_heap() {
     # directorios y en lo que ya fuera ejecutable para alguien. Con x minúscula
     # se volvería ejecutable cada tabla de coeficientes del paquete.
     if [ -d "$RAIZ/data/opt/CSPP_HEAP_3_0" ]; then
-        echo "  → permisos: a+rX sobre el bundle (es software, no datos)"
+        echo "  → permisos: a+rX y g+w sobre el bundle"
+        # a+rX: leer y ejecutar. Sin esto muere el preprocesador con
+        #   sh: .../main_nucaps_preprocessor: Permission denied
+        #
+        # g+w: ESCRIBIR. Sin esto muere airsb103.exe un paso más allá con
+        #   Fortran runtime error: Cannot open file 'fort.40': Permission denied
+        # y, como siempre en este paquete, el wrapper devuelve 0 igualmente.
+        # Los dos fallos se dieron seguidos el 2026-08-29 y son la misma
+        # historia: este bundle no es un estático de solo lectura como los
+        # demás, es software que escribe en su propio árbol.
+        #
+        # Se concede al GRUPO y no a todos: quien corra la cadena tiene que
+        # pertenecer al grupo de $DUENO. Compruébalo con 'id' antes de dar por
+        # buena esta fase; si tu usuario no está en él, o lo agregas
+        # (usermod -aG) o corres la cadena como ese usuario.
         correr chmod -R a+rX "$RAIZ/data/opt/CSPP_HEAP_3_0"
+        correr chmod -R g+w  "$RAIZ/data/opt/CSPP_HEAP_3_0"
+
+        grupo="${DUENO#*:}"
+        if [ "$DRY_RUN" -eq 0 ] && ! id -nG | tr ' ' '\n' | grep -qx "$grupo"; then
+            echo "    ⚠ $(id -un) NO pertenece al grupo '$grupo'."
+            echo "      HEAP fallará al escribir dentro de su árbol. Opciones:"
+            echo "        sudo usermod -aG $grupo $(id -un)   (y volver a entrar)"
+            echo "        o correr la cadena como ${DUENO%%:*}"
+        fi
     fi
 }
 
