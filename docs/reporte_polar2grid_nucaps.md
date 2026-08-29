@@ -146,19 +146,35 @@ temperature fields that loaded perfectly well — and it takes a human noticing 
 output directory to find out. That is the cost, rather than any wasted computation. So your
 second fix, the one I hadn't identified, is exactly the part that matters to us: I had
 diagnosed the `valid_range` lookup and assumed it was also what aborted the run, when in
-fact Satpy was catching that and the real casualty was the pressure-level filtering
-afterwards looking for a product that never loaded. Good to have the correct picture.
+fact Satpy was catching that and the real casualty was the post-load pass over the
+requested keys, looking for a product that never arrived. Good to have the correct picture.
 
 **On `--list-products`:** understood, and no argument from us. Knowing that the advertised
 list is what the reader's configuration declares rather than what will actually load is
 enough — now that failures degrade instead of aborting, an over-optimistic list costs us
 nothing.
 
-**What we're doing on our side.** We run Polar2Grid v3.2 from the bundled tarball, so
-`satpy 0.59.1.dev110` is frozen inside it and the fix won't reach us until v3.3. We're
-applying your two-line patch to `satpy/readers/nucaps.py` in our container recipe, with a
-check that fails the build if the file ever stops matching what the patch expects, so it
-comes out cleanly when we move to 3.3.
+**Your fix works on the real files — confirmed here.** We run Polar2Grid v3.2 from the
+bundled tarball, so `satpy 0.59.1.dev110` is frozen inside it and the fix won't reach us
+until v3.3. Rather than wait, we applied your two lines to `satpy/readers/nucaps.py` in our
+container recipe (anchored so the build fails if the file ever stops matching what the patch
+expects, and it comes out cleanly when we move to 3.3). Two results you may find useful:
+
+- The command from the original report — the four temperature fields **plus**
+  `H2O_MR_853mb`, over the same 19 `NUCAPS-EDR_v3r2_n21` granules — now ends in `SUCCESS`
+  with 5 GeoTIFFs, where before it died with the `KeyError` and produced none.
+- Your two lines apply unchanged to `0.59.1.dev110`, and your updated `test_nucaps.py` runs
+  against that version as-is: 2 errors before the patch, all 22 passing after. In our
+  reproduction the failure surfaces in `_mask_data_below_surface_pressure`, which is what
+  made the second bug legible to us.
+
+One observation, offered as information rather than as a request: with the fix,
+`valid_min`/`valid_max` are `None` for these variables, so the `valid_max` masking is
+skipped entirely and only `_FillValue` is applied. That turns out to be harmless on real
+data — our `H2O_MR_853mb` comes out at 0.001–0.018 g/g (mean 0.010), which is physically
+sensible mixing ratio for 850 hPa over Mexico, and those are the true extremes of the field,
+not a clipped range. So there seems to be no need for a fallback range; we just wanted you
+to have the measurement rather than the assumption.
 
 **An offer.** Our sounder branch isn't live yet — CSPP HEAP v3.0 runs here but doesn't emit
 `NUCAPS-EDR` on our data, which we're chasing separately with the HEAP team — so everything
