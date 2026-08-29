@@ -63,6 +63,31 @@ siquiera tocan la imagen de Polar2Grid: `acspo` 1m 31s → 2m 37s y `omps` 28s �
 sus propios contenedores CSPP. Lo que se movió es la máquina o el volumen de datos, no el
 software; `p2g_l1` subió en la misma proporción que las demás.
 
+### Tercera corrida: S-NPP, y el bug que destapó — `npp_d20260829_b76888`
+
+Primer sobrevuelo de S-NPP que pasa por la cadena nueva de punta a punta (todas las corridas
+anteriores son `j01`). 24m 20s, las catorce etapas en `ok`.
+
+**Lo que se confirmó:** `p2g_l1` dio **59 geotiff (M 36, I 14, dnb 7, rgb 2) y 3 vistas**,
+clavado a NOAA-20 — la cadena de Level 1 trata a NPP igual. La clave `npp_d…` se resolvió de
+punta a punta y `metadata.py` rotula las vistas como "Suomi NPP".
+
+**CrIS no llegó**: 4 RDR en vez de 5, con `atms`, `omps_np`, `omps_nm` y `viirs`. Es uno de los
+sensores caídos de S-NPP, que además se da de baja en noviembre de 2026. Los demás conteos
+bajos son escena y no fallo: 8 gránulos contra 10, y en esa proporción salen atmos 96, lsr 8,
+flood 8, cryo 16 y fire 8.
+
+**Y el hallazgo, que valía la corrida entera:** `fire=0 geotiff` con los 8 `.nc` escritos en
+`level2/fires`. No era del renderizado sino del staging —`FIRE: 0 productos en la ventana`— y
+la causa es el campo de creación del nombre ganándole al de observación. Está en los hallazgos
+y ya corregido. Es un bug de **operación**, no de NPP: se habría comido los incendios de todas
+las pasadas en cuanto la cadena procesara en el día, y en silencio.
+
+Un matiz sobre lo que esta corrida **no** probó: el filtro `de_otro_satelite()` seguía sin
+ejercitarse de verdad. Los productos de NOAA-20 en esos directorios son del 28 y los de NPP del
+29, así que la ventana temporal ya los separa sola. Haría falta que dos satélites cayeran en la
+misma ventana.
+
 ### La no-regresión de Level 2, y el método que NO sirve
 
 Se re-renderizó la misma pasada con la imagen anterior (guardada como
@@ -1991,6 +2016,20 @@ Cuando HEAP vuelva a la lista queda arreglado de nacimiento: `CLAVE_HEAP` es `CL
 
 Cosas que costaron trabajo y no son evidentes leyendo el código:
 
+- **El campo de creación `_c<sello>` compite con el de observación al leer el sello de un
+  producto, y gana cuando las dos fechas coinciden.** Un AFIMG se llama
+  `AFIMG_npp_d20260829_t1852513_..._c20260829192258365504_cspp_dev.nc`: la fecha va DOS veces.
+  La regla de "fecha + 7 dígitos" de `sello_de_archivo()` no casa en el campo de observación
+  —entre la fecha y la hora va `_t`, no un dígito— pero sí en el de creación, así que los ocho
+  gránulos de la pasada de NPP del 2026-08-29 salieron con el **mismo** sello, el de cuando se
+  escribió el archivo, siete minutos fuera de la ventana. Resultado: `FIRE: 0 productos en la
+  ventana`, etapa en `ok`, marcador escrito y cero incendios publicados. **No se había visto
+  por casualidad de calendario**: hasta ese día solo se habían procesado crudos de fechas
+  anteriores, donde la creación no coincide con `FECHA_NUM`; en operación real las dos fechas
+  son la misma siempre y esto habría fallado en cada pasada. Corregido quitando el campo de
+  creación antes de buscar, en las **tres** copias de la función (`run_polar2grid_edr.sh`,
+  `run_lsr_edr.sh`, `run_cryo_edr.sh`) — en LSR y cryo no se manifestaba, pero solo porque los
+  `JRR-*` llevan el campo `s` antes que el `_c` y `head -1` acertaba por orden de aparición.
 - **Los GeoTIFF de Polar2Grid NO son reproducibles bit a bit: no compararlos con `cmp` ni
   `md5sum`.** Dos corridas de la misma pasada, con la misma imagen y la misma entrada,
   producen archivos que difieren en más de un millón de bytes y cuya primera diferencia

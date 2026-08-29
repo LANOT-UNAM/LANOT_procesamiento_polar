@@ -358,6 +358,25 @@ desplazar_sello() {
 sello_de_archivo() {
     local nombre="$1" s anio doy fecha
 
+    # El campo de creación (_c<sello>) se quita ANTES de buscar nada, porque no
+    # es tiempo de observación y compite con el que sí lo es.
+    #
+    # Esto costó una pasada entera el 2026-08-29. Un AFIMG se llama
+    # AFIMG_npp_d20260829_t1852513_..._c20260829192258365504_cspp_dev.nc: la
+    # fecha aparece DOS veces, y la regla de "fecha + 7 dígitos" no casa en el
+    # campo de observación —entre la fecha y la hora va "_t", no un dígito— pero
+    # sí en el de creación. Los ocho gránulos de esa pasada salieron con el
+    # mismo sello, el de cuando se escribió el archivo, siete minutos fuera de
+    # la ventana: 'FIRE: 0 productos en la ventana', etapa en ok, cero
+    # incendios publicados y marcador escrito.
+    #
+    # Y no se había visto antes por pura casualidad de calendario: hasta ese día
+    # solo se habían procesado crudos de fechas anteriores, donde la fecha de
+    # creación NO coincide con FECHA_NUM y la regla no casaba. En operación real
+    # —la antena entrega y se procesa enseguida— las dos fechas son la misma
+    # SIEMPRE, así que esto habría fallado en cada pasada.
+    nombre=$(echo "$nombre" | sed -E 's/_c[0-9]{6,}//')
+
     # Convención de ACSPO: 14 dígitos al inicio del nombre. Va primero porque es
     # la más específica; las otras dos exigen 7 dígitos tras la fecha y aquí solo
     # hay 6 antes del guion, así que no se pisan.
