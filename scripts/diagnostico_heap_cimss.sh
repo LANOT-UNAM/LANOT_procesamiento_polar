@@ -127,12 +127,47 @@ fi
 
 # --- Preparación --------------------------------------------------------------
 
+mkdir -p "$BASE"
+
 if [ ! -d "$HOST_HOME" ]; then
     echo
     echo ">>> Extrayendo el bundle en el host..."
     mkdir -p "$(dirname "$HOST_HOME")"
     tar -xzf "$TARBALL" -C "$(dirname "$HOST_HOME")"
     [ -d "$HOST_HOME" ] || { echo "ERROR: la extracción no dejó $HOST_HOME" >&2; exit 1; }
+fi
+
+# ¿Puede siquiera arrancar el binario en este host? HEAP se distribuye SOLO
+# como binarios, enlazados contra el HDF5 de Rocky 8 (libhdf5.so.103,
+# libhdf5_hl.so.100). En un host más nuevo el soname no existe y no es que el
+# software falle: es que no carga. Comprobarlo ANTES de correr evita presentar
+# a CIMSS un fallo de sistema como si fuera un resultado sobre los sondeos.
+# Medido en tahan el 2026-08-29, Rocky Linux 10.2.
+HOST_CONCLUYENTE=1
+echo
+echo ">>> Comprobando que los binarios carguen en este host..."
+FALTANTES=$(ldd "$HOST_HOME"/bin/* 2>/dev/null | grep -i "not found" | sort -u || true)
+if [ -n "$FALTANTES" ]; then
+    HOST_CONCLUYENTE=0
+    echo "  ✗ faltan librerías en el host:"
+    echo "$FALTANTES" | sed 's/^/    /'
+    echo
+    echo "  La corrida del host NO va a ser concluyente: el binario no carga, así que"
+    echo "  lo que salga de ella no dice nada sobre por qué faltan los sondeos. Se"
+    echo "  ejecuta igual para dejar constancia del intento, y el paquete lo advierte."
+    {
+        echo "La corrida 'host' de este paquete NO es concluyente."
+        echo
+        echo "Host: $( . /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-desconocido}" )"
+        echo "El manual de CSPP HEAP v3.0 (§1.3) declara Rocky 8.10 como sistema destino."
+        echo "Los binarios del bundle no cargan en este host; faltan:"
+        echo "$FALTANTES"
+        echo
+        echo "Por eso corremos HEAP en un contenedor Apptainer basado en Rocky 8: no es"
+        echo "una capa añadida sobre el sistema soportado, es la forma de tenerlo."
+    } > "$BASE/host_NO_CONCLUYENTE.txt"
+else
+    bien "los binarios cargan; la corrida del host será comparable"
 fi
 
 # --noclean es lo que pide CIMSS: sin esa bandera el directorio se poda al
@@ -190,6 +225,11 @@ correr() {
 
     fin=$(date +%s)
     echo "  duración: $(( fin - inicio ))s · registro: $registro"
+    if [ "$etiqueta" = "host" ] && [ "$HOST_CONCLUYENTE" -eq 0 ]; then
+        echo "  ⚠ NO CONCLUYENTE: los binarios no cargan en este host (ver"
+        echo "    $BASE/host_NO_CONCLUYENTE.txt). No compares este conteo con el otro."
+
+    fi
 
     # El conteo por familia es el veredicto: §3.3 espera 48 archivos, 16 de
     # cada una de NUCAPS-EDR, NUCAPS-CCR-AR y NUCAPS-OLR.
@@ -206,7 +246,6 @@ correr() {
     echo "  menciones de 'retriev' en el log: $(grep -ic retriev "$registro" || true)"
 }
 
-mkdir -p "$BASE"
 case "$MODO" in
     host)       correr host ;;
     contenedor) correr contenedor ;;
