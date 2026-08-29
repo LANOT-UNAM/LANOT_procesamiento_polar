@@ -307,11 +307,37 @@ que tomar, porque el CPT no puede decir todo lo que dice la tabla en C:
 gránulos de muestra— que en cambio el renderizado sí funciona de punta a punta. Los detalles
 están en el pendiente 4; aquí queda solo qué hacer al retomar, y en qué orden.
 
-### 1. Camino crítico: el reporte a CIMSS
+### 1. Camino crítico: el reporte a CIMSS — ENVIADO Y CONTESTADO (2026-08-29)
 
-Está escrito y versionado en **`docs/reporte_cimss_heap_v3.0.md`**. Revisar y enviar. Todo lo
-demás de sondeos está detrás de esto: sin `NUCAPS-EDR` no hay nada que renderizar sobre datos
-propios.
+Está escrito y versionado en **`docs/reporte_cimss_heap_v3.0.md`**. Se envió el 2026-08-24 al
+foro de SSEC: <https://forums.ssec.wisc.edu/viewtopic.php?t=60121>. Todo lo demás de sondeos
+sigue detrás de esto: sin `NUCAPS-EDR` no hay nada que renderizar sobre datos propios.
+
+**Kathy Strabala contestó el 2026-08-25, y lo primero que dice es que no es culpa nuestra:**
+*"I do not think you are executing the software incorrectly. From what you have described, you
+have everything you need to successfully run the software. We will work to figure out why it
+is failing."*
+
+**Corrige además lo que aquí se había concluido sobre `NUCAPS-ALL-HR`.** Son *"intermediary
+files that are input by some of the other NUCAPS modules"*, y —esto es lo que nos faltaba— las
+radiancias limpiadas de nube **van en `NUCAPS-CCR-AR`, no en `ALL-HR`**. El 2026-08-17 se
+concluyó que "ALL-HR es el CCR": la mitad estaba bien (es un intermedio, una entrada) pero la
+etiqueta no. Consecuencia: de los tres productos finales no falta uno, **faltan dos** —`EDR` y
+`CCR-AR`—, y su ausencia es *"a symptom of whatever is causing your NUCAPS-EDR to not be
+created either"*. Eso mueve el fallo más atrás de lo que suponíamos: tampoco el cloud-clearing
+entrega su producto. Corregido en `run_heap_edr.sh`, `run_polar2grid_edr.sh` y `CLAUDE.md`.
+
+**Lo que piden, y es lo siguiente que hay que hacer:**
+
+1. **Correr fuera del contenedor**, para descartarlo como causa.
+2. **Repetir sobre los datos de prueba con `--noclean`** y subir el directorio de trabajo a
+   `ftp://ftp.ssec.wisc.edu/pub/incoming` (FTP anónimo).
+
+Sobre (1) hay una arruga que conviene decirles si el resultado no es limpio: el contenedor de
+HEAP parte de **Rocky 8 a propósito**, siguiendo el manual, así que correr en el host de tahan
+no es "lo mismo sin contenedor" sino además otro sistema operativo. Si falla igual fuera, el
+resultado es concluyente y descarta el contenedor; si funciona fuera, no se puede atribuir al
+contenedor sin separar antes esa segunda variable.
 
 **Corrido el 2026-08-24 en tahan, y cerró el argumento:** `benchmark_edr/` trae los 48
 archivos documentados —16 `NUCAPS-CCR-AR`, 16 `NUCAPS-EDR`, 16 `NUCAPS-OLR`— o sea los dos
@@ -1307,7 +1333,7 @@ sobre la pasada `j01_d20260813_b45265`:
 
 ```
 CrIS 30 archivos (15 gránulos) · ATMS 42 archivos → 30 productos en 23 s
-  15 NUCAPS-ALL-HR   radiancias limpiadas de nube (CCR)  ← NO son perfiles
+  15 NUCAPS-ALL-HR   intermedio de NUCAPS   ← ni perfiles ni producto final
   15 NUCAPS-OLR      onda larga saliente
 ```
 

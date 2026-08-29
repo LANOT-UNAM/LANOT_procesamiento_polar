@@ -654,7 +654,7 @@ SOUNDER_COUNT=0
 # así que un glob por órbita dejaría fuera parte de los gránulos.
 [ -d "$HOST_FIRE_IN" ] && FIRE_COUNT=$(enlazar_en_ventana "$STAGING_FIRE" "$HOST_FIRE_IN" "AFIMG_")
 # Solo los NUCAPS-EDR, que son los perfiles. En level2/sounder conviven además
-# los NUCAPS-ALL-HR (radiancias limpiadas de nube) y los NUCAPS-OLR (onda larga
+# los NUCAPS-ALL-HR (intermedios de NUCAPS) y los NUCAPS-OLR (onda larga
 # saliente), que no tienen lector en Polar2Grid y que además harían fallar la
 # llamada entera si entraran en el mismo -f.
 #

@@ -77,7 +77,8 @@ RAW (CCSDS de antena)
             │    └─ cspp_heap_v3.0.sif ──────► Level 2 sounder (NUCAPS-{ALL-HR,OLR}*.nc)
             │         [la ÚNICA rama que come DOS sensores a la vez, y por eso empareja por
             │          traslape de intervalos con margen (HEAP_MARGEN_ATMS) y no por clave de
-            │          pasada. No S-NPP. DESACTIVADO: el build no genera NUCAPS-EDR]
+            │          pasada. No S-NPP. DESACTIVADO: de los tres productos finales el build
+            │          no genera NUCAPS-EDR ni NUCAPS-CCR-AR; ALL-HR es un intermedio]
             │
             └─ OMPS  SOMTC*/GOTCO* (Nadir Mapper)  +  SOMPS*/GONPO* (Nadir Profiler)
                  └─ cspp_omps_l2_v1.0.sif ───► Level 2 omps (V8TOZ-EDR*, V8PRO-EDR* .nc)

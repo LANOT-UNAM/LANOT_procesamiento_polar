@@ -13,13 +13,17 @@
 #
 # Salen DOS archivos por gránulo, no los tres que sugiere §1.7 del manual:
 #
-#   NUCAPS-ALL-HR_v3r2_*.nc   la recuperación: perfiles + CCR en un solo
-#                             archivo, porque el modo es HR_IRMW
+#   NUCAPS-ALL-HR_v3r2_*.nc   un archivo INTERMEDIO, que consumen otros módulos
+#                             de NUCAPS. No es ninguno de los tres productos
 #   NUCAPS-OLR_v3r2_*.nc      la radiación de onda larga saliente
 #
-# `NUCAPS-ALL-HR` no aparece en el manual de instalación, que documenta
-# NUCAPS-EDR y NUCAPS-CCR-AR por separado; es lo que de verdad produce la ruta
-# JPSS de alta resolución (verificado en tahan el 2026-08-15). Por eso el conteo
+# O sea que de los TRES productos finales (§1.7: NUCAPS-EDR, NUCAPS-CCR-AR y
+# NUCAPS-OLR) solo sale uno. `NUCAPS-ALL-HR` no aparece en el manual porque no
+# es un producto: lo confirmó CIMSS en el foro de SSEC el 2026-08-25
+# (viewtopic.php?t=60121), y de paso corrigió lo que aquí se dio por hecho hasta
+# entonces — las radiancias limpiadas de nube van en `NUCAPS-CCR-AR`, no en
+# `ALL-HR`, así que el CCR **tampoco se produce** y su ausencia es síntoma del
+# mismo fallo que la del EDR. Por eso el conteo
 # de familias sale de los archivos y no de una lista fija: si una versión futura
 # vuelve a separarlos, el marcador lo refleja sin tocar el script. El contenido
 # está descrito en el NUCAPS External Users Manual, que §1.7 enlaza.
@@ -641,11 +645,16 @@ fi
 # y contaba como recuperación todo lo que no fuera OLR. Es falso: un ncdump de
 # ese archivo en tahan muestra CrIS_Radiances, ATMS_Brightness_Temps,
 # Cloud_Fraction, Cloud_Height y Land_Fraction, y NO tiene Pressure, Temperature,
-# H2O_MR ni Stability. ALL-HR es el CCR —las radiancias limpiadas de nube, que
-# son la ENTRADA del algoritmo—; el "ALL" es por todos los FOV, no por "todo
-# junto". Con aquel criterio la etapa firmó marcadores de éxito durante dos días
-# sin haber producido un solo sondeo, que es justo lo que el eslabón existe para
-# producir.
+# H2O_MR ni Stability. El "ALL" es por todos los FOV, no por "todo junto". Con
+# aquel criterio la etapa firmó marcadores de éxito durante dos días sin haber
+# producido un solo sondeo, que es justo lo que el eslabón existe para producir.
+#
+# AFINADO el 2026-08-29 con la respuesta de CIMSS (foro de SSEC, t=60121): aquel
+# 17 se concluyó que ALL-HR "era el CCR". La mitad estaba bien —es un archivo
+# intermedio, entrada de otros módulos de NUCAPS— pero la etiqueta no: las
+# radiancias limpiadas de nube van en `NUCAPS-CCR-AR`, que **tampoco sale**. No
+# falta uno de los tres productos finales, faltan DOS, y eso mueve el fallo más
+# atrás de lo que se pensaba: tampoco el cloud-clearing entrega su producto.
 #
 # El otro indicio que se dejó pasar fue la duración: 15 gránulos en 22 s. Una
 # recuperación NUCAPS es físico-iterativa con transferencia radiativa y no corre
@@ -675,7 +684,8 @@ if [ "$RECUPERACION" -eq 0 ]; then
         echo "     $fam: ${FAMILIAS[$fam]}"                                    | tee -a "$LOG_FILE"
     done
     echo ""                                                                    | tee -a "$LOG_FILE"
-    echo "   Si salieron ALL-HR (el CCR) pero ningún EDR, la recuperación no"   | tee -a "$LOG_FILE"
+    echo "   Si salieron ALL-HR (intermedio) pero ni EDR ni CCR-AR, ni la"      | tee -a "$LOG_FILE"
+    echo "   recuperación ni el cloud-clearing llegaron a correr."               | tee -a "$LOG_FILE"
     echo "   llegó a correr. Lo verificado el 2026-08-17, para no repetirlo:"   | tee -a "$LOG_FILE"
     echo "     · NO es la bandera -o: vale '${SALIDA_HEAP}' y se parsea letra"  | tee -a "$LOG_FILE"
     echo "       por letra (con -o R desaparece el OLR, como debe)."            | tee -a "$LOG_FILE"
