@@ -824,9 +824,13 @@ if [ "$SOUNDER_COUNT" -gt 0 ]; then
     #    reportó a SSEC (forums.ssec.wisc.edu/viewtopic.php?t=60122) y davidh lo
     #    arregló en pytroll/satpy#3450; el bundle 3.2 lleva satpy congelado, así
     #    que el parche lo aplica polar2grid_v3.2-mapdrawer.def hasta que llegue
-    #    Polar2Grid 3.3. Para sacar vapor de agua faltan todavía su CPT y su
-    #    entrada en product_map: sin eso saldría un GeoTIFF sin vista, o una
-    #    vista rotulada a secas.
+    #    Polar2Grid 3.3. Probado el 2026-08-29 sobre los mismos 19 gránulos:
+    #    con el parche la llamada sale en SUCCESS con 5 GeoTIFF en vez de morir
+    #    con 0. Para sacar vapor de agua faltan todavía su CPT y su entrada en
+    #    product_map: sin eso saldría un GeoTIFF sin vista, o una vista rotulada
+    #    a secas. Dato para esa CPT: sin valid_range NO se aplica el recorte por
+    #    valid_max —solo el _FillValue—, y aun así el campo sale físico,
+    #    0.001-0.018 g/g (1-18 g/kg, media 10) en esa pasada.
     # 3. La máscara de calidad se queda puesta. Los huecos entre huellas no son
     #    del remuestreo (subir --radius-of-influence a 35 km casi no los movió):
     #    son recuperaciones que NUCAPS marcó como malas, y --no-mask-quality las

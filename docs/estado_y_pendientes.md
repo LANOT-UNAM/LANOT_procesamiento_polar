@@ -77,11 +77,46 @@ misma—, que dio **quince "distintos", y no los mismos doce**. O sea que la lis
 corrida en corrida. Está en los hallazgos, abajo; el método bueno es
 `gdalinfo -checksum`.
 
+### El parche, probado por dos caminos
+
+**En tahan, de punta a punta.** Los 19 gránulos `NUCAPS-EDR_v3r2_n21` de la muestra de CSPP
+Sounder QL, pidiendo los cuatro de temperatura **más** `H2O_MR_853mb`: la misma llamada que el
+2026-08-17 moría con `KeyError: 'H2O_MR/attr/valid_range'` sin dejar un solo archivo ahora
+termina en `SUCCESS` con **5 GeoTIFF**.
+
+Y el vapor sale sano, que era la duda que quedaba: sin `valid_range` **no se aplica el recorte
+por `valid_max`** —solo se quita el `_FillValue`—, así que cabía esperar extremos disparatados.
+No los hay: `H2O_MR_853mb` da **0.001 a 0.018 g/g, media 0.010** (1 a 18 g/kg, media 10), que
+es razón de mezcla física para 853 hPa sobre México, y ese mínimo y ese máximo son los extremos
+reales del campo. Una CPT de 0 a 20 g/kg cubriría la escena, si algún día se publica vapor.
+
+**En bucéfalo, a nivel de lector, sin gránulos ni contenedor.** El bundle extraído en
+`/data/cspp` trae la suite de tests de Satpy, y los del lector `nucaps` son `unittest.TestCase`
+puro, así que corren con el intérprete del propio bundle —el mismo Satpy que viaja dentro del
+`.sif`—. Con el `test_nucaps.py` del PR (merge `db2bf48`), que fabrica el caso poniendo `H2O`
+sin `valid_range`:
+
+| | test del bundle | test del PR |
+|---|---|---|
+| `nucaps.py` sin parche | 22/22 OK | **2 errores** |
+| `nucaps.py` parcheado | 22/22 OK | 22/22 OK |
+
+Dos cosas que salieron de ahí. **(a)** Los dos que fallan son `test_load_pressure_based`, uno
+por lector, y el traceback confirma el mecanismo de forma independiente: no revienta en el
+`valid_range` sino después, en `_mask_data_below_surface_pressure`, con
+`KeyError: "No dataset matching 'DataQuery(name='H2O')' found"` — buscando un producto que
+nunca se cargó. Es el segundo bug, el que el reporte no había identificado. **(b)** El test que
+viene **dentro del bundle pasa con y sin parche**, o sea que no sirve como comprobación; por eso
+el `%test` del `.def` verifica el contenido del módulo por `inspect` en lugar de correr la
+suite. (Receta, por si hace falta repetirlo: `pip install --target` de `pytest` en un directorio
+aparte —el bundle no lo trae y no hay que tocarlo—, una copia del árbol `satpy` hecha con
+`cp -rs` para poder sustituir un solo archivo, y `PYTHONPATH` delante.)
+
 ### Lo que sigue abierto
 
-- **La prueba del fix en sí**: los gránulos de muestra de CSPP Sounder QL pidiendo
-  `H2O_MR_853mb`, que antes daba `KeyError` y 0 tif y ahora debe dar 5. El RAW nuevo no puede
-  probarla, porque no hay sondeos.
+- **Publicar vapor de agua exigiría todavía su CPT y su entrada en `product_map`** de
+  LANOT_tools. Que cargue no es que salga rotulado: sin eso habría GeoTIFF sin vista, o vista
+  sin nombre.
 - **HEAP sigue sin producir `NUCAPS-EDR`** con ancillary reciente: la corrida del 29 dio
   `SONDEOS: 0 productos en la ventana` y la etapa ni se lanzó. No sorprende — `update_heap_ancillary.sh`
   **solo poda, no descarga** (HEAP baja su GFS solo, con `lftp`), así que haber corrido los tres
