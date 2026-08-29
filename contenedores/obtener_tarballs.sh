@@ -77,13 +77,23 @@ filas() {
     grep -v '^[[:space:]]*#' "$MANIFIESTO" | grep -v '^[[:space:]]*$'
 }
 
-# Dónde debe estar el tarball de una fila, según su rol.
+# Dónde debe estar el tarball de una fila, según su rol. Si no está donde le
+# toca pero sí en el otro directorio, gana el sitio donde de verdad esté: el
+# bundle de CSPP HEAP vive en TARBALLS desde antes de que dejara de instalarse
+# en su imagen (2026-08-29), y decir "no está" teniéndolo al lado solo consigue
+# que nadie le registre el sha1 — que es justo lo que le pasó.
 ruta_de() {
+    local esperada="" otra=""
     case "$1" in
-        bundle)   echo "$TARBALLS/$2" ;;
-        estatico) echo "$TARFILES/$2" ;;
-        *)        echo "" ;;
+        bundle)   esperada="$TARBALLS/$2"; otra="$TARFILES/$2" ;;
+        estatico) esperada="$TARFILES/$2"; otra="$TARBALLS/$2" ;;
+        *)        echo ""; return ;;
     esac
+    if [ ! -f "$esperada" ] && [ -f "$otra" ]; then
+        echo "$otra"
+    else
+        echo "$esperada"
+    fi
 }
 
 # ¿El destino de un estático está poblado? Vacío o inexistente cuentan como no.
