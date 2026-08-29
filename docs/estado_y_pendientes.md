@@ -88,6 +88,22 @@ productos en la ventana` y `fire=3 geotiff, 1 vistas`. La pasada pasa de 24 geot
 a **27 y 12**, que son exactamente los números de NOAA-20 del 28, sección por sección. O sea
 que con el sello arreglado los dos satélites entregan el mismo inventario.
 
+### Cuarta corrida: en caliente, que es donde el bug habría vivido — `j01_d20260829_b45492`
+
+La confirmación que faltaba. NOAA-20 observado a las 19:11Z del 29 y procesado a las 20:14Z
+**del mismo día** —los RDR llevan `_c20260829201430…`—, o sea la configuración exacta que
+dejaba los AFIMG fuera de la ventana. Resultado: `FIRE: 9 productos en la ventana` y
+`fire=3 geotiff, 1 vistas`. Sin el arreglo habrían sido 0.
+
+Es la primera pasada que la cadena procesa **en caliente**, como en operación, y salió en
+29m 46s con las quince etapas en `ok`. Dos cosas más que deja:
+
+- `p2g_l1` en **59 geotiff (M 36, I 14, dnb 7, rgb 2) y 3 vistas** por tercera vez seguida y
+  con dos satélites distintos. Ese número ya es una referencia sólida.
+- **Los 33m 29s de la pasada del 28 eran ruido de la máquina.** Esta corrida queda en 29m 46s,
+  a un minuto de los 29m 04s del 17, lo que confirma por otra vía lo que se había deducido de
+  que `acspo` y `omps` —que no tocan la imagen de Polar2Grid— hubieran subido igual.
+
 Un matiz sobre lo que esta corrida **no** probó: el filtro `de_otro_satelite()` seguía sin
 ejercitarse de verdad. Los productos de NOAA-20 en esos directorios son del 28 y los de NPP del
 29, así que la ventana temporal ya los separa sola. Haría falta que dos satélites cayeran en la
