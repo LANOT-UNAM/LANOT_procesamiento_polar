@@ -83,6 +83,11 @@ la causa es el campo de creación del nombre ganándole al de observación. Est�
 y ya corregido. Es un bug de **operación**, no de NPP: se habría comido los incendios de todas
 las pasadas en cuanto la cadena procesara en el día, y en silencio.
 
+**Verificado en tahan con el arreglo puesto**, re-renderizando la misma pasada: `FIRE: 8
+productos en la ventana` y `fire=3 geotiff, 1 vistas`. La pasada pasa de 24 geotiff y 11 vistas
+a **27 y 12**, que son exactamente los números de NOAA-20 del 28, sección por sección. O sea
+que con el sello arreglado los dos satélites entregan el mismo inventario.
+
 Un matiz sobre lo que esta corrida **no** probó: el filtro `de_otro_satelite()` seguía sin
 ejercitarse de verdad. Los productos de NOAA-20 en esos directorios son del 28 y los de NPP del
 29, así que la ventana temporal ya los separa sola. Haría falta que dos satélites cayeran en la
