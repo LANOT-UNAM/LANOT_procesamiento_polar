@@ -817,11 +817,16 @@ if [ "$SOUNDER_COUNT" -gt 0 ]; then
     #
     # 1. -p es OBLIGATORIO. La lista por omisión son 203 productos (100 niveles
     #    × 2 variables + 3), o sea 203 GeoTIFF por pasada.
-    # 2. NADA de H2O_MR. Revienta con KeyError: 'H2O_MR/attr/valid_range' —
-    #    satpy/readers/nucaps.py:193 da por hecho un atributo que los v3r2 no
-    #    traen— y un producto ilegible ABORTA la llamada completa: no degrada ni
-    #    se salta, así que se pierden también los Temperature_* que sí cargan.
-    #    Va reporte a Polar2Grid; mientras tanto el vapor no sale por aquí.
+    # 2. H2O_MR ya no revienta, pero sigue sin pedirse. Con los v3r2 moría con
+    #    KeyError: 'H2O_MR/attr/valid_range' —satpy/readers/nucaps.py daba por
+    #    hecho un atributo que esos archivos no traen— y se llevaba por delante
+    #    la corrida entera, también los Temperature_* que sí cargaban. Se
+    #    reportó a SSEC (forums.ssec.wisc.edu/viewtopic.php?t=60122) y davidh lo
+    #    arregló en pytroll/satpy#3450; el bundle 3.2 lleva satpy congelado, así
+    #    que el parche lo aplica polar2grid_v3.2-mapdrawer.def hasta que llegue
+    #    Polar2Grid 3.3. Para sacar vapor de agua faltan todavía su CPT y su
+    #    entrada en product_map: sin eso saldría un GeoTIFF sin vista, o una
+    #    vista rotulada a secas.
     # 3. La máscara de calidad se queda puesta. Los huecos entre huellas no son
     #    del remuestreo (subir --radius-of-influence a 35 km casi no los movió):
     #    son recuperaciones que NUCAPS marcó como malas, y --no-mask-quality las

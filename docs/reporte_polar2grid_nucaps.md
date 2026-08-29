@@ -117,3 +117,60 @@ Thanks very much for your work on Polar2Grid; it does the heavy lifting in our c
 Alejandro Sierra
 LANOT — Laboratorio Nacional de Observación de la Tierra
 Universidad Nacional Autónoma de México
+
+---
+
+# Respuesta de seguimiento — para publicar en el hilo
+
+Redactada el 2026-08-29, después de que davidh contestara (2026-08-25) y mergeara
+[pytroll/satpy#3450](https://github.com/pytroll/satpy/pull/3450) el 2026-08-26. Va en el
+mismo hilo: <https://forums.ssec.wisc.edu/viewtopic.php?t=60122>. En inglés, como el resto.
+
+---
+
+Hi David,
+
+Thank you — a fix merged within two days of the report is more than we expected, especially
+for a reader you've told us has no dedicated funding behind it.
+
+**On "the resampling is already paid for": you're right, and that phrasing was wrong.** I
+wrote it assuming the `KeyError` surfaced somewhere after the data had been loaded, so that
+the expensive part of the job was already done when the run died. Your explanation makes
+clear that isn't what happens — the load fails first, and with lazy dask evaluation nothing
+gets resampled. I should have checked before putting it that way.
+
+What I actually meant to argue survives without that claim, and it's simpler: for us the
+unit of work is one command per satellite pass, run unattended. When a single unreadable
+product takes the whole call down, the pass produces *nothing* — including the four
+temperature fields that loaded perfectly well — and it takes a human noticing the empty
+output directory to find out. That is the cost, rather than any wasted computation. So your
+second fix, the one I hadn't identified, is exactly the part that matters to us: I had
+diagnosed the `valid_range` lookup and assumed it was also what aborted the run, when in
+fact Satpy was catching that and the real casualty was the pressure-level filtering
+afterwards looking for a product that never loaded. Good to have the correct picture.
+
+**On `--list-products`:** understood, and no argument from us. Knowing that the advertised
+list is what the reader's configuration declares rather than what will actually load is
+enough — now that failures degrade instead of aborting, an over-optimistic list costs us
+nothing.
+
+**What we're doing on our side.** We run Polar2Grid v3.2 from the bundled tarball, so
+`satpy 0.59.1.dev110` is frozen inside it and the fix won't reach us until v3.3. We're
+applying your two-line patch to `satpy/readers/nucaps.py` in our container recipe, with a
+check that fails the build if the file ever stops matching what the patch expects, so it
+comes out cleanly when we move to 3.3.
+
+**An offer.** Our sounder branch isn't live yet — CSPP HEAP v3.0 runs here but doesn't emit
+`NUCAPS-EDR` on our data, which we're chasing separately with the HEAP team — so everything
+above was tested against the CSPP Sounder QL v1.4 sample granules. Once we do have
+operational NUCAPS files from our own direct-broadcast passes, we'll be exercising this
+reader daily over Mexico and the Gulf. Given that it isn't actively maintained, we're glad
+to report whatever we run into, and to test candidate fixes against real files if that's
+useful to you. Just tell us where you'd prefer such reports — here, or as issues at
+`pytroll/satpy`.
+
+Thanks again.
+
+Alejandro Sierra
+LANOT — Laboratorio Nacional de Observación de la Tierra
+Universidad Nacional Autónoma de México

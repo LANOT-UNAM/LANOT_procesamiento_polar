@@ -126,7 +126,7 @@ Cada `run_*.sh` sigue el mismo patrón: `apptainer exec` con los binds, y dentro
 
 Cada `.def` crea un symlink genérico (`/opt/cspp_sdr` → `SDR_4_1`, `/opt/polar2grid` → `polar2grid_v_3_2`, …) para que los scripts no dependan del nombre exacto de la carpeta que produce el tarball.
 
-`polar2grid_v3.2-mapdrawer.def` es especial: además de Polar2Grid clona `github.com/asierra/LANOT_tools` (mapdrawer/geotiff2view, para logos y timestamps sobre las imágenes) y copia `/usr/local/share/lanot/{colortables,gpkg,logos,docs}` **desde el host de compilación**, así que solo se puede construir en una máquina que ya tenga esos recursos instalados.
+`polar2grid_v3.2-mapdrawer.def` es especial: además de Polar2Grid clona `github.com/asierra/LANOT_tools` (mapdrawer/geotiff2view, para logos y timestamps sobre las imágenes) y copia `/usr/local/share/lanot/{colortables,gpkg,logos,docs}` **desde el host de compilación**, así que solo se puede construir en una máquina que ya tenga esos recursos instalados. Es además el único `.def` que **parchea el software que instala**: aplica [pytroll/satpy#3450](https://github.com/pytroll/satpy/pull/3450) —dos líneas en `satpy/readers/nucaps.py`— porque sin él una pasada de sondeos muere entera en cuanto un producto no trae `valid_range`, y el bundle 3.2 lleva su Satpy congelado dentro. El parche se ancla con `grep` y tumba la compilación si el archivo deja de ser el que espera; **al pasar a Polar2Grid 3.3 hay que quitarlo**, de `%post` y de `%test`.
 
 ### Cuando un eslabón no encuentra camino, mirar primero `referencia/`
 

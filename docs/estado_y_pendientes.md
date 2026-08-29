@@ -236,14 +236,54 @@ Queda sin correr el otro, que compara contenido y ya no hace falta para el repor
   rm -f /data/output/jpss/state/cspp-heap/*.done
   ```
 
-### 3. Un segundo reporte, este a Polar2Grid
+### 3. Un segundo reporte, este a Polar2Grid — CERRADO, ARREGLADO AGUAS ARRIBA (2026-08-29)
 
-Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). **Redactado y
-completo** en `docs/reporte_polar2grid_nucaps.md`: revisar y enviar.
+Por el `KeyError: 'H2O_MR/attr/valid_range'` (ver pendiente 4, hallazgo 1). El texto quedó en
+`docs/reporte_polar2grid_nucaps.md` y se envió al foro de SSEC el 2026-08-24:
+<https://forums.ssec.wisc.edu/viewtopic.php?t=60122>.
 
-Va con dos peticiones, no una: el `KeyError` —que es lo que bloquea— y, aparte, que un
-producto ilegible no tumbe la llamada entera, porque cuando muere ya se pagó el remuestreo.
-Si resulta que el todo-o-nada es deliberado, la segunda se cae sola y la primera sigue en pie.
+Iba con dos peticiones, no una: el `KeyError` —que es lo que bloquea— y, aparte, que un
+producto ilegible no tumbe la llamada entera. **Las dos prosperaron.** David Hoese contestó al
+día siguiente y el 2026-08-26 mergeó [pytroll/satpy#3450](https://github.com/pytroll/satpy/pull/3450),
+que son exactamente dos líneas:
+
+```python
+-        valid_min, valid_max = self[var_path + "/attr/valid_range"]
++        valid_min, valid_max = self.get(var_path + "/attr/valid_range", (None, None))
+```
+```python
+         datasets_loaded = super(NUCAPSReader, self).load(
+             dataset_keys, previous_datasets=previous_datasets)
++        dataset_keys &= set(datasets_loaded.keys())
+```
+
+Tres cosas que dejó la respuesta y conviene no perder:
+
+- **El diagnóstico del todo-o-nada estaba a medias.** El `KeyError` de `valid_range` **no**
+  aborta por sí solo: Satpy lo atrapa al cargar y sigue. Lo que mata la corrida es el segundo
+  bug, que el reporte no había identificado — el lector no depura la lista de productos
+  pedidos con los que de verdad cargaron, así que el filtrado por presión posterior busca el
+  que faltó. De ahí la segunda línea del parche.
+- **`--list-products` no se va a arreglar**, y la razón es razonable: Polar2Grid no puede saber
+  que un producto fallará sin intentar cargarlo, y el lector `nucaps` no trae la detección
+  previa que sí tienen otros lectores. Seguirá anunciando las 100 capas de `H2O_MR`.
+- **El lector `nucaps` no tiene mantenimiento activo** (sin financiamiento dedicado). Merece
+  tenerse en cuenta antes de apoyar nada más en él: lo que se rompa, lo reportamos nosotros.
+
+**A nosotros no nos llega solo.** El bundle 3.2 lleva `satpy 0.59.1.dev110` congelado dentro,
+así que el arreglo vendría con Polar2Grid 3.3 —la misma versión que traerá el lector de OMPS—.
+Mientras tanto lo aplica `contenedores/polar2grid_v3.2-mapdrawer.def` en el `%post`, sobre el
+bundle recién extraído y **antes** del calentamiento, para que el `__pycache__` se genere ya
+parcheado. El bloque se ancla con `grep` sobre las dos líneas originales y aborta la
+compilación si el archivo dejó de ser el que espera; el `%test` comprueba por `inspect` —no con
+un `grep` sobre la ruta— que el módulo que Satpy importa de verdad trae los dos cambios.
+**Al pasar a Polar2Grid 3.3: quitar ese bloque, en `%post` y en `%test`.**
+
+Sacar vapor de agua sigue sin ser gratis aunque ya cargue: falta su CPT y su entrada en
+`product_map` de LANOT_tools.
+
+Queda una cosa por hacer del lado del foro: davidh preguntó a qué se refería el reporte con
+que "el remuestreo ya está pagado", con razón — si la carga falla, no se llega a remuestrear.
 
 **Lo que hizo que el reporte pasara de "tenemos un `KeyError`" a "aquí está la línea":** el
 bundle de Polar2Grid está extraído en **`/data/cspp/polar2grid_v_3_2/`**, en esta máquina, con
