@@ -1365,9 +1365,12 @@ La prueba definitiva es §3.3 del manual, con los datos y el comando de CIMSS
 | Familias | `NUCAPS-EDR`, `NUCAPS-CCR-AR`, `NUCAPS-OLR` | `NUCAPS-ALL-HR`, `NUCAPS-OLR` |
 | Duración | 1–3 min | 41 s |
 
-Ni siquiera el producto que sí sale coincide con lo documentado: el manual llama `NUCAPS-CCR-AR`
-al CCR y este build escribe `NUCAPS-ALL-HR`. **Va reporte a CIMSS.** Mientras tanto la rama de
-sondeos no tiene producto, y todo lo que cuelga de ella queda en pausa.
+De los tres productos finales solo sale el OLR. **Corregido el 2026-08-29 con la respuesta de
+CIMSS** (ver el pendiente 1): aquí se leyó que "el manual llama `NUCAPS-CCR-AR` al CCR y este
+build escribe `NUCAPS-ALL-HR`", como si fuera el mismo archivo con otro nombre. No lo es. El
+`ALL-HR` es un intermedio y el `CCR-AR` **tampoco se produce**, así que faltan dos de los tres.
+Mientras tanto la rama de sondeos no tiene producto, y todo lo que cuelga de ella queda en
+pausa.
 
 `run_heap_edr.sh` ya no puede firmar en falso: exige `NUCAPS-EDR` por nombre, y su diagnóstico
 recoge lo ya descartado para que nadie repita el recorrido.
@@ -1391,7 +1394,10 @@ investigar después.
 Lo que se aprendió costando dos corridas:
 
 **`NUCAPS-ALL-HR` no está en el manual.** §1.7 documenta `NUCAPS-EDR` y `NUCAPS-CCR-AR` por
-separado, pero la ruta JPSS con `-m HR_IRMW` entrega **un solo archivo combinado**. Por eso
+separado, y aquí se dedujo que la ruta JPSS con `-m HR_IRMW` los entregaba **en un solo archivo
+combinado**. Esa deducción era falsa —CIMSS la corrigió el 2026-08-25: `ALL-HR` es un
+intermedio y no sustituye a nada—, pero la consecuencia de método se sostiene igual, y es lo
+que vale conservar de este párrafo. Por eso
 `run_heap_edr.sh` cuenta las familias por lo que hay en el directorio y no contra una lista de
 patrones: con la lista, una corrida buena se reportaba como "EDR 0, CCR 0, OLR 14" sobre 28
 archivos, y el marcador —del que sale el resumen del orquestador— mentía.
