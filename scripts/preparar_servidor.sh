@@ -225,7 +225,7 @@ fase_1_directorios() {
 desplegar_estaticos() {
     local slug="$1" etiqueta="$2"
     local rol s version archivo origen receta destino comprobacion sha1
-    local ruta hash n=0 ya=0 fallos=0
+    local ruta hash desde n=0 ya=0 fallos=0
 
     paso "$etiqueta"
 
@@ -247,9 +247,18 @@ desplegar_estaticos() {
             continue
         fi
 
-        ruta="$TARFILES/$archivo"
+        # Se busca en los dos sitios. TARFILES es donde viven los estáticos, pero
+        # el bundle de HEAP llegó aquí desde el otro lado: era entrada de
+        # 'apptainer build' y vivía en TARBALLS hasta que dejó de instalarse en
+        # su imagen (2026-08-29). Obligar a moverlo a mano sería una trampa
+        # silenciosa para quien despliegue un servidor nuevo.
+        ruta="$TARFILES/$archivo"; desde="$TARFILES"
+        if [ ! -f "$ruta" ] && [ -f "$TARBALLS/$archivo" ]; then
+            ruta="$TARBALLS/$archivo"; desde="$TARBALLS"
+        fi
         if [ ! -f "$ruta" ]; then
             echo "  ✗ $archivo — FALTA y su destino no está poblado"
+            echo "    buscado en $TARFILES y en $TARBALLS"
             fallos=$((fallos + 1))
             continue
         fi
@@ -292,6 +301,12 @@ desplegar_estaticos() {
 
         if [ "$CONSERVAR" -eq 1 ]; then
             echo "    ○ se conserva el tarball (--conservar-tarballs)"
+        elif [ "$desde" = "$TARBALLS" ]; then
+            # Los estáticos se borran porque duplican lo que ya está en /data/opt
+            # y se pueden volver a bajar. Este no: está en el directorio de los
+            # bundles, viene de un sitio con registro y, desde que no entra en
+            # ninguna imagen, es la ÚNICA copia del software.
+            echo "    ○ se conserva: está en $TARBALLS, con los bundles"
         else
             correr rm -f "$ruta"
             echo "    ✓ tarball borrado"
