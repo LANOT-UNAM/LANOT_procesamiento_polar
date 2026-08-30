@@ -206,10 +206,42 @@ una **fase 7** que lo despliega en `/data/opt`, y `run_heap_edr.sh` lo monta con
 `/opt/cspp_heap`. Es exactamente la configuración que se probó, y encaja con el contrato
 host↔contenedor que ya sigue el resto de la cadena.
 
-**Lo que falta:** recompilar la imagen, desplegar la fase 7, correr `run_heap_edr.sh` sobre una
-pasada propia con CrIS y ATMS —`j01_d20260829_b45492` los tiene—, y solo entonces reactivar la
-etapa en `procesar_pasada.sh`. Y escribirle a kathys: su software no tiene nada malo y está
-dedicando tiempo a un problema ajeno.
+**HEAP PRODUCE SONDEOS. 2026-08-29, sobre datos propios:**
+
+```
+✅ ÉXITO: 70 productos de la pasada j01_d20260829_b45492
+   (14 NUCAPS-ALL-HR, 14 NUCAPS-CCR, 14 NUCAPS-CCR-AR, 14 NUCAPS-EDR, 14 NUCAPS-OLR)
+   en 1m 57s
+```
+
+Las cinco familias y la duración que declara el manual. **La rama de sondeos deja de estar
+bloqueada.**
+
+**Costó tres fallos encadenados, y los tres se escondían detrás del mismo `EXECUTION COMPLETED
+SUCCESSFULLY`:**
+
+| # | Qué faltaba | Dónde muere | Mensaje |
+|---|---|---|---|
+| 1 | que el árbol no fuera de solo lectura | `airsb103.exe` | `Cannot open file 'fort.40': Read-only file system` |
+| 2 | permiso de **ejecución** en el host | `main_nucaps_preprocessor` | `sh: …/main_nucaps_preprocessor: Permission denied` |
+| 3 | permiso de **escritura** en el host | `airsb103.exe` | `Cannot open file 'fort.40': Permission denied` |
+
+Los tres son la misma historia: **este bundle no es un estático de solo lectura como los demás,
+es software que escribe dentro de su propio árbol de instalación.** Y los tres devolvieron
+código 0. El 2 y el 3 aparecieron al desplegar en `/data/opt`, donde el `chown` al dueño de
+`/data` deja el árbol fuera del alcance de quien corre la cadena; por eso la fase 7 aplica
+`a+rX` y `g+w` y avisa si el usuario no pertenece al grupo.
+
+**De aquí sale un pendiente de operación**, que no es de esta tarde: la cadena debería probarse
+con el **mismo usuario que la ejecuta en producción**, porque los permisos son parte de lo que
+se prueba. Hoy se corre como una persona (`aguilars`) sobre un `/data` que es de `lanotadm`, y
+desde un clon en su `$HOME`. Si en producción la antena invoca `recibe.sh` como `lanotadm`, hay
+que decidir dónde vive el código —`instalar.sh` existe justo para eso, y hoy no se usa— antes
+de dar por validado nada que dependa de permisos.
+
+**Lo que falta:** renderizar los sondeos de esta pasada, reactivar la etapa en
+`procesar_pasada.sh`, y escribirle a kathys — su software no tiene nada malo y está dedicando
+tiempo a un problema ajeno.
 
 
 ### Lo que sigue abierto
