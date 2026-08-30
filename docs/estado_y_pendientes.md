@@ -232,12 +232,28 @@ código 0. El 2 y el 3 aparecieron al desplegar en `/data/opt`, donde el `chown`
 `/data` deja el árbol fuera del alcance de quien corre la cadena; por eso la fase 7 aplica
 `a+rX` y `g+w` y avisa si el usuario no pertenece al grupo.
 
-**De aquí sale un pendiente de operación**, que no es de esta tarde: la cadena debería probarse
-con el **mismo usuario que la ejecuta en producción**, porque los permisos son parte de lo que
-se prueba. Hoy se corre como una persona (`aguilars`) sobre un `/data` que es de `lanotadm`, y
-desde un clon en su `$HOME`. Si en producción la antena invoca `recibe.sh` como `lanotadm`, hay
-que decidir dónde vive el código —`instalar.sh` existe justo para eso, y hoy no se usa— antes
-de dar por validado nada que dependa de permisos.
+**De aquí salió una decisión de operación, tomada el mismo 2026-08-29: la cadena correrá como
+`lanotadm`.** El motivo es este episodio: dos fallos seguidos de permisos que no habrían
+aparecido probando con el usuario real, porque **los permisos son parte de lo que se prueba**.
+Hoy se ejecuta como una persona (`aguilars`) sobre un `/data` que es de `lanotadm`, y desde un
+clon en su `$HOME`.
+
+No hay código que cambiar: `preparar_servidor.sh` e `instalar.sh` ya usan
+`DUENO=lanotadm:lanotadm` por defecto, e `instalar.sh` despliega en `/opt/lanot/polares`
+exactamente para esto. Lo que hay es que empezar a usarlo, y en este orden:
+
+1. `sudo ./scripts/instalar.sh` — el código de operación deja de vivir en un `$HOME`.
+2. Un `chown -R lanotadm:lanotadm` de barrido sobre `/data/output`, `/data/tmp`,
+   `/data/ancillary` y `/var/log/lanot/polares`. La fase 1 hace `chown` **sin `-R`**, así que
+   los directorios ya son de `lanotadm` pero los archivos escritos hasta hoy son de `aguilars`.
+   No rompe nada —el dueño del directorio manda para crear y borrar— pero conviene dejarlo
+   limpio antes de que lo herede el cron.
+3. El cron (`barrer_pendientes.sh`, `update_sdr_daily.sh`, `update_atmos_ancillary.sh`,
+   `update_heap_ancillary.sh`) y lo que invoque la antena, como `lanotadm` y apuntando a
+   `/opt/lanot/polares`.
+
+El clon en el `$HOME` sigue siendo el sitio para desarrollar y probar a mano; lo que cambia es
+que deja de ser lo que corre en operación.
 
 **Y la cadena de sondeos, entera, con datos propios.** Renderizada la misma pasada:
 
