@@ -22,6 +22,60 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## Al retomar el lunes 2026-08-31, en `lanot7`
+
+La sesión del 29 cerró con el trabajo mudándose a una máquina llamada **`lanot7`**,
+de la que no se dijo qué papel cumple. **Antes de dar por buena ninguna ruta,
+comprobarlo**: `id`, `/etc/os-release`, y si existen `/data/cspp`,
+`/opt/containers`, `/opt/contenedores`, `/data/opt` y el clon. Esta sesión perdió
+tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
+
+### Lo que está a medio camino, en orden
+
+1. **Publicar las dos respuestas del foro**, revisadas y actualizadas el 29:
+   `docs/reporte_polar2grid_nucaps.md` (davidh, Polar2Grid) y
+   `docs/reporte_cimss_heap_v3.0.md` (kathys, HEAP). La segunda es la que tiene
+   a alguien esperando: CIMSS sigue creyendo que investiga un fallo suyo.
+2. **Recompilar `polar2grid_v3.2-mapdrawer.sif`.** Los parches de CAPE y Lifted
+   Index están escritos y probados pero **no están en ninguna imagen**. El
+   mecanismo cambió: ya no son `sed` en el `.def` sino
+   `contenedores/parches/aplicar_parches_satpy.py`, que `construir.sh` copia al
+   directorio de compilación.
+3. **Verificar los permisos finales del bundle de HEAP.** La corrida buena se
+   hizo con `a+rwX`; después se afinó a `go-w,g+w` y **desde entonces no ha
+   vuelto a correr HEAP**. Debería bastar —el usuario está en el grupo
+   `lanotadm`— pero está sin comprobar:
+   `HEAP_OPTS=--noclean ./scripts/run_heap_edr.sh -p <clave> --force`.
+4. **CAPE y Lifted Index hasta la vista.** Falta decidir los rangos de las dos
+   paletas, y con eso: las CPT, las entradas de `product_map` y el bloque en
+   `run_polar2grid_edr.sh`. El plan detallado está en
+   `~/lanot/LANOT_tools/docs/plan_cape_lifted_index.md` — **sin commitear**, que
+   es otro repositorio.
+5. **Una pasada completa con los trece eslabones**, ya con HEAP dentro de
+   `procesar_pasada.sh`. Todavía no ha corrido ninguna así.
+6. **El PR a `pytroll/satpy`** con los cinco parches nuestros (`column_index`,
+   `extra_fill_values`, la precedencia de `units` y las dos entradas del YAML).
+   El entorno para probarlos está descrito en `contenedores/parches/README.md`.
+7. **Adoptar `lanotadm`**: `instalar.sh`, el `chown -R` de barrido y el cron.
+   Los pasos y el porqué están arriba, en la sección del 29.
+
+### Lo que se puede borrar cuando toque
+
+- `scripts/diagnostico_heap_cimss.sh`, en cuanto se cierre el hilo con CIMSS: se
+  escribió para responder «¿es el contenedor?» y esa pregunta ya está contestada
+  por otra vía.
+
+### Sin prisa
+
+- Tres pasadas viejas (`20260508`, `20260811`, `20260814`) no tienen GeoTIFF de
+  incendios, y **no es por el bug del sello** —se comprobó—: se renderizaron
+  antes de que existiera el bloque. Un `--force` las recupera si se quieren.
+- El **Skew-T** de los sondeos: producto nuevo, no encaja en el flujo
+  `geotiff → vestir()` y necesita una lista de sitios. Decidido hacerlo con PIL
+  y sin matplotlib. Anotado al final del plan de LANOT_tools.
+
+---
+
 ## Dónde quedó el 2026-08-29 (cierre de la sesión)
 
 **El parche de `nucaps` está en producción y la cadena entera se revalidó con él.** SSEC
