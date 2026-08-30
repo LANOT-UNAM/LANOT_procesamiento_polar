@@ -176,14 +176,29 @@ sensible mixing ratio for 850 hPa over Mexico, and those are the true extremes o
 not a clipped range. So there seems to be no need for a fallback range; we just wanted you
 to have the measurement rather than the assumption.
 
-**An offer.** Our sounder branch isn't live yet — CSPP HEAP v3.0 runs here but doesn't emit
-`NUCAPS-EDR` on our data, which we're chasing separately with the HEAP team — so everything
-above was tested against the CSPP Sounder QL v1.4 sample granules. Once we do have
-operational NUCAPS files from our own direct-broadcast passes, we'll be exercising this
-reader daily over Mexico and the Gulf. Given that it isn't actively maintained, we're glad
-to report whatever we run into, and to test candidate fixes against real files if that's
-useful to you. Just tell us where you'd prefer such reports — here, or as issues at
-`pytroll/satpy`.
+**And an update, since it changes what we can offer.** When I started writing this our
+sounder branch was not live: CSPP HEAP v3.0 ran here but produced no `NUCAPS-EDR` at all. That
+turned out to be our own packaging — we had installed the HEAP bundle inside a read-only
+container image, and its retrieval step needs to write inside its own installation tree. Fixed
+the same day. So the reader is now running on our own direct-broadcast data: 14 granules over
+Mexico, resampled to a 5 km WGS-84 grid, temperature at three pressure levels plus skin
+temperature, no complaints from the reader.
+
+That means the offer is a real one rather than a promise. We'll be exercising this reader
+daily, and since you've said it has no active maintainer, we're glad to report what we find
+and to test candidate fixes against real files.
+
+In fact we have one ready. NUCAPS packs CAPE and the Lifted Index into columns 0 and 9 of its
+`Stability` variable, and the reader can't currently reach them: `index` addresses the first
+dimension and `pressure_index` addresses the last but carries pressure-level semantics with
+it. Adding a plain last-axis index makes both available. Two details come with it — NUCAPS
+leaves non-retrievals in `Stability` at `-999.0` rather than the declared `_FillValue` of
+`-9999.0` (CIMSS's own Sounder QL code notes this), and they can't be dropped via
+`valid_range` because a negative Lifted Index is meaningful; and a `units` set in the YAML is
+currently overwritten by the file's own attribute, which matters when two products share one
+variable whose units attribute is `"1"`. We have it working with tests against the 0.59.1
+Satpy in the Polar2Grid 3.2 bundle. Happy to open it as a PR at `pytroll/satpy` — or to
+describe it here first if you'd rather look before it lands.
 
 Thanks again.
 

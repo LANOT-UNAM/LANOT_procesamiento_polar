@@ -179,6 +179,20 @@ permanently.
    our side. That reasoning had a hole in it: your test case rules out *our inputs*, not *our
    installation*. Every single run — yours and ours — went through the same broken image.
 
+**It bit us three times, in three different ways, and that is the interesting part.** Once we
+moved the bundle out of the image and onto disk, the same class of problem reappeared twice
+more as ordinary Unix permissions, because the deployed tree belonged to a different user than
+the one running the chain:
+
+```
+sh: .../Common_Bin/main_nucaps_preprocessor: Permission denied        (no execute)
+Fortran runtime error: Cannot open file 'fort.40': Permission denied  (no write)
+```
+
+Read-only filesystem, no execute, no write — three distinct failures, all in the same place,
+and **all three exited 0**. The final one is now behind us: on our own NOAA-20 CrIS and ATMS
+data the package produces all five families, 14 granules each, in 1m 57s.
+
 **One observation you may find worth acting on.** The failure is detected internally: the log
 ends with `FATAL: Error in HEAP_Retrieval.pl` followed by
 
@@ -189,9 +203,12 @@ ERROR MESSAGING SYSTEM IMPROPERLY SET UP. UNABLE TO E-MAIL ERROR MESSAGE.
 but `run_heap.bash` still exits 0 and prints `EXECUTION COMPLETED SUCCESSFULLY`. In an
 unattended chain that is the worst possible outcome: our orchestrator recorded fourteen
 successful passes that had produced no soundings at all. If the wrapper propagated a non-zero
-exit status when a module reports FATAL, this class of problem would surface on the first run
-instead of the fifteenth. A line in the installation guide noting that the installation tree
-must be writable — containers or read-only mounts — would also have saved us two weeks.
+exit status when a module reports FATAL, every one of the three failures above would have
+surfaced on the first run instead of the fifteenth — and we would never have opened this
+thread. A line in the installation guide noting that the installation tree must be readable,
+writable and executable by the account running the software — which rules out installing it
+inside a container image, and matters for any shared installation — would also have saved us
+two weeks.
 
 **On running outside the container**, which you asked for: we could not. Our host is Rocky
 Linux 10.2 and the HEAP binaries are linked against the EL8 HDF5 (`libhdf5.so.103`,
