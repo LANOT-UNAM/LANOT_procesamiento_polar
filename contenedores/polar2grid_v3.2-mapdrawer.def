@@ -30,6 +30,11 @@ From: lanot_base_rocky9.sif
     # El archivo fuente de Polar2Grid (debe estar junto a este .def en el host)
     CSPP_POLAR2GRID_V3.2.tar.gz /opt/
 
+    # Los parches al Satpy del bundle. Van versionados en el repositorio, no
+    # embebidos aquí, porque son código y se prueban aparte: ver la cabecera de
+    # ese archivo y contenedores/parches/README.md.
+    parches/aplicar_parches_satpy.py /opt/
+
     # Recursos de mapdrawer que no vienen en el repo, descartando los pesados.
     #    Sintaxis: <ruta_en_el_host> <ruta_en_el_contenedor>
     #    Las colortables se omiten a propósito: install.sh copia las del repo a
@@ -98,51 +103,25 @@ From: lanot_base_rocky9.sif
     rm -f CSPP_POLAR2GRID_V3.2.tar.gz
     ln -s polar2grid_v_3_2 polar2grid
 
-    # --- Parche al lector nucaps de Satpy (pytroll/satpy#3450) ---
+    # --- Parches al Satpy que viaja dentro del bundle ---
     #
-    # Los NUCAPS-EDR v3r2 ya no traen el atributo 'valid_range' en H2O_MR (y en
-    # otros 17 productos por nivel de presión), y el lector lo daba por hecho
-    # accediendo con corchetes. El KeyError no aborta por sí solo —Satpy lo
-    # atrapa y sigue— pero el lector tampoco depura la lista de productos
-    # pedidos con los que de verdad cargaron, así que el filtrado por presión
-    # posterior busca el que faltó y ahí SÍ muere la corrida entera: se pierden
-    # también los Temperature_* que habían cargado bien. Eso costó una tarde en
-    # tahan el 2026-08-17 y un hilo en el foro de SSEC:
-    #     https://forums.ssec.wisc.edu/viewtopic.php?t=60122
-    # davidh lo arregló en dos líneas, ya está en main de Satpy, y a nosotros
-    # NO nos llega solo: el bundle 3.2 lleva satpy 0.59.1.dev110 congelado
-    # dentro. Llegaría con Polar2Grid 3.3, la misma que traerá el lector de
-    # OMPS.
+    # El bundle lleva satpy 0.59.1.dev110 congelado, así que nada de lo que se
+    # arregle aguas arriba nos llega hasta Polar2Grid 3.3. Lo que aplicamos y
+    # por qué está en la cabecera del propio script, que se versiona en el
+    # repositorio y se prueba fuera de aquí (contenedores/parches/README.md).
     #
-    # AL PASAR A POLAR2GRID 3.3: quitar este bloque, aquí y en %test.
+    # Va ANTES del calentamiento de más abajo para que el __pycache__ se genere
+    # ya parcheado: la imagen no se puede reescribir después.
     #
-    # Los grep de anclaje fallan a propósito si el archivo dejó de ser el que
-    # este parche espera (bundle nuevo, o arreglo ya aplicado): con 'set -e' la
-    # incompatibilidad sale en la compilación y no en producción.
-    echo "--- Parcheando satpy/readers/nucaps.py (pytroll/satpy#3450) ---"
-    NUCAPS_PY=$(find /opt/polar2grid/libexec/python_runtime/lib \
-                     -path '*/satpy/readers/nucaps.py')
-    test -f "$NUCAPS_PY"
-
-    grep -q 'valid_min, valid_max = self\[var_path + "/attr/valid_range"\]' "$NUCAPS_PY" \
-        || { echo "nucaps.py ya no tiene la línea de valid_range: ¿bundle nuevo? Revisar el parche."; exit 1; }
-    grep -q '^            dataset_keys, previous_datasets=previous_datasets)$' "$NUCAPS_PY" \
-        || { echo "nucaps.py ya no tiene la llamada a super().load(): ¿bundle nuevo? Revisar el parche."; exit 1; }
-
-    sed -i 's|valid_min, valid_max = self\[var_path + "/attr/valid_range"\]|valid_min, valid_max = self.get(var_path + "/attr/valid_range", (None, None))|' "$NUCAPS_PY"
-    sed -i 's|^\(            dataset_keys, previous_datasets=previous_datasets)\)$|\1\n        dataset_keys \&= set(datasets_loaded.keys())|' "$NUCAPS_PY"
-
-    # Se comprueba por 'inspect', no con un grep sobre la ruta, para que lo
-    # verificado sea el archivo que de verdad importa Satpy y no una copia
-    # suelta del bundle. Va aquí, antes del calentamiento de más abajo, para
-    # que el __pycache__ se genere ya con el archivo parcheado: la imagen no se
-    # puede reescribir después.
-    /opt/polar2grid/libexec/python_runtime/bin/python -c '
-import inspect, satpy.readers.nucaps as n
-src = inspect.getsource(n)
-assert "self.get(var_path + \"/attr/valid_range\", (None, None))" in src, "no se aplicó el parche de valid_range"
-assert "dataset_keys &= set(datasets_loaded.keys())" in src, "no se aplicó el parche de dataset_keys"
-'
+    # El script exige encontrar el texto exacto que espera; si el bundle cambia,
+    # sale con 1 diciendo cuál parche y por qué, y con 'set -e' eso tumba la
+    # compilación. Es deliberado: un parche aplicado a medias en un lector es
+    # justo la clase de fallo que solo se ve en producción.
+    echo "--- Parcheando Satpy ---"
+    SP=$(dirname "$(dirname "$(/opt/polar2grid/libexec/python_runtime/bin/python \
+        -c 'import satpy, os; print(os.path.realpath(satpy.__file__))')")")
+    /opt/polar2grid/libexec/python_runtime/bin/python /opt/aplicar_parches_satpy.py "$SP"
+    /opt/polar2grid/libexec/python_runtime/bin/python /opt/aplicar_parches_satpy.py "$SP" --verificar
 
     # Descargar e Instalar LANOT_tools (mapdrawer)
     echo "--- Clonando LANOT_tools en $LANOT_TOOLS_COMMIT ---"
@@ -277,16 +256,12 @@ assert "dataset_keys &= set(datasets_loaded.keys())" in src, "no se aplicó el p
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa20_viirs_CldTopPres_20260817_193624_wgs84_geo_750m.tif'); assert m.get('product')=='Cloud Top Pressure', 'product_map sin cldtoppres: pin viejo? -> %r' % m.get('product'); assert m.get('units')=='hPa'"
     echo "  OK --percentiles, --lat-south, --font-bg, --timestamp-pos, codigos, product_map"
 
-    # Ver la nota del %post: el lector nucaps del bundle 3.2 se parchea con
-    # pytroll/satpy#3450, sin el cual una pasada de sondeos muere entera.
-    echo "Parche nucaps (satpy#3450):"
-    /opt/polar2grid/libexec/python_runtime/bin/python -c '
-import inspect, satpy.readers.nucaps as n
-src = inspect.getsource(n)
-assert "self.get(var_path + \"/attr/valid_range\", (None, None))" in src, "falta el parche de valid_range"
-assert "dataset_keys &= set(datasets_loaded.keys())" in src, "falta el parche de dataset_keys"
-'
-    echo "  OK valid_range y dataset_keys"
+    # Ver la nota del %post. Se comprueba con el MISMO script que los aplica,
+    # para que no haya dos listas de parches que se puedan desincronizar.
+    echo "Parches de Satpy:"
+    SP=$(dirname "$(dirname "$($POLAR2GRID_HOME/libexec/python_runtime/bin/python \
+        -c 'import satpy, os; print(os.path.realpath(satpy.__file__))')")")
+    $POLAR2GRID_HOME/libexec/python_runtime/bin/python /opt/aplicar_parches_satpy.py "$SP" --verificar
 
     echo "venv:"
     /opt/lanot-tools/venv/bin/python --version

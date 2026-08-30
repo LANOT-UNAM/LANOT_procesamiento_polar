@@ -43,7 +43,9 @@ from metadata import Metadata
 # Las categorías son las carpetas que crean run_polar2grid_l1.sh (dnb, rgb) y
 # run_polar2grid_edr.sh (el resto). El orden es el de la galería: primero lo que
 # se mira, no el alfabético. Una categoría sin imágenes seleccionadas no se
-# publica, así que `sounder` no aparecerá mientras HEAP siga desactivado.
+# publica, que es lo que pasaba con `sounder` mientras HEAP estuvo desactivado.
+# Desde el 2026-08-29 HEAP produce NUCAPS-EDR y la pasada deja cuatro vistas de
+# sondeo —850, 700 y 500 hPa, más la skin—, así que la sección ya sale sola.
 CATEGORIAS = [
     ("dnb",     "Day/Night Band"),
     ("rgb",     "Compuestos RGB"),
