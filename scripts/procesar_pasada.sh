@@ -500,7 +500,7 @@ CLAVE_HEAP="$CLAVE_OMPS"
 echo ""
 echo "  Pasada:      $CLAVE"
 echo "  Clave OMPS:  $CLAVE_OMPS  (otra órbita para el mismo sobrevuelo)"
-echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS; etapa desactivada)"
+echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS)"
 
 # ==============================================================================
 # NIVELES 2, 3 Y 4
@@ -517,19 +517,19 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
     "$(tarea fire   run_active_fire_edr.sh "$CLAVE")" \
     "$(tarea flood  run_flood_edr.sh       "$CLAVE")" \
     "$(tarea omps   run_omps_edr.sh        "$CLAVE_OMPS")" \
+    "$(tarea heap   run_heap_edr.sh        "$CLAVE_HEAP")" \
     "$(tarea p2g_l1 run_polar2grid_l1.sh   "$CLAVE")"
 
-# HEAP queda FUERA de la cadena desde el 2026-08-17, mientras CIMSS responde.
-# CSPP HEAP v3.0 no produce NUCAPS-EDR —ni con los datos de prueba del propio
-# fabricante, con su propio comando: es el build, no nuestra cadena—, así que la
-# etapa falla siempre (correctamente, desde que exige el producto por nombre) y
-# cada pasada dejaría un /data/tmp/heap_work_* con 30 .nc que ya nadie borra,
-# más 25 s gastados en radiancias que no consume nadie.
+# HEAP vuelve a la cadena el 2026-08-29. Estuvo fuera doce días porque no
+# producía NUCAPS-EDR, y aquello se atribuyó al build de CSPP: era nuestro. El
+# bundle iba dentro del .sif y su árbol de instalación tiene que ser escribible
+# —airsb103.exe abre 'fort.40' ahí dentro—, así que la recuperación moría y con
+# ella los conversores a NetCDF, siempre con código 0. Ahora el bundle se
+# despliega en /data/opt (preparar_servidor.sh, fase 7) y se monta.
 #
-# Para reactivarla basta con devolver esta línea a la lista de arriba; el resto
-# —run_heap_edr.sh, el renderizado de sondeos de run_polar2grid_edr.sh, las CPT
-# por nivel— está escrito y probado, y espera solo al producto.
-#     "$(tarea heap   run_heap_edr.sh        "$CLAVE_HEAP")" \
+# Probado de punta a punta sobre j01_d20260829_b45492: 14 NUCAPS-EDR en 1m 57s,
+# y el renderizado entrega los cuatro sondeos con su vista. Va en el nivel 2
+# porque solo necesita SDR; el nivel 4 (p2g_edr) es el que los consume.
 
 ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
     "$(tarea lsr  run_lsr_edr.sh  "$CLAVE")" \

@@ -239,9 +239,20 @@ desde un clon en su `$HOME`. Si en producción la antena invoca `recibe.sh` como
 que decidir dónde vive el código —`instalar.sh` existe justo para eso, y hoy no se usa— antes
 de dar por validado nada que dependa de permisos.
 
-**Lo que falta:** renderizar los sondeos de esta pasada, reactivar la etapa en
-`procesar_pasada.sh`, y escribirle a kathys — su software no tiene nada malo y está dedicando
-tiempo a un problema ajeno.
+**Y la cadena de sondeos, entera, con datos propios.** Renderizada la misma pasada:
+
+```
+  SONDEOS:  14 productos en la ventana
+✅ ÉXITO: 31 geotiff (atmos 9, lsr 14, sst 1, fire 3, sondeos 4)
+          y 16 vistas (atmos 8, lsr 1, sst 1, fire 1, sondeos 4, flood 1) en 4m 6s
+```
+
+Los cuatro sondeos con su vista —temperatura en 850, 700 y 500 hPa, más la skin—, que es lo que
+estaba escrito y probado desde el 2026-08-17 esperando insumos. **HEAP vuelve a
+`procesar_pasada.sh`**, en el nivel 2, doce días después de salir.
+
+**Lo que falta:** escribirle a kathys — su software no tiene nada malo y está dedicando tiempo
+a un problema ajeno.
 
 
 ### Lo que sigue abierto

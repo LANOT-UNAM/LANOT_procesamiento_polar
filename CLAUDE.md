@@ -77,10 +77,10 @@ RAW (CCSDS de antena)
             │    └─ cspp_heap_v3.0.sif ──────► Level 2 sounder (NUCAPS-{ALL-HR,OLR}*.nc)
             │         [la ÚNICA rama que come DOS sensores a la vez, y por eso empareja por
             │          traslape de intervalos con margen (HEAP_MARGEN_ATMS) y no por clave de
-            │          pasada. No S-NPP. Desactivado en procesar_pasada.sh hasta probarlo
-            │          con datos propios: hasta el 2026-08-29 no salían NUCAPS-EDR ni
-            │          NUCAPS-CCR-AR, y la causa era NUESTRA — el bundle dentro del .sif,
-            │          que es de solo lectura. Ya montado desde el host, salen los tres]
+            │          pasada. No S-NPP. Estuvo desactivado del 2026-08-17 al 29 porque no
+            │          salían NUCAPS-EDR ni NUCAPS-CCR-AR, y la causa era NUESTRA: el bundle
+            │          dentro del .sif, que es de solo lectura. Montado desde el host, salen
+            │          las cinco familias]
             │
             └─ OMPS  SOMTC*/GOTCO* (Nadir Mapper)  +  SOMPS*/GONPO* (Nadir Profiler)
                  └─ cspp_omps_l2_v1.0.sif ───► Level 2 omps (V8TOZ-EDR*, V8PRO-EDR* .nc)
