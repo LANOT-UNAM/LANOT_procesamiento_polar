@@ -36,6 +36,7 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    `docs/reporte_polar2grid_nucaps.md` (davidh, Polar2Grid) y
    `docs/reporte_cimss_heap_v3.0.md` (kathys, HEAP). La segunda es la que tiene
    a alguien esperando: CIMSS sigue creyendo que investiga un fallo suyo.
+   **Se pegan desde los `.bbcode`, no desde el `.md`** — ver abajo.
 2. **Recompilar `polar2grid_v3.2-mapdrawer.sif`.** Los parches de CAPE y Lifted
    Index están escritos y probados pero **no están en ninguna imagen**. El
    mecanismo cambió: ya no son `sed` en el `.def` sino
@@ -58,6 +59,36 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    El entorno para probarlos está descrito en `contenedores/parches/README.md`.
 7. **Adoptar `lanotadm`**: `instalar.sh`, el `chown -R` de barrido y el cron.
    Los pasos y el porqué están arriba, en la sección del 29.
+
+### El foro de SSEC es phpBB: se pega BBCode, no Markdown
+
+Los `docs/reporte_*.md` son la fuente en Markdown, pero **eso no es lo que se pega
+en el foro**. `forums.ssec.wisc.edu` corre phpBB (prosilver, `viewtopic.php?t=`),
+que nunca ha soportado Markdown. Los dos mensajes del 2026-08-24 sí se convirtieron
+a BBCode antes de publicarlos, pero la versión convertida no se guardó y hubo que
+reconstruir la regla leyendo el HTML de lo publicado (2026-08-31). Ahora sí queda
+versionada, en `docs/respuesta_*.bbcode`, que son **carga útil pura**: seleccionar
+todo y pegar.
+
+La conversión, tal como se hizo:
+
+| Markdown | phpBB |
+|---|---|
+| `## Encabezado` | `[b]Encabezado[/b]` — no hay encabezados |
+| `**negrita**`, `*cursiva*` | `[b]…[/b]`, `[i]…[/i]` |
+| ` ```bash … ``` ` | `[code]…[/code]` |
+| `` `código en línea` `` | **se quitan los backticks**; no hay `[c]` |
+| `- ítem` / `1. ítem` | `[list]` / `[list=1]` con `[*]` |
+| `[texto](url)` | `[url=url]texto[/url]` |
+| tabla | texto alineado dentro de un `[code]` — phpBB no tiene tablas |
+
+Y una que no es de etiquetas: **los párrafos van en una sola línea**. phpBB
+convierte cada salto en un `<br>`, así que el corte a 95 columnas del Markdown
+saldría dentado. Se comprueba contando los `<br>` de lo publicado: 27 en el hilo
+60121, que son los párrafos, no las líneas.
+
+Al pegar, revisar la pestaña **Options** del formulario: si *Disable BBCode* quedó
+marcada, ni el BBCode bien escrito se renderiza.
 
 ### Lo que se puede borrar cuando toque
 

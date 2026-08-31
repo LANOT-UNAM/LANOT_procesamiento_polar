@@ -15,7 +15,8 @@
 > ligados contra el HDF5 de EL8.
 >
 > La respuesta que cierra el hilo —la corrección, las dos afirmaciones erróneas del reporte y
-> las dos sugerencias a CIMSS— está **al final de este archivo, pendiente de publicar**.
+> las dos sugerencias a CIMSS— está **al final de este archivo**, y ya convertida a BBCode,
+> lista para pegar, en **`docs/respuesta_cimss_heap_v3.0.bbcode`**. **Pendiente de publicar.**
 >
 > Lo que sigue es el texto tal como se envió, sin retocar.
 

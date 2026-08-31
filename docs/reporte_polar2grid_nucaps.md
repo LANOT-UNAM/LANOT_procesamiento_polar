@@ -15,7 +15,8 @@
 > CAPE y Lifted Index. **Al pasar a la 3.3 hay que quitar los dos de #3450.**
 >
 > La respuesta de seguimiento —con la medición del `H2O_MR` real y el ofrecimiento de abrir el
-> PR de CAPE/Lifted Index— está **al final de este archivo, pendiente de publicar**.
+> PR de CAPE/Lifted Index— está **al final de este archivo**, y ya convertida a BBCode, lista
+> para pegar, en **`docs/respuesta_polar2grid_nucaps.bbcode`**. **Pendiente de publicar.**
 >
 > Lo que sigue es el texto tal como se envió, sin retocar.
 

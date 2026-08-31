@@ -1,0 +1,30 @@
+Hi David,
+
+Thank you — a fix merged within two days of the report is more than we expected, especially for a reader you've told us has no dedicated funding behind it.
+
+[b]On "the resampling is already paid for": you're right, and that phrasing was wrong.[/b] I wrote it assuming the KeyError surfaced somewhere after the data had been loaded, so that the expensive part of the job was already done when the run died. Your explanation makes clear that isn't what happens — the load fails first, and with lazy dask evaluation nothing gets resampled. I should have checked before putting it that way.
+
+What I actually meant to argue survives without that claim, and it's simpler: for us the unit of work is one command per satellite pass, run unattended. When a single unreadable product takes the whole call down, the pass produces [i]nothing[/i] — including the four temperature fields that loaded perfectly well — and it takes a human noticing the empty output directory to find out. That is the cost, rather than any wasted computation. So your second fix, the one I hadn't identified, is exactly the part that matters to us: I had diagnosed the valid_range lookup and assumed it was also what aborted the run, when in fact Satpy was catching that and the real casualty was the post-load pass over the requested keys, looking for a product that never arrived. Good to have the correct picture.
+
+[b]On --list-products:[/b] understood, and no argument from us. Knowing that the advertised list is what the reader's configuration declares rather than what will actually load is enough — now that failures degrade instead of aborting, an over-optimistic list costs us nothing.
+
+[b]Your fix works on the real files — confirmed here.[/b] We run Polar2Grid v3.2 from the bundled tarball, so satpy 0.59.1.dev110 is frozen inside it and the fix won't reach us until v3.3. Rather than wait, we applied your two lines to satpy/readers/nucaps.py in our container recipe (anchored so the build fails if the file ever stops matching what the patch expects, and it comes out cleanly when we move to 3.3). Two results you may find useful:
+
+[list]
+[*]The command from the original report — the four temperature fields [b]plus[/b] H2O_MR_853mb, over the same 19 NUCAPS-EDR_v3r2_n21 granules — now ends in SUCCESS with 5 GeoTIFFs, where before it died with the KeyError and produced none.
+[*]Your two lines apply unchanged to 0.59.1.dev110, and your updated test_nucaps.py runs against that version as-is: 2 errors before the patch, all 22 passing after. In our reproduction the failure surfaces in _mask_data_below_surface_pressure, which is what made the second bug legible to us.
+[/list]
+
+One observation, offered as information rather than as a request: with the fix, valid_min/valid_max are None for these variables, so the valid_max masking is skipped entirely and only _FillValue is applied. That turns out to be harmless on real data — our H2O_MR_853mb comes out at 0.001–0.018 g/g (mean 0.010), which is physically sensible mixing ratio for 850 hPa over Mexico, and those are the true extremes of the field, not a clipped range. So there seems to be no need for a fallback range; we just wanted you to have the measurement rather than the assumption.
+
+[b]And an update, since it changes what we can offer.[/b] When I started writing this our sounder branch was not live: CSPP HEAP v3.0 ran here but produced no NUCAPS-EDR at all. That turned out to be our own packaging — we had installed the HEAP bundle inside a read-only container image, and its retrieval step needs to write inside its own installation tree. Fixed the same day. So the reader is now running on our own direct-broadcast data: 14 granules over Mexico, resampled to a 5 km WGS-84 grid, temperature at three pressure levels plus skin temperature, no complaints from the reader.
+
+That means the offer is a real one rather than a promise. We'll be exercising this reader daily, and since you've said it has no active maintainer, we're glad to report what we find and to test candidate fixes against real files.
+
+In fact we have one ready. NUCAPS packs CAPE and the Lifted Index into columns 0 and 9 of its Stability variable, and the reader can't currently reach them: index addresses the first dimension and pressure_index addresses the last but carries pressure-level semantics with it. Adding a plain last-axis index makes both available. Two details come with it — NUCAPS leaves non-retrievals in Stability at -999.0 rather than the declared _FillValue of -9999.0 (CIMSS's own Sounder QL code notes this), and they can't be dropped via valid_range because a negative Lifted Index is meaningful; and a units set in the YAML is currently overwritten by the file's own attribute, which matters when two products share one variable whose units attribute is "1". We have it working with tests against the 0.59.1 Satpy in the Polar2Grid 3.2 bundle. Happy to open it as a PR at pytroll/satpy — or to describe it here first if you'd rather look before it lands.
+
+Thanks again.
+
+Alejandro Sierra
+LANOT — Laboratorio Nacional de Observación de la Tierra
+Universidad Nacional Autónoma de México

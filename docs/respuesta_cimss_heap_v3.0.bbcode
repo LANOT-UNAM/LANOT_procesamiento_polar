@@ -1,0 +1,41 @@
+Hi Kathy,
+
+[b]Please stop work on this — the bug is ours, not yours.[/b] CSPP HEAP v3.0 is fine. We found the cause this morning, and we found it by doing what you asked: re-running with --noclean. That was the missing piece, and I'll explain why below because it may be worth knowing for other users.
+
+[b]The cause.[/b] We run HEAP inside an Apptainer container, with the bundle installed [i]into[/i] the image. An Apptainer image is a read-only filesystem. airsb103.exe opens an unnamed Fortran unit inside the installation tree, and that write fails:
+
+[code]At line 330 of file read_nl.F (unit = 40)
+Fortran runtime error: Cannot open file 'fort.40': Read-only file system
+FATAL: Error in HEAP_Retrieval.pl: Error running airsb103.exe[/code]
+
+HEAP_Retrieval.pl aborts, and with it the NetCDF converters — hence no NUCAPS-EDR and no NUCAPS-CCR-AR. NUCAPS-OLR survives because main_cris_olr writes it on a different path. That is also why the run took 41 seconds instead of the documented 1–3 minutes.
+
+[b]The proof, before the explanation.[/b] Same image, same test data, same command — the only change being the bundle bind-mounted from a writable disk instead of installed inside the image — produces all five families: 16 NUCAPS-EDR, 16 NUCAPS-CCR-AR, 16 NUCAPS-CCR, 16 NUCAPS-ALL-HR, 16 NUCAPS-OLR, in 1m 59s. We've since moved the bundle out of the image permanently.
+
+[b]Two things in my original report were wrong, and I'd like to correct them on the record.[/b]
+
+[list=1]
+[*]I wrote that the word "retrieval" never appears in the logs, and concluded the retrieval step was never attempted. It [i]is[/i] attempted. That observation was about the wrapper log — the only one that survived, because without --noclean the working directory is cleaned up. HEAP_Retrieval.log and nucaps_retrieval.log are there in the failing runs too, and the first one has held the exact error message all along.
+[*]I argued that since your own test case reproduced the failure, the problem could not be on our side. That reasoning had a hole in it: your test case rules out [i]our inputs[/i], not [i]our installation[/i]. Every single run — yours and ours — went through the same broken image.
+[/list]
+
+[b]It bit us three times, in three different ways, and that is the interesting part.[/b] Once we moved the bundle out of the image and onto disk, the same class of problem reappeared twice more as ordinary Unix permissions, because the deployed tree belonged to a different user than the one running the chain:
+
+[code]sh: .../Common_Bin/main_nucaps_preprocessor: Permission denied        (no execute)
+Fortran runtime error: Cannot open file 'fort.40': Permission denied  (no write)[/code]
+
+Read-only filesystem, no execute, no write — three distinct failures, all in the same place, and [b]all three exited 0[/b]. The final one is now behind us: on our own NOAA-20 CrIS and ATMS data the package produces all five families, 14 granules each, in 1m 57s.
+
+[b]One observation you may find worth acting on.[/b] The failure is detected internally: the log ends with FATAL: Error in HEAP_Retrieval.pl followed by
+
+[code]ERROR MESSAGING SYSTEM IMPROPERLY SET UP. UNABLE TO E-MAIL ERROR MESSAGE.[/code]
+
+but run_heap.bash still exits 0 and prints EXECUTION COMPLETED SUCCESSFULLY. In an unattended chain that is the worst possible outcome: our orchestrator recorded fourteen successful passes that had produced no soundings at all. If the wrapper propagated a non-zero exit status when a module reports FATAL, every one of the three failures above would have surfaced on the first run instead of the fifteenth — and we would never have opened this thread. A line in the installation guide noting that the installation tree must be readable, writable and executable by the account running the software — which rules out installing it inside a container image, and matters for any shared installation — would also have saved us two weeks.
+
+[b]On running outside the container[/b], which you asked for: we could not. Our host is Rocky Linux 10.2 and the HEAP binaries are linked against the EL8 HDF5 (libhdf5.so.103, libhdf5_hl.so.100), which that release does not provide, so they don't load at all. That is precisely why we run HEAP in a Rocky 8 container — not as a layer between HEAP and a supported system, but as the way to give it the system your manual specifies. Worth knowing if other users start moving to EL10.
+
+Thank you for the time you already put into this, and sorry for pointing it at the wrong place. The --noclean suggestion is what solved it.
+
+Alejandro Sierra
+LANOT — Laboratorio Nacional de Observación de la Tierra
+Universidad Nacional Autónoma de México
