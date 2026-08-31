@@ -1,3 +1,26 @@
+> **Estado: enviado, contestado y RESUELTO río arriba.** Publicado el 2026-08-24 en el foro de
+> SSEC, [tema 60122](https://forums.ssec.wisc.edu/viewtopic.php?t=60122). David Hoese contestó
+> al día siguiente —*"You're right this is a bug or rather an incompatibility with newer
+> output"*— y fusionó [pytroll/satpy#3450](https://github.com/pytroll/satpy/pull/3450) el
+> **2026-08-26**, que atiende las dos peticiones: el `valid_range` ausente y el arrastre de
+> claves que ya fallaron, que era lo que de verdad abortaba la corrida.
+>
+> **Una corrección suya al texto de abajo**: el remuestreo **no** se paga antes de morir
+> —*"if there is a hard failure in the loading then resampling can't be started"*—, así que el
+> argumento de coste con el que se pidió la segunda cosa era falso. La petición se atendió
+> igual.
+>
+> El arreglo llega a la cadena con **Polar2Grid 3.3**; mientras tanto se aplica al compilar,
+> desde `contenedores/parches/aplicar_parches_satpy.py`, junto con los cinco parches propios de
+> CAPE y Lifted Index. **Al pasar a la 3.3 hay que quitar los dos de #3450.**
+>
+> La respuesta de seguimiento —con la medición del `H2O_MR` real y el ofrecimiento de abrir el
+> PR de CAPE/Lifted Index— está **al final de este archivo, pendiente de publicar**.
+>
+> Lo que sigue es el texto tal como se envió, sin retocar.
+
+---
+
 **Subject:** Polar2Grid v3.2, `nucaps` reader: `KeyError: 'H2O_MR/attr/valid_range'` on NUCAPS-EDR v3r2 files
 
 Dear Polar2Grid team,

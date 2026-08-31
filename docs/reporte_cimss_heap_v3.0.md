@@ -1,3 +1,26 @@
+> **Estado: enviado, contestado y CERRADO — el fallo era NUESTRO.** Publicado el 2026-08-24 en
+> el foro de SSEC, [tema 60121](https://forums.ssec.wisc.edu/viewtopic.php?t=60121). Kathy S.
+> contestó el **2026-08-25** descartando el error de operación (*"I do not think you are
+> executing the software incorrectly"*), explicando que `NUCAPS-ALL-HR` son archivos
+> intermedios —no un sustituto de `NUCAPS-CCR-AR`— y pidiendo dos diagnósticos: correr fuera
+> del contenedor y repetir con `--noclean`.
+>
+> El segundo destapó la causa el **2026-08-29**, y es de este lado: el bundle instalado
+> **dentro del `.sif`**, que es de solo lectura. `airsb103.exe` abre una unidad Fortran sin
+> nombre dentro de su propio árbol de instalación y muere con `Cannot open file 'fort.40':
+> Read-only file system`; eso aborta `HEAP_Retrieval.pl` y con él los conversores a NetCDF, y
+> `run_heap.bash` **sale en 0** de todos modos. Con el bundle montado desde el host salen las
+> cinco familias: 16 gránulos con los datos de prueba de §3.3 y 14 sobre datos propios de
+> NOAA-20. El primer diagnóstico no se pudo hacer: el host es Rocky 10 y los binarios están
+> ligados contra el HDF5 de EL8.
+>
+> La respuesta que cierra el hilo —la corrección, las dos afirmaciones erróneas del reporte y
+> las dos sugerencias a CIMSS— está **al final de este archivo, pendiente de publicar**.
+>
+> Lo que sigue es el texto tal como se envió, sin retocar.
+
+---
+
 **Subject:** CSPP HEAP v3.0 — no NUCAPS-EDR retrieval files produced; reproduced with your §3.3 test data
 
 Dear CSPP team,
