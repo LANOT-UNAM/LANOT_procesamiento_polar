@@ -177,4 +177,6 @@ aplicar esto a **criósfera**, que hoy se da por bloqueada por la misma clase de
 
 **El `push` lo hace siempre Alejandro, nunca Claude.** No es una formalidad: revisar lo que sale es como se mantiene al tanto de por dónde va el proyecto. Commitear está bien; empujar, no — dejarlo commiteado y avisar.
 
+**Lo que sale del proyecto se firma `Alejandro Aguilar Sierra`**, el nombre oficial con los dos apellidos, que es el que ya llevan los nueve `.def` en su línea `Author`. En inglés la tentación es dejar un solo apellido —los dos reportes al foro de SSEC del 2026-08-24 se enviaron como "Alejandro Sierra"—, pero la forma oficial es la buena. Lo ya enviado **no se retoca**: los textos publicados se conservan tal cual en `docs/reporte_*.md` y `docs/respuesta_*.bbcode`, que son registro de lo que se envió, no borrador.
+
 El README (sección "Contribución") todavía pide lo contrario —rama nueva y PR, porque describe `main` como "la versión operativa conectada a la antena"—. Esa restricción quedó atrás; si algún día `main` vuelve a alimentar la antena, hay que revisarla.
