@@ -32,11 +32,10 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
 
 ### Lo que está a medio camino, en orden
 
-1. **Publicar las dos respuestas del foro**, revisadas y actualizadas el 29:
-   `docs/reporte_polar2grid_nucaps.md` (davidh, Polar2Grid) y
-   `docs/reporte_cimss_heap_v3.0.md` (kathys, HEAP). La segunda es la que tiene
-   a alguien esperando: CIMSS sigue creyendo que investiga un fallo suyo.
-   **Se pegan desde los `.bbcode`, no desde el `.md`** — ver abajo.
+1. ~~**Publicar las dos respuestas del foro.**~~ **Hecho el 2026-08-31**: las
+   dos se publicaron casi sin cambios, desde `docs/respuesta_*.bbcode` (ver
+   abajo por qué no desde el `.md`). CIMSS ya sabe que el fallo era nuestro y
+   que puede dejar de buscarlo.
 2. **Recompilar `polar2grid_v3.2-mapdrawer.sif`.** Los parches de CAPE y Lifted
    Index están escritos y probados pero **no están en ninguna imagen**. El
    mecanismo cambió: ya no son `sed` en el `.def` sino
@@ -361,12 +360,13 @@ a un problema ajeno.
 - **Publicar vapor de agua exigiría todavía su CPT y su entrada en `product_map`** de
   LANOT_tools. Que cargue no es que salga rotulado: sin eso habría GeoTIFF sin vista, o vista
   sin nombre.
-- **HEAP sigue sin producir `NUCAPS-EDR`** con ancillary reciente: la corrida del 29 dio
-  `SONDEOS: 0 productos en la ventana` y la etapa ni se lanzó. No sorprende — `update_heap_ancillary.sh`
-  **solo poda, no descarga** (HEAP baja su GFS solo, con `lftp`), así que haber corrido los tres
-  updates no cambia su entrada. El pendiente 4 sigue igual.
-- **La respuesta al hilo de SSEC**, redactada al final de `docs/reporte_polar2grid_nucaps.md`:
-  revisar y publicar.
+- ~~**HEAP sigue sin producir `NUCAPS-EDR`** con ancillary reciente.~~ **Vencido**: esto se
+  escribió en `f13543e`, temprano el 29, y unas horas después `bcaa5b2` lo desmintió —14
+  `NUCAPS-EDR` sobre datos propios, y `c180950` devolvió HEAP a la cadena—. Lo que sigue en pie
+  de aquel párrafo es solo el dato de fondo: `update_heap_ancillary.sh` **solo poda, no
+  descarga**, porque HEAP baja su GFS solo con `lftp`.
+- ~~**La respuesta al hilo de SSEC**, redactada al final de `docs/reporte_polar2grid_nucaps.md`.~~
+  **Publicada el 2026-08-31**, junto con la de CIMSS.
 
 ---
 
