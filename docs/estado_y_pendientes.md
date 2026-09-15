@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-08-29**
+**Última actualización: 2026-09-14**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -19,6 +19,56 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## 2026-09-14: `/datawork` listo, y el plan para operar sobre él
+
+`/datawork` quedó armado como disco compartido por NFS entre servidores. El diseño para
+aprovecharlo —automatizar el ciclo de la antena a las vistas, procesar dos pasadas a la vez y
+que otro servidor pueda tomar el trabajo— está en **`plan_operacion_datawork.md`**, acordado y
+sin implementar. Lo esencial:
+
+- **Salidas, `state/`, estáticos y ancillary pasan a `/datawork`**; temporales, `.sif`, logs y
+  código se quedan en cada servidor.
+- **Una cola en `/datawork/input/polar/` con turnos por servidor** sustituye al candado global.
+  tahan tiene dos turnos desde la fase 0; stratus se suma después de reinstalarlo. No hace falta
+  IP virtual.
+- **polaracq pasa a la red 172** y copia los crudos al buzón con nombre único, avisando por
+  evento. El barrido queda como red de seguridad.
+- **Slurm:** el plan institucional del clúster lo pone en 2027, con la cadena polar como piloto.
+  La cola es la vuelta atrás que ese plan pide conservar.
+
+### Dos bugs que ya afectan a la operación en serie
+
+Salieron al revisar el diseño y no esperan a la cola:
+
+1. **OMPS y HEAP fallan desde la segunda pasada del día de un mismo satélite.**
+   `procesar_pasada.sh` les pasa la clave truncada (`j01_d20260914`), y `resolver_pasada()`
+   sale con 1 si coincide más de una pasada (`run_omps_edr.sh:197`, `run_heap_edr.sh:437`).
+   NOAA-20 tiene 2 o 3 pasadas diarias, y ninguna prueba tuvo dos del mismo satélite el mismo
+   día. Como el barrido solo reintenta crudos sin `.done`, esas pasadas se quedan sin ozono ni
+   sondeos. Arreglo: elegir por traslape temporal con VIIRS (plan, 0.6, punto 4).
+2. **El barrido no resiste los nombres reciclados.** El passdisk usa 60 nombres
+   (`chainN-M_passNM`) que se repiten continuamente, y `barrer_pendientes.sh:125-126` salta
+   cualquier crudo con `.done`, aunque sea de un sobrevuelo anterior, y un `.fallido` bloquea la
+   ranura para siempre. `run_rt_stps.sh:237` sí lo previó, con `-nt`. Arreglo en el plan, 0.5.
+
+### Lo que se aprendió de la recepción
+
+- **La cadena de recepción** está en `referencia/recepcion/watchpolar/`: `inotifywait` sobre el
+  passdisk de TeraScan en polaracq → `copypolar.sh` (`scp` y `ssh`) → el `recibe.sh` de stratus.
+- **Qué satélite es cada `chain`**, cruzando con `referencia/lspass.txt`:
+  - activas: 1 Aqua, 2 NPP, 5 METOP-B/C y 6 NOAA-20;
+  - sin uso desde abril de 2025: 3 (NPP) y 7 (NOAA-20);
+  - sin uso desde agosto de 2025: 4 (NOAA-15/19).
+
+  TeraScan ya ha movido satélites de cadena.
+- **El log de producción** registra 7 022 envíos, ninguno doble, con 12 s de latencia media. Pero
+  **el 22 de septiembre de 2025 un error de sintaxis en el `recibe.sh` de stratus dejó sin
+  procesar siete pasadas en ~9 horas**, sin más rastro que ese log.
+- **Los crudos polares no se archivan en ningún lado**, y en stratus cada pasada sobrescribe a la
+  anterior de su ranura.
 
 ---
 
@@ -1437,16 +1487,17 @@ decisión por definitiva.
 Rescatado de `notas.txt` el 2026-08-17, antes de borrarlo. Era lo último que ese archivo
 listaba como faltante y no estaba anotado en ningún otro lado:
 
-- **Terminar de armar `/datawork` con los dos discos que faltan.** `/datawork/input/polar/raw`
-  es el buzón de RAW que leen `run_rt_stps.sh` y `barrer_pendientes.sh`, así que esto es
-  prerrequisito de la cadena completa, no un extra.
-- **Organizar el clúster con Slurm**, de acuerdo al plan. Los cinco `run_*_edr.sh` más nuevos
-  ya traen cabecera `#SBATCH` y usan `${SLURM_CPUS_PER_TASK:-N}` / `${SLURM_JOB_ID:-$$}` para
-  funcionar igual con o sin Slurm; los más antiguos no. El clúster todavía no está en
-  producción.
+- ~~**Terminar de armar `/datawork` con los dos discos que faltan.**~~ **Hecho el
+  2026-09-14.** El plan para operar sobre él está en `plan_operacion_datawork.md`.
+- **Organizar el clúster con Slurm**, de acuerdo al plan. El plan institucional *Plan Cluster
+  LANOT 2026-2027* lo pone en operación en Q4 2027, con la cadena polar como piloto; mientras
+  tanto, el reparto entre servidores lo hace la cola de `plan_operacion_datawork.md` (fase 3).
+  Siete `run_*.sh` traen cabecera `#SBATCH`, pero piden una partición, `normal`, que no existe
+  en el borrador de `slurm.conf`. Todos usan `${SLURM_CPUS_PER_TASK:-N}` /
+  `${SLURM_JOB_ID:-$$}` para funcionar igual con o sin Slurm.
 
-Todo lo demás de esta lista es software y se puede avanzar sin esperar a esto, pero **para
-poner el sistema en producción hacen falta las dos cosas de arriba**.
+Todo lo demás de esta lista es software. **Poner el sistema en producción ya no espera a
+Slurm**: la cola del plan cubre el reparto entre servidores.
 
 ### 1. Paletas — revisadas con datos el 2026-08-14
 `ndvi.cpt`, `evi.cpt` y `cloud_fraction.cpt` ya están en `LANOT_tools/colortables` y
