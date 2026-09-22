@@ -14,8 +14,8 @@
 #   config/cadenas.tsv qué satélite es y:
 #
 #   - JPSS (NPP, NOAA-20, NOAA-21): lanza procesar_pasada.sh en segundo plano
-#   - lo que atiende otro sistema (Aqua, METOP): lo registra y sale en 0. Esos
-#     crudos los sigue enrutando el recibe.sh de stratus, que no se toca
+#   - lo que no es de esta cadena (METOP, que procesa la cadena vieja; Aqua, que
+#     ya no procesa nadie): lo registra y sale en 0
 #   - una cadena que no esté en la tabla: aviso visible y sale en 0. Puede ser
 #     que TeraScan haya reasignado cadenas, como el 2026-09-21
 #

@@ -45,7 +45,7 @@ echo "Fecha $DATE_TIME" >> /home/lanotadm/log/polar.log
 # Cadenas de TeraScan desde el 2026-09-21 (system.config de polaracq):
 #   1 NOAA-21, 2 NOAA-20, 4 NPP, 5 Aqua, 6 METOP-B/C (AHRPT)
 # NOAA-21 y Aqua no pasan por aquí: NOAA-21 solo lo procesa la cadena nueva
-# (reenvío de arriba) y Aqua lo atiende otro sistema. NOAA-15/19 (noaa2 en
+# (reenvío de arriba) y Aqua ya no se procesa en ningún sistema. NOAA-15/19 (noaa2 en
 # tsom03) no llegan desde agosto de 2025.
 if [[ $rawfile =~ ^chain[24]- ]]; then
     nohup /home/lanotadm/bin/cspp.sh $rawfile < /dev/null >& ~/log2/$rawfile.log &

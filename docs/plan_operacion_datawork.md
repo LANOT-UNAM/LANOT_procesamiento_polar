@@ -305,8 +305,8 @@ los dos turnos trabajando sin mezclar pasadas (0.6).
      cadena aunque corra en polaracq.
 2. **Lo de hoy sigue igual, en paralelo.** `copypolar.sh` conserva su `scp` al
    `/data/input/polar/raw` de stratus y su `ssh` al `recibe.sh` viejo, ahora por la 172 y con el
-   nombre original. Así `cspp.sh`, `metop2.sh`, `noaa2` y el consumidor de Aqua siguen leyendo de
-   donde leen, y tsom03 no necesita montar `/datawork` todavía. El costo es copiar dos veces
+   nombre original. Así `cspp.sh` y `metop2.sh` siguen leyendo de donde leen (Aqua ya no lo
+   procesa nadie), y tsom03 no necesita montar `/datawork` todavía. El costo es copiar dos veces
    unos 12 GB diarios por la red local.
 3. **`scripts/recibe.sh` decide con `config/cadenas.tsv`** (hecho el 2026-09-22, adelantado
    por el cambio de cadenas): cadena, desde cuándo, satélite, telemetría y XML. La leen también
@@ -336,7 +336,6 @@ repositorio LANOT_cluster, archiva level0, level1 y level2, pero no el crudo.
   `referencia/noaa` es una versión anterior de `noaa2` que ya no se invoca.
 - En `config/cadenas.tsv`, METOP pasa a llamada remota (`ssh stratus metop2.sh`), con el host
   por variable; lo mismo NOAA hacia tsom03 si `chain4` vuelve a llegar.
-- El consumidor de Aqua cambia su origen.
 
 ### 0.5 El barrido: red de seguridad
 
@@ -626,8 +625,9 @@ apagado no duplica nada.
 
 **Antes de la fase 0**
 
-- **De dónde lee el crudo el sistema que procesa Aqua** (`chain1`): el passdisk, el `/data` de
-  stratus u otra cosa. Mientras no se sepa, la copia de hoy a stratus no se toca.
+- ~~**De dónde lee el crudo el sistema que procesa Aqua**~~: **Aqua ya no se procesa en ningún
+  sistema** (lo confirmó el responsable de la cadena vieja, 2026-09-22). Sus crudos siguen
+  llegando por `chain5` y la tabla los registra como ajenos.
 - **`polaradq` o `polaracq`**: `lspass` se corrió en `teradm@polaradq`, pero los scripts de
   recepción y `/etc/hosts` dicen `polaracq`. Confirmarlo antes de escribir llaves.
 - **Dirección de polaracq en la 172**, elegida ya dentro de la tabla de mapeo de VLAN del *Plan

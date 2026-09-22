@@ -17,7 +17,8 @@
 # de modificación del crudo. `-` es "desde siempre". Al cambiar el esquema,
 # AGREGAR filas con la fecha nueva; no editar las viejas.
 #
-# xml: el de RT-STPS si la procesa esta cadena; `-` si la atiende otro sistema.
+# xml: el de RT-STPS si la procesa esta cadena; `-` si no (METOP lo procesa la
+# cadena vieja; Aqua ya no lo procesa nadie).
 # Una cadena que no aparece aquí no se procesa, y recibe.sh lo avisa. No mapear
 # de antemano las cadenas sin uso: si una vuelve con otro satélite, RT-STPS
 # decodificaría con el XML equivocado sin avisar.
