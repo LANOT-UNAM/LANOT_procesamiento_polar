@@ -333,7 +333,10 @@ suyo" por marcas de tiempo sobre directorios compartidos. Antes de abrir el segu
    marca (`:484`), que puede ser de la otra pasada: entonces todo el Level 2 correría con la clave
    ajena y el propio no se haría nunca. `clave_de_pasada()` ya funciona con cualquier nombre que
    traiga `_sat_dAAAAMMDD_…_bNNNNN_`.
-4. **OMPS y HEAP: la clave truncada es ambigua, y esto ya falla en serie.**
+4. **OMPS y HEAP: la clave truncada es ambigua, y esto ya falla en serie.** **Hecho el
+   2026-09-22**, como se describe abajo, en `procesar_pasada.sh` (`pasada_por_traslape`); los
+   `run_*.sh` no cambiaron. Además, sin traslape la etapa queda `sin datos` y no `fallo`: OMPS no
+   trae paquetes en las pasadas nocturnas.
    - `procesar_pasada.sh` les pasa `j01_d20260914` (`clave_truncada`), y `resolver_pasada()`
      **aborta si coincide más de una pasada**: `run_omps_edr.sh:117-128` y `:197`,
      `run_heap_edr.sh:186-197` y `:437`.

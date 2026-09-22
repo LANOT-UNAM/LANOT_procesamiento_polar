@@ -66,8 +66,19 @@ satélite llega por cada `chainN`**: NOAA-21 es `chain1`, NOAA-20 `chain2`, NPP 
   - **OMPS: el crudo no trae un solo paquete de OMPS** (`Packets Output=0` en los 16 APID). Lo
     más probable es que sea por la noche: los sensores nadir miden luz solar retrodispersada, y
     todas las pruebas de OMPS con NOAA-20 fueron vespertinas. Falta confirmarlo con una pasada
-    diurna de NOAA-21. Hoy `run_omps_edr.sh` sale en 1 y el resumen lo cuenta como error en
-    cada pasada nocturna; se resuelve junto con la clave truncada (plan, 0.6, punto 4).
+    diurna de NOAA-21.
+  - **Resuelto el mismo día, junto con la clave truncada** (plan, 0.6, punto 4).
+    `procesar_pasada.sh` ya no les pasa `j02_d20260922` a OMPS y HEAP: saca la ventana de VIIRS
+    de todos los `GMTCO` de la pasada y elige la de OMPS y la de CrIS como la clave de los
+    `GOTCO`/`GCRSO` **del mismo satélite que se traslapan con ella**, que se pasa completa. Sin
+    traslape la etapa no se lanza y el resumen la marca `sin datos`, que no cuenta como fallo:
+    es OMPS en cada pasada nocturna. Si se traslapan dos órbitas —puede cambiar a media pasada,
+    al cruzar el ecuador— gana la que más archivos aporta, y se avisa. Desapareció
+    `marcador_reciente()`: con la clave completa, el marcador se nombra de antemano. Probado en
+    bucefalo con `--dry-run` sobre un `level1` simulado: dos pasadas de NOAA-21 el mismo día (la
+    nocturna sin OMPS, la diurna con OMPS en otra órbita), NPP a la misma hora y OMPS del día
+    anterior, que no se cuelan. **Falta verlo en tahan** con la segunda pasada del día de un
+    satélite.
   - El crudo pesa el doble que uno de NOAA-20 de la misma duración (2.4 GB, 11 884 líneas), sin
     que se note en los productos. Sigue sin explicación.
   - **El log de la pasada salía con bloques repetidos y líneas cortadas**: `recibe.sh` redirigía
@@ -100,7 +111,8 @@ sin implementar. Lo esencial:
 
 Salieron al revisar el diseño y no esperan a la cola:
 
-1. **OMPS y HEAP fallan desde la segunda pasada del día de un mismo satélite.**
+1. ~~**OMPS y HEAP fallan desde la segunda pasada del día de un mismo satélite.**~~
+   **Resuelto el 2026-09-22** (ver la sección de ese día).
    `procesar_pasada.sh` les pasa la clave truncada (`j01_d20260914`), y `resolver_pasada()`
    sale con 1 si coincide más de una pasada (`run_omps_edr.sh:197`, `run_heap_edr.sh:437`).
    NOAA-20 tiene 2 o 3 pasadas diarias, y ninguna prueba tuvo dos del mismo satélite el mismo

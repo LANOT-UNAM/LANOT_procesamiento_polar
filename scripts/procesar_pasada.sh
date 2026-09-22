@@ -52,6 +52,10 @@ CADENA_LOG_BASE="${CADENA_LOG_BASE:-/var/log/lanot/polares/cadena}"
 ESTADO="${ESTADO_BASE:-/data/output/jpss/state}"
 LEVEL0="${RTSTPS_OUTPUT_DIR:-/data/output/jpss/level0}"
 LEVEL1_VIIRS="${SDR_LEVEL1_VIIRS:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/viirs}"
+# Los mismos que leen run_omps_edr.sh y run_heap_edr.sh: de aquí sale qué pasada
+# de esos instrumentos corresponde a la de VIIRS (ver pasada_por_traslape).
+LEVEL1_OMPS="${OMPS_SDR_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/omps}"
+LEVEL1_CRIS="${HEAP_CRIS_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/cris}"
 
 # Marcadores: cada etapa escribe el suyo, y de ahí sale el resumen. Se leen las
 # mismas variables que usan los run_*.sh para que un ambiente de prueba que las
@@ -78,6 +82,10 @@ RAW=""
 RES_ETAPA=()
 RES_CODIGO=()
 RES_MARCADOR=()
+
+# Etapas que no se lanzan porque su instrumento no dejó datos para esta pasada
+# (OMPS de noche, por ejemplo), con el motivo. No son fallos.
+declare -A SIN_DATOS=()
 
 # ==============================================================================
 # FUNCIONES
@@ -121,12 +129,88 @@ clave_de_pasada() {
 }
 
 # La clave de OMPS no puede ser la de VIIRS: el mismo sobrevuelo lleva otra
-# órbita según el instrumento (b45236 en VIIRS, b45237 en OMPS). Se le pasa la
-# clave truncada, que el -p de los run_*.sh resuelve contra las pasadas que de
-# verdad estén en su directorio. Lo mismo vale para HEAP, cuya pasada la fija
-# CrIS.
-clave_truncada() {
-    echo "${1%_b*}"
+# órbita según el instrumento (b45236 en VIIRS, b45237 en OMPS). Lo mismo vale
+# para HEAP, cuya pasada la fija CrIS. Antes se les pasaba la clave truncada
+# (j01_d20260922) y cada run_*.sh la resolvía contra su directorio, pero eso
+# aborta en cuanto hay dos pasadas del mismo satélite el mismo día —la segunda
+# de cada día, en operación— y no distingue "no hay OMPS" de "no encontré la
+# pasada". Ahora se empareja por TIEMPO: la pasada del otro instrumento es la
+# que se traslapa con la ventana de VIIRS.
+
+# Del nombre de un SDR saca su intervalo como "AAAAMMDDHHMMSS AAAAMMDDHHMMSS".
+# La misma que run_heap_edr.sh: si el fin es menor que el inicio, el archivo
+# cruzó la medianoche. Las comparaciones van con [ ] y no con [[ ]]: los sellos
+# de antes de las 10:00 UTC empiezan con cero y [[ ]] los tomaría por octales.
+intervalo_de() {
+    local nombre fecha tini tfin fecha_fin
+    nombre=$(basename "$1")
+    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
+    if [[ "$fecha" != d* ]] || [[ "$tini" != t* ]] || [[ "$tfin" != e* ]]; then
+        return 1
+    fi
+    fecha="${fecha#d}"; tini="${tini#t}"; tfin="${tfin#e}"
+    if [ "$tfin" -lt "$tini" ]; then
+        fecha_fin=$(date -u -d "${fecha} +1 day" +%Y%m%d)
+    else
+        fecha_fin="$fecha"
+    fi
+    echo "${fecha}${tini:0:6} ${fecha_fin}${tfin:0:6}"
+}
+
+# La ventana de la pasada de VIIRS: el inicio más temprano y el fin más tardío de
+# TODOS sus GMTCO, no los de uno representativo, porque en level1 conviven
+# archivos agregados y por gránulo (ver run_heap_edr.sh, ventana_de_pasada).
+# Imprime "INI FIN"; código 1 si no hay ninguno.
+ventana_viirs() {
+    local sat fecha orbita f ini fin v_ini="" v_fin=""
+    IFS='_' read -r sat fecha orbita <<< "$1"
+    shopt -s nullglob
+    for f in "$LEVEL1_VIIRS"/GMTCO_"${sat}"_"${fecha}"_*_"${orbita}"_*.h5; do
+        read -r ini fin < <(intervalo_de "$f") || continue
+        if [ -z "$v_ini" ] || [ "$ini" -lt "$v_ini" ]; then v_ini="$ini"; fi
+        if [ -z "$v_fin" ] || [ "$fin" -gt "$v_fin" ]; then v_fin="$fin"; fi
+    done
+    shopt -u nullglob
+    [ -n "$v_ini" ] || return 1
+    echo "$v_ini $v_fin"
+}
+
+# pasada_por_traslape <dir> <prefijo> <sat> <ini> <fin>
+#
+# La clave de la pasada del otro instrumento cuya geolocalización (<prefijo>:
+# GOTCO de OMPS, GCRSO de CrIS) se traslapa con la ventana. Del mismo satélite:
+# NPP y NOAA-20 pasan con ~20 minutos de diferencia. Se miran la fecha de la
+# ventana y sus vecinas, porque un archivo puede empezar del otro lado de la
+# medianoche.
+#
+# Si se traslapan varias claves —la órbita cambia al cruzar el ecuador hacia el
+# norte, y puede hacerlo a media pasada— gana la que más archivos aporta, y se
+# avisa en stderr. Código 1 si no hay ninguna: el instrumento no dejó datos.
+pasada_por_traslape() {
+    local dir="$1" prefijo="$2" sat="$3" v_ini="$4" v_fin="$5"
+    local d f ini fin clave mejor="" n_mejor=0
+    local -A cuenta=()
+    shopt -s nullglob
+    for d in $(date -u -d "${v_ini:0:8} -1 day" +%Y%m%d) "${v_ini:0:8}" \
+             $(date -u -d "${v_ini:0:8} +1 day" +%Y%m%d); do
+        for f in "$dir"/"${prefijo}"_"${sat}"_d"${d}"_*.h5; do
+            read -r ini fin < <(intervalo_de "$f") || continue
+            [ "$ini" -le "$v_fin" ] && [ "$fin" -ge "$v_ini" ] || continue
+            clave="$(clave_de_pasada "$(basename "$f")")" || continue
+            cuenta[$clave]=$(( ${cuenta[$clave]:-0} + 1 ))
+        done
+    done
+    shopt -u nullglob
+    for clave in "${!cuenta[@]}"; do
+        if [ "${cuenta[$clave]}" -gt "$n_mejor" ]; then
+            mejor="$clave"; n_mejor="${cuenta[$clave]}"
+        fi
+    done
+    [ -n "$mejor" ] || return 1
+    if [ "${#cuenta[@]}" -gt 1 ]; then
+        echo "  ⚠ $prefijo: se traslapan ${#cuenta[@]} pasadas (${!cuenta[*]}); se toma $mejor" >&2
+    fi
+    echo "$mejor"
 }
 
 # Igual que detectar_sensor de run_sdr.sh:145-149. Está duplicado a propósito:
@@ -168,6 +252,10 @@ correr_tarea() {
     marcador="$(marcador_de "$etiqueta")"
 
     {
+        if [ -n "${SIN_DATOS[$etiqueta]:-}" ]; then
+            echo "--- $etiqueta: no se lanza, ${SIN_DATOS[$etiqueta]}"
+            exit 0
+        fi
         echo "--- $etiqueta: $(basename "$script") ${args[*]}"
         if [ "$DRY_RUN" -eq 1 ]; then
             echo "    [dry-run] $script ${args[*]}"
@@ -242,7 +330,9 @@ cosechar_tanda() {
         marcador="$(marcador_de "$etiqueta")"
         sello_ahora=0
         [ ! -f "$marcador" ] || sello_ahora="$(stat -c %Y "$marcador" 2>/dev/null || echo 0)"
-        if [ "$DRY_RUN" -eq 1 ]; then
+        if [ -n "${SIN_DATOS[$etiqueta]:-}" ]; then
+            RES_MARCADOR+=("sin-datos")
+        elif [ "$DRY_RUN" -eq 1 ]; then
             RES_MARCADOR+=("dry-run")
         elif [ "$sello_ahora" -gt "$sello_antes" ]; then
             RES_MARCADOR+=("$marcador")
@@ -254,32 +344,6 @@ cosechar_tanda() {
     pids=(); etiquetas=(); salidas=(); marcadores=()
 }
 
-# El marcador de OMPS y de HEAP no se puede nombrar de antemano. A esas dos
-# etapas se les pasa la clave TRUNCADA (j01_d20260817), porque su órbita no es
-# la de VIIRS y solo ellas pueden resolverla contra los archivos que de verdad
-# tienen; el .done que escriben lleva la clave completa, con SU órbita
-# (j01_d20260817_b45322). Vigilar el nombre truncado es vigilar un archivo que
-# nunca existe: en la pasada j01_d20260817_b45321 el resumen dio "ya estaba"
-# para un OMPS que acababa de dejar 38 productos en 28 s.
-#
-# Así que se busca por glob y gana el más reciente. Varias pasadas del mismo día
-# comparten la clave truncada, pero el marcador que escribe ESTA corrida es
-# forzosamente el más nuevo, así que la comparación de mtime sigue siendo
-# correcta. Sin ninguno se devuelve el nombre truncado, que no existe y por lo
-# tanto pesa 0 en la comparación: es exactamente lo que se quiere decir.
-marcador_reciente() {
-    local dir="$1" prefijo="$2" m sello reciente="" mejor=0
-    for m in "$dir/${prefijo}"_b*.done; do
-        [ -f "$m" ] || continue
-        sello="$(stat -c %Y "$m" 2>/dev/null || echo 0)"
-        if [ "$sello" -ge "$mejor" ]; then
-            mejor="$sello"
-            reciente="$m"
-        fi
-    done
-    echo "${reciente:-$dir/${prefijo}.done}"
-}
-
 # El marcador de una etiqueta, para releerlo al cosechar.
 marcador_de() {
     case "$1" in
@@ -289,8 +353,8 @@ marcador_de() {
         acspo)    echo "$DIR_ACSPO/$CLAVE.done"              ;;
         fire)     echo "$DIR_FIRE/$CLAVE.done"               ;;
         flood)    echo "$DIR_FLOOD/$CLAVE.done"              ;;
-        omps)     marcador_reciente "$DIR_OMPS" "$CLAVE_OMPS" ;;
-        heap)     marcador_reciente "$DIR_HEAP" "$CLAVE_HEAP" ;;
+        omps)     echo "$DIR_OMPS/$CLAVE_OMPS.done"         ;;
+        heap)     echo "$DIR_HEAP/$CLAVE_HEAP.done"         ;;
         lsr)      echo "$DIR_LSR/$CLAVE.done"                ;;
         cryo)     echo "$DIR_CRYO/$CLAVE.done"               ;;
         p2g_l1)   echo "$DIR_P2G_L1/$CLAVE.done"             ;;
@@ -504,13 +568,37 @@ else
     fi
 fi
 
-CLAVE_OMPS="$(clave_truncada "$CLAVE")"
-CLAVE_HEAP="$CLAVE_OMPS"
-
+# OMPS y HEAP, por traslape con la ventana de VIIRS (ver pasada_por_traslape).
+# Sin traslape la etapa no se lanza: no es un fallo sino que no hay datos. OMPS
+# de noche es el caso de todos los días —sus sensores nadir miden luz solar
+# retrodispersada y el crudo no trae ni un paquete (NOAA-21, 2026-09-22)—; sin
+# CrIS, lo más probable es que su SDR no haya corrido.
 echo ""
 echo "  Pasada:      $CLAVE"
-echo "  Clave OMPS:  $CLAVE_OMPS  (otra órbita para el mismo sobrevuelo)"
-echo "  Clave HEAP:  $CLAVE_HEAP  (igual: la fija CrIS, no VIIRS)"
+if [ "$DRY_RUN" -eq 1 ] && [ -z "$CLAVE_PEDIDA" ]; then
+    CLAVE_OMPS="j01_dAAAAMMDD_bNNNNN"
+    CLAVE_HEAP="j01_dAAAAMMDD_bNNNNN"
+elif ! VENTANA="$(ventana_viirs "$CLAVE")"; then
+    echo "  ⚠ Sin GMTCO de $CLAVE en $LEVEL1_VIIRS: no se puede emparejar OMPS ni HEAP"
+    SIN_DATOS[omps]="sin ventana de VIIRS para emparejar"
+    SIN_DATOS[heap]="sin ventana de VIIRS para emparejar"
+else
+    read -r V_INI V_FIN <<< "$VENTANA"
+    SAT_PASADA="${CLAVE%%_*}"
+    echo "  Ventana:     $V_INI – $V_FIN"
+    if CLAVE_OMPS="$(pasada_por_traslape "$LEVEL1_OMPS" GOTCO "$SAT_PASADA" "$V_INI" "$V_FIN")"; then
+        echo "  Clave OMPS:  $CLAVE_OMPS  (otra órbita para el mismo sobrevuelo)"
+    else
+        SIN_DATOS[omps]="sin SDR de OMPS en la ventana (de noche no hay: miden luz solar)"
+        echo "  Clave OMPS:  —  ${SIN_DATOS[omps]}"
+    fi
+    if CLAVE_HEAP="$(pasada_por_traslape "$LEVEL1_CRIS" GCRSO "$SAT_PASADA" "$V_INI" "$V_FIN")"; then
+        echo "  Clave HEAP:  $CLAVE_HEAP  (la fija CrIS, no VIIRS)"
+    else
+        SIN_DATOS[heap]="sin SDR de CrIS en la ventana"
+        echo "  Clave HEAP:  —  ${SIN_DATOS[heap]}"
+    fi
+fi
 
 # ==============================================================================
 # NIVELES 2, 3 Y 4
@@ -573,6 +661,8 @@ for i in "${!RES_ETAPA[@]}"; do
         fallos=$((fallos + 1))
         dur=""
         prod="código $codigo"
+    elif [ "$marcador" = "sin-datos" ]; then
+        estado="sin datos"; dur=""; prod="${SIN_DATOS[$etapa]}"
     elif [ "$marcador" = "dry-run" ]; then
         estado="dry-run"; dur=""; prod=""
     elif [ "$marcador" = "sin-cambio" ]; then
