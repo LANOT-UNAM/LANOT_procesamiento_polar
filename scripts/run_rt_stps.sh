@@ -9,7 +9,7 @@
 #   (RDR) usando el contenedor RT-STPS v7.0.
 #
 #   Sin argumentos toma el RAW más reciente del buzón de antena, ignorando los
-#   que aún se están escribiendo y los de satélites legacy (chain4/chain5). Si
+#   que aún se están escribiendo y los que no son JPSS (config/cadenas.tsv). Si
 #   esa pasada ya fue procesada con éxito, avisa y no hace nada.
 #
 # Uso:
@@ -29,6 +29,7 @@
 #   RTSTPS_CONTAINER    Imagen .sif       (def. /opt/containers/rt_stps_7.0.sif)
 #   RTSTPS_CONFIG_DIR   XMLs de RT-STPS   (def. /data/opt/RT-STPS/rt-stps/config)
 #   RTSTPS_LEAPSEC      leapsec.dat       (def. /data/ancillary/common/leapsec.dat)
+#   CADENAS_TSV         Cadena → satélite (def. <scripts>/../config/cadenas.tsv)
 #
 ################################################################################
 
@@ -92,22 +93,10 @@ Opciones:
 EOF
 }
 
-# Identifica el satélite a partir del nombre del archivo.
-# Imprime "<SATELITE> <archivo_xml>" y devuelve 1 si no es un satélite moderno
-# (chain4 = NOAA legacy y chain5 = METOP no los procesa RT-STPS).
-detectar_satelite() {
-    local nombre="$1"
-
-    if [[ "$nombre" =~ chain2 ]] || [[ "$nombre" =~ npp ]]; then
-        echo "NPP npp.xml"
-    elif [[ "$nombre" =~ chain6 ]] || [[ "$nombre" =~ j01 ]] || [[ "$nombre" =~ noaa20 ]]; then
-        echo "NOAA-20 jpss1.xml"
-    elif [[ "$nombre" =~ j02 ]] || [[ "$nombre" =~ noaa21 ]]; then
-        echo "NOAA-21 jpss2.xml"
-    else
-        return 1
-    fi
-}
+# Qué satélite es cada crudo lo decide config/cadenas.tsv, la misma tabla que
+# leen recibe.sh y el barrido. consultar_cadena imprime "<SATELITE> <xml>" y
+# devuelve 0 solo si el crudo es de esta cadena.
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/cadenas.sh"
 
 # Imprime la ruta del RAW más reciente del buzón que sea de un satélite moderno
 # y tenga al menos MIN_AGE_MIN minutos de antigüedad. Devuelve 1 si no hay.
@@ -115,7 +104,7 @@ seleccionar_raw_mas_reciente() {
     local candidato
 
     while IFS= read -r candidato; do
-        if detectar_satelite "$(basename "$candidato")" > /dev/null; then
+        if consultar_cadena "$candidato" > /dev/null 2>&1; then
             echo "$candidato"
             return 0
         fi
@@ -183,7 +172,8 @@ else
 
     if ! INPUT_FILE=$(seleccionar_raw_mas_reciente); then
         echo "[$TIMESTAMP] No hay archivos RAW de satélites modernos pendientes."
-        echo "              (se ignoran chain4/chain5 y los modificados en los"
+        echo "              (se ignoran los que no son JPSS según $CADENAS_TSV"
+        echo "               y los modificados en los"
         echo "               últimos ${MIN_AGE_MIN} min, que pueden estar incompletos)"
         exit 0
     fi
@@ -202,12 +192,20 @@ echo "==========================================================================
 # DETECCIÓN DE SATÉLITE
 # ============================================================================
 
-if ! SAT_INFO=$(detectar_satelite "$FILENAME"); then
-    echo "[$TIMESTAMP] ERROR: No se pudo identificar el satélite desde el nombre: $FILENAME" >&2
-    echo "Patrones esperados: chain2/npp, chain6/j01/noaa20, j02/noaa21" >&2
-    echo "Los satélites legacy (chain4 = NOAA 15/18/19, chain5 = METOP) no los procesa RT-STPS." >&2
-    exit 1
-fi
+CODIGO_CADENA=0
+SAT_INFO=$(consultar_cadena "$INPUT_FILE") || CODIGO_CADENA=$?
+case "$CODIGO_CADENA" in
+    0) ;;
+    1)
+        echo "[$TIMESTAMP] ERROR: $FILENAME es de ${SAT_INFO% *}, que no procesa RT-STPS." >&2
+        exit 1
+        ;;
+    *)
+        echo "[$TIMESTAMP] ERROR: No se pudo identificar el satélite de: $FILENAME" >&2
+        echo "Su cadena no está en $CADENAS_TSV (o el nombre no es chainN-…)." >&2
+        exit 1
+        ;;
+esac
 
 read -r SATELLITE XML_TARGET <<< "$SAT_INFO"
 

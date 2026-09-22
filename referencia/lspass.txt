@@ -75,3 +75,28 @@ teradm@polaradq:~$ lspass
       Current time      2026/09/15 258  03:52:04 GMT
 
 
+
+# 2026-09-22, después de la reasignación de cadenas del 2026-09-21 (llegada de NOAA-21).
+# Con el listado del buzón de stratus del mismo día.
+lanotadm@stratus:~/doc$ ssh teradm@polaracql lspass
+  #  satel     telem       date    day    time    durat  lines
+
+  1  noaa-21   jpss2db  2026/09/22 265  07:55:30  13:00  11884
+ 11  noaa-20   jpssdb   2026/09/22 265  07:12:20  10:30   5621
+ 12  noaa-20   jpssdb   2026/09/22 265  08:51:40  12:20   5478
+ 31  npp       nppdb    2026/09/22 265  08:31:50  13:10   7124
+ 41  aqua-1    aquadb   2026/09/21 264  22:36:00  10:50   5952
+ 42  aqua-1    aquadb   2026/09/22 265  10:44:10  11:30   6307
+ 51  metop-1   ahrpt    2026/09/22 265  02:49:30  10:30   4187
+ 52  metop-3   ahrpt    2026/09/22 265  03:11:50  10:00   3991
+lanotadm@stratus:~/doc$ ls -lt /data/input/polar/raw/|head
+total 67113472
+-rw-rw-r-- 1 lanotadm lanotadm 1291673600 Sep 22 10:55 chain5-2_pass42
+-rw-rw-r-- 1 lanotadm lanotadm 1121894400 Sep 22 09:04 chain2-2_pass12
+-rw-r--r-- 1 lanotadm lanotadm 1458995200 Sep 22 08:45 chain4-1_pass31
+-rw-rw-r-- 1 lanotadm lanotadm 2431941760 Sep 22 08:08 chain1-1_pass1
+-rw-rw-r-- 1 lanotadm lanotadm 1151180800 Sep 22 07:23 chain2-1_pass11
+-rw-rw-r-- 1 lanotadm lanotadm  261554176 Sep 22 03:21 chain6-2_pass52
+-rw-rw-r-- 1 lanotadm lanotadm  274399232 Sep 22 03:00 chain6-1_pass51
+-rw-rw-r-- 1 lanotadm lanotadm 1218969600 Sep 21 22:47 chain5-1_pass41
+-rw-rw-r-- 1 lanotadm lanotadm 1406771200 Sep 21 20:34 chain6-8_pass58

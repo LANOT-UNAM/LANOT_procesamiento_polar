@@ -66,7 +66,7 @@ En `referencia/recepcion/watchpolar/`, en polaracq, usuario `teradm`:
    pasada dispara primero un cierre en cero bytes, el "Invalid file" del log—, hace `scp` a
    stratus (`lanotadm@192.168.124.211:/data/input/polar/raw/`) y después
    `ssh … /home/lanotadm/bin/recibe.sh <nombre>`, con el nombre solo.
-3. El `recibe.sh` de stratus (`referencia/recibe.sh`) manda `chain2`/`chain6` a `cspp.sh`,
+3. El `recibe.sh` de stratus (`referencia/recepcion/recibe.sh`) manda `chain2`/`chain6` a `cspp.sh`,
    `chain4` a tsom03 y `chain5` a `metop2.sh`.
 
 `copypolar.sh` no está versionado: se va a modificar (0.4). La copia que corre en polaracq solo
@@ -88,25 +88,33 @@ muestra dónde es frágil:
 
 ### Qué satélite es cada `chain`
 
-Cruzando el buzón de stratus con `referencia/lspass.txt`: el número de pase del nombre es la
-columna `#`, en bloques de diez por cadena. Verificado con `chain1-4_pass4`: pase 4, aqua-1,
-inicio 21:27:20 más 10:50 de duración = 21:38, la hora de modificación en stratus, que por tanto
-va en UTC.
+**El 2026-09-21, entre las 20:34 y las 22:36 UTC, TeraScan reasignó todas las cadenas** al
+empezar a recibir NOAA-21. El esquema vigente sale de `referencia/terascan/system.config` (qué
+telemetría tiene cada sección `[N]`) y de `lspass` del 2026-09-22 (qué satélite va en cada
+telemetría, al final de `referencia/lspass.txt`):
 
-| Cadena | Pases | Satélite | Estado |
-|---|---|---|---|
-| `chain1` | 1–10 | Aqua | activa; la procesa otro sistema, que no está en `referencia/` |
-| `chain2` | 11–20 | NPP | activa |
-| `chain3` | 21–30 | NPP | sin uso desde abril de 2025 |
-| `chain4` | 31–40 | NOAA-15/19 (HRPT) | sin uso desde agosto de 2025 |
-| `chain5` | 41–50 | METOP-B/C (AHRPT) | activa |
-| `chain6` | 51–60 | NOAA-20 | activa |
-| `chain7` | 61–70 | NOAA-20 | sin uso desde abril de 2025 |
+| Cadena | Pases | Telemetría | Satélite | Antes del 2026-09-21 |
+|---|---|---|---|---|
+| `chain1` | 1–10 | `jpss2db` | **NOAA-21** | Aqua |
+| `chain2` | 11–20 | `jpssdb` | **NOAA-20** | NPP |
+| `chain3` | 21–30 | `metopsgdb` | inactiva | NPP, sin uso desde abril de 2025 |
+| `chain4` | 31–40 | `nppdb` | **NPP** | NOAA-15/19, sin uso desde agosto de 2025 |
+| `chain5` | 41–50 | `aquadb` | Aqua | METOP-B/C |
+| `chain6` | 51–60 | `ahrpt` | METOP-B/C (`metop-1`, `metop-3`) | NOAA-20 |
 
-**TeraScan ya movió satélites de cadena** (NPP de `chain3` a `chain2`, NOAA-20 de `chain7` a
-`chain6`), y NOAA-21 tomará una libre cuando llegue su licencia. Hoy el mapeo está repetido como
-expresión regular en `recibe.sh` y en `detectar_satelite` (`run_rt_stps.sh`): olvidar uno al
-cambiarlo no da error, da pasadas ignoradas.
+El número de pase del nombre es la columna `#` de `lspass`, en bloques de diez por cadena
+(NN = 10·(N−1)+M), y la hora de modificación del crudo en stratus va en UTC. El último crudo del
+esquema anterior es `chain6-8_pass58` (NOAA-20, 1.4 GB, 20:34); los de AHRPT pesan ~270 MB. El
+crudo de NOAA-21 pesa el doble que uno de NOAA-20 de la misma duración (2.4 GB, 11 884 líneas).
+
+**TeraScan ya movió satélites de cadena tres veces** (NPP de `chain3` a `chain2` y NOAA-20 de
+`chain7` a `chain6` en 2025, y todo el 2026-09-21). El mapeo, que estaba repetido como
+expresión regular en `recibe.sh` y en `detectar_satelite` (`run_rt_stps.sh`), vive desde el
+2026-09-22 en **`config/cadenas.tsv`**, que leen `recibe.sh`, `run_rt_stps.sh` y el barrido a
+través de `scripts/cadenas.sh`. Cada fila lleva desde cuándo vale, porque en el buzón conviven
+crudos de los dos esquemas con el mismo nombre; al próximo cambio se agregan filas, no se
+editan. **La cadena vieja de stratus no se ajustó**: su `recibe.sh` sigue con el esquema
+anterior.
 
 ### Los nombres se reciclan
 
@@ -123,17 +131,21 @@ nombre único:
 
 ### Tamaño
 
-Medido en el `/data/input/polar/raw` de stratus:
+Medido en el `/data/input/polar/raw` de stratus, con el esquema de cadenas anterior al
+2026-09-21 (por eso la tabla va por satélite):
 
-| Cadena | Por crudo | Pasadas al día (`lspass`, 11 al 14 de septiembre) |
+| Satélite | Por crudo | Pasadas al día (`lspass`, 11 al 14 de septiembre) |
 |---|---|---|
-| `chain2` (NPP) | 0.8–1.4 GB | 2 a 4 |
-| `chain6` (NOAA-20) | 0.9–1.4 GB | 2 a 3 |
-| `chain1` (Aqua) | ~1.25 GB | 2 a 4 |
-| `chain5` (METOP-B/C) | ~0.25 GB | 3 a 5 |
+| NPP | 0.8–1.4 GB | 2 a 4 |
+| NOAA-20 | 0.9–1.4 GB | 2 a 3 |
+| Aqua | ~1.25 GB | 2 a 4 |
+| METOP-B/C | ~0.25 GB | 3 a 5 |
 
 **~8 GB diarios de JPSS (~7 pasadas, ~2.9 TB al año) y ~12 GB con todas las cadenas (~4.4 TB
-al año).** `/datawork` (tren2, 44 TB, compartido con GOES) aguanta meses, no años.
+al año)**, sin contar NOAA-21, que empezó a llegar el 2026-09-21: su primer crudo pesa 2.4 GB,
+el doble que uno de NOAA-20, así que el volumen de JPSS puede crecer más de lo que suma una
+pasada más. Rehacer la cuenta con una semana de datos. `/datawork` (tren2, 44 TB, compartido
+con GOES) aguanta meses, no años.
 
 ### Montajes
 
@@ -207,7 +219,7 @@ en `/data/ancillary/atmos`.
 Como `lanotadm`, con un crudo JPSS que no tenga marcador vigente en `state/rt-stps`:
 
 ```bash
-/opt/lanot/polares/scripts/recibe.sh /datawork/input/polar/raw/chain6-7_pass57_<sello>
+/opt/lanot/polares/scripts/recibe.sh /datawork/input/polar/raw/chain2-7_pass17_<sello>
 ```
 
 Tiene que regresar enseguida —encola y lanza un trabajador en segundo plano— y dejar en `cadena/`
@@ -236,8 +248,8 @@ los dos turnos trabajando sin mezclar pasadas (0.6).
    done
    ```
    - `tmp/` y `raw/` están en el mismo NFS, así que el `mv` es atómico y nadie ve un crudo a
-     medio copiar. Un temporal oculto dentro de `raw/` no serviría: `detectar_satelite` busca la
-     subcadena `chain6` y lo tomaría.
+     medio copiar. Un temporal dentro de `raw/` no serviría: el barrido toma todo lo que empiece
+     con `chainN-` y la tabla diga que es JPSS.
    - El sufijo lo pone **quien copia**: así el nombre es el mismo para todo lo que venga después.
    - **Endurecido**, por lo que muestra el log:
      - la señal solo sale si la copia llegó entera: código de salida de `scp` revisado y tamaño
@@ -253,14 +265,16 @@ los dos turnos trabajando sin mezclar pasadas (0.6).
    nombre original. Así `cspp.sh`, `metop2.sh`, `noaa2` y el consumidor de Aqua siguen leyendo de
    donde leen, y tsom03 no necesita montar `/datawork` todavía. El costo es copiar dos veces
    unos 12 GB diarios por la red local.
-3. **`scripts/recibe.sh` decide con `config/cadenas.tsv`**: cadena, satélite, XML y quién la
-   atiende. La leen también `detectar_satelite` y el barrido.
-   - JPSS (`chain2`, `chain6`) → deja su boleto en la cola y lanza un trabajador (0.7);
+3. **`scripts/recibe.sh` decide con `config/cadenas.tsv`** (hecho el 2026-09-22, adelantado
+   por el cambio de cadenas): cadena, desde cuándo, satélite, telemetría y XML. La leen también
+   `run_rt_stps.sh` y el barrido.
+   - JPSS (hoy `chain1`, `chain2` y `chain4`) → deja su boleto en la cola y lanza un trabajador (0.7);
    - lo que atiende otro sistema (Aqua, METOP, NOAA) → registra "no es de esta cadena" y sale
      en 0;
-   - una cadena que no esté en la tabla → sale en 0 con aviso visible: puede ser NOAA-21
-     estrenando cadena. **No se mapean de antemano las cadenas sin uso**: `chain7` podría volver
-     como NOAA-21, y con el XML de NOAA-20 RT-STPS decodificaría mal sin avisar;
+   - una cadena que no esté en la tabla → sale en 0 con aviso visible: lo más probable es que
+     TeraScan haya reasignado cadenas otra vez. **No se mapean de antemano las cadenas sin
+     uso**: si una vuelve con otro satélite, RT-STPS decodificaría con el XML equivocado sin
+     avisar;
    - si el argumento no trae `/`, lo resuelve contra
      `${RTSTPS_INPUT_DIR:-/datawork/input/polar/raw}`; las rutas completas siguen valiendo para el
      uso a mano.
@@ -283,7 +297,9 @@ repositorio LANOT_cluster, archiva level0, level1 y level2, pero no el crudo.
 
 ### 0.5 El barrido: red de seguridad
 
-Pasa a `trabajar.sh --barrer` (0.7), con dos cambios respecto del `barrer_pendientes.sh` de hoy:
+Pasa a `trabajar.sh --barrer` (0.7), con dos cambios respecto del `barrer_pendientes.sh` del
+2026-09-14. **Los dos ya están en `barrer_pendientes.sh`** desde el 2026-09-22; falta llevarlos a
+`trabajar.sh`:
 
 - **Filtro por cadena.** Hoy llama a `procesar_pasada.sh` con cualquier archivo sin marcador. Con
   un crudo de Aqua o METOP, RT-STPS lo rechaza, el barrido cuenta el intento y a los 45 minutos lo
@@ -581,7 +597,6 @@ apagado no duplica nada.
 
 **Más adelante**
 
-- **NOAA-21**: cuando llegue su licencia, su fila en `config/cadenas.tsv`.
 - **Montajes cruzados entre stratus y tsom03** (`/data2` y `/data3`): si cae stratus, lo de tsom03
   que toque `/data2` se cuelga. Cuando `noaa2` lea del buzón, averiguar si queda algo más en
   `/data2` y, si no, quitarlo.

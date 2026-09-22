@@ -16,6 +16,10 @@
 # Los RAW se pasan en ORDEN CRONOLÓGICO, porque procesar el más reciente primero
 # dejaría al anterior esperando otro ciclo sin ninguna razón.
 #
+# Solo toma los crudos que config/cadenas.tsv asigna a esta cadena, y los
+# marcadores cuentan solo si son más nuevos que el crudo: la antena recicla los
+# nombres, y un chain2-1_pass11 de hoy no es el de hace cinco días.
+#
 # Un RAW corrupto no se puede reintentar eternamente: RT-STPS termina en 0 con un
 # RAW corrupto sin decodificar nada, así que el reintento saldría gratis y sin
 # fin. Se cuenta en <raw>.intentos y al llegar a MAX_INTENTOS se escribe
@@ -38,6 +42,7 @@
 #   MAX_INTENTOS       Antes de rendirse (def. 3)
 #   BARRIDO_LOCK       Candado propio    (def. /data/tmp/lanot_barrido.lock)
 #   SCRIPTS_DIR        De dónde sale procesar_pasada.sh (def. junto a este script)
+#   CADENAS_TSV        Cadena → satélite (def. <scripts>/../config/cadenas.tsv)
 # ==============================================================================
 
 set -uo pipefail
@@ -52,6 +57,9 @@ MAX_INTENTOS="${MAX_INTENTOS:-3}"
 BARRIDO_LOCK="${BARRIDO_LOCK:-/data/tmp/lanot_barrido.lock}"
 
 PROCESAR_PASADA="$SCRIPTS_DIR/procesar_pasada.sh"
+
+# consultar_cadena: qué crudos son de esta cadena (config/cadenas.tsv).
+source "$SCRIPT_DIR/cadenas.sh"
 
 # El que devuelve procesar_pasada.sh cuando el candado de la pasada está tomado.
 CODIGO_OCUPADO=75
@@ -122,13 +130,28 @@ ocupado=0
 while IFS= read -r raw; do
     base="$(basename "$raw")"
 
-    [ ! -f "$STATE_DIR/$base.done" ]    || continue
-    [ ! -f "$STATE_DIR/$base.fallido" ] || continue
+    # Solo lo que config/cadenas.tsv asigna a esta cadena. Sin el filtro, un
+    # crudo de Aqua o METOP iría a RT-STPS, que lo rechaza, y a los tres
+    # intentos quedaría .fallido: todos los días, por cada pasada ajena.
+    consultar_cadena "$raw" > /dev/null 2>&1 || continue
+
+    # La antena RECICLA los nombres, así que un marcador solo vale si es más
+    # nuevo que el crudo, como en run_rt_stps.sh. Si el crudo es más nuevo, es
+    # otro sobrevuelo: los marcadores del anterior se borran, o un .done viejo
+    # lo saltaría y un .fallido bloquearía su ranura para siempre.
+    for m in done fallido intentos; do
+        if [ -f "$STATE_DIR/$base.$m" ] && [ "$raw" -nt "$STATE_DIR/$base.$m" ]; then
+            [ "$DRY_RUN" -eq 1 ] || rm -f "$STATE_DIR/$base.$m"
+        fi
+    done
+
+    [ ! -f "$STATE_DIR/$base.done" ]    || [ "$raw" -nt "$STATE_DIR/$base.done" ]    || continue
+    [ ! -f "$STATE_DIR/$base.fallido" ] || [ "$raw" -nt "$STATE_DIR/$base.fallido" ] || continue
 
     pendientes=$((pendientes + 1))
 
     intentos=0
-    [ ! -f "$STATE_DIR/$base.intentos" ] || intentos="$(cat "$STATE_DIR/$base.intentos" 2>/dev/null || echo 0)"
+    [ ! -f "$STATE_DIR/$base.intentos" ] || [ "$raw" -nt "$STATE_DIR/$base.intentos" ] || intentos="$(cat "$STATE_DIR/$base.intentos" 2>/dev/null || echo 0)"
 
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "  [dry-run] $base (intentos: $intentos)"

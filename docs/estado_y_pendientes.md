@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-09-14**
+**Última actualización: 2026-09-22**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -19,6 +19,35 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## 2026-09-22: llegó NOAA-21, y TeraScan reasignó todas las cadenas
+
+El 2026-09-21, entre las 20:34 y las 22:36 UTC, polaracq empezó a recibir NOAA-21 y **cambió qué
+satélite llega por cada `chainN`**: NOAA-21 es `chain1`, NOAA-20 `chain2`, NPP `chain4`, Aqua
+`chain5` y METOP `chain6`. La tabla completa y de dónde sale están en
+`plan_operacion_datawork.md` ("Qué satélite es cada `chain`").
+
+- **El mapeo vive ahora en `config/cadenas.tsv`**, que leen `recibe.sh`, `run_rt_stps.sh` y
+  `barrer_pendientes.sh` a través de `scripts/cadenas.sh`. Con las expresiones regulares de
+  antes, la cadena nueva habría mandado METOP a RT-STPS como NOAA-20 y NOAA-20 como NPP, y no
+  habría tomado ni NPP ni NOAA-21. Cada fila lleva desde cuándo vale, porque en el buzón
+  conviven crudos de los dos esquemas con los mismos nombres.
+- **`recibe.sh` ya no invoca a `noaa2` ni a `metop2.sh`**: lo que no es JPSS se registra y sale
+  en 0, como pide el plan (0.4). Esos crudos los sigue enrutando el `recibe.sh` de stratus.
+  Acepta también el nombre sin ruta y lo busca en el buzón.
+- **El barrido ya hace lo de 0.5**: filtra por la tabla y los marcadores solo cuentan si son
+  más nuevos que el crudo.
+- Probado en bucefalo con crudos simulados de los dos esquemas (`recibe.sh` con un
+  `procesar_pasada.sh` falso, y el barrido en `--dry-run` y en real). **Falta la prueba en
+  tahan con crudos reales de cada JPSS.**
+- **NOAA-21 nunca ha pasado por RT-STPS aquí.** `config/jpss2.xml` existe pero no se ha
+  probado con datos de la antena; lo que se sabe de NOAA-21 viene de los gránulos de muestra de
+  CIMSS. Además, su primer crudo pesa el doble que uno de NOAA-20 de la misma duración
+  (2.4 GB, 11 884 líneas), y todavía no se sabe por qué.
+- **La cadena vieja de stratus no se ajustó** y sigue con el esquema anterior. Por decisión de
+  Alejandro, lo que se haga aquí será lo primero que pruebe las cadenas nuevas.
 
 ---
 

@@ -1,0 +1,41 @@
+# Qué satélite llega por cada cadena de TeraScan, y cuál procesa esta cadena.
+#
+# La leen recibe.sh, run_rt_stps.sh y barrer_pendientes.sh, a través de
+# scripts/cadenas.sh. Es el ÚNICO lugar donde vive este mapeo: antes estaba
+# repetido como expresión regular en dos scripts, y olvidar uno al cambiarlo no
+# daba error, daba pasadas ignoradas.
+#
+# De dónde sale: el crudo se llama chainN-M_passNN, y N es el número de sección
+# [N] del system.config de polaracq (referencia/terascan/system.config), que dice
+# qué TELEMETRÍA tiene cada cadena. Qué SATÉLITE va en cada telemetría no está
+# ahí sino en el calendario: se confirma con `ssh teradm@polaracql lspass`.
+#
+# TeraScan reasigna cadenas —lo hizo en abril de 2025 y otra vez el 2026-09-21,
+# al llegar NOAA-21—, y en el buzón conviven crudos de antes y de después con el
+# mismo nombre. Por eso cada fila lleva desde cuándo vale: para un crudo gana la
+# fila de su cadena con el `desde` más reciente que no sea posterior a la hora
+# de modificación del crudo. `-` es "desde siempre". Al cambiar el esquema,
+# AGREGAR filas con la fecha nueva; no editar las viejas.
+#
+# xml: el de RT-STPS si la procesa esta cadena; `-` si la atiende otro sistema.
+# Una cadena que no aparece aquí no se procesa, y recibe.sh lo avisa. No mapear
+# de antemano las cadenas sin uso: si una vuelve con otro satélite, RT-STPS
+# decodificaría con el XML equivocado sin avisar.
+#
+# cadena	desde			satelite	telemetria	xml
+
+# Esquema anterior (de abril de 2025 al 2026-09-21). Solo sirve para los
+# crudos que sigan en el buzón.
+2	-			NPP		nppdb		npp.xml
+6	-			NOAA-20		jpssdb		jpss1.xml
+5	-			METOP-B/C	ahrpt		-
+1	-			Aqua		aquadb		-
+
+# Desde el 2026-09-21, con NOAA-21. El último crudo del esquema anterior es
+# chain6-8_pass58 (NOAA-20, 20:34 UTC) y el primero del nuevo chain5-1_pass41
+# (Aqua, empieza 22:36 UTC). La 3 (metopsgdb) está inactiva.
+1	2026-09-21T21:00:00Z	NOAA-21		jpss2db		jpss2.xml
+2	2026-09-21T21:00:00Z	NOAA-20		jpssdb		jpss1.xml
+4	2026-09-21T21:00:00Z	NPP		nppdb		npp.xml
+5	2026-09-21T21:00:00Z	Aqua		aquadb		-
+6	2026-09-21T21:00:00Z	METOP-B/C	ahrpt		-

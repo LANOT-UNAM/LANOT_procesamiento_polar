@@ -1,0 +1,299 @@
+#  $Id: system.config.README 65089 2026-01-12 00:05:32Z danw $
+#
+#  System configuration file, required for both receiving and processing systems.
+#  The TeraScan daemon tsched reads this file at startup/restart, and initiates
+#  other processing according to what is configured.
+#
+#  There are two differing philosophies for maintaining this file; both are valid:
+#
+#  1) Eliminate all entries with no associated software or hardware; e.g., do not
+#     include any [decrypt-#] entries if there is no decryption device.
+#
+#  2) Configure several or all possibilities, but only activate a chosen few.
+#
+#---------------------------------------------------------------------------------
+#  Telemetry chain configuration
+#  The only required *.index is framer.index, which may be virtual when scheduler.type
+#  is background or recv_pass
+#
+#  [#]				telemetry chain number, positive integer <= 16
+#  telemetry.active:		yes or no
+#  telemetry.name:		e.g., hrpt, swhrpt, chrpt, rtd, teradb, aquadb, etc
+#  passdisk.files:		positive number, total number of raw data files
+#  framer.index:		positive number, reference to [framer-#]
+#  fastssd.index:		positive number, reference to second [framer-#]
+#  decrypt.index:		positive number, reference to [decrypt-#]
+#  bitsync.index:		positive number, reference to [bitsync-#]
+#  receiver.index:		positive number, reference to [receiver-#]
+#  antenna.index:		positive number, reference to [antenna-#]
+#  feed.1.index:		positive number, reference to [feed-#]
+#  scheduler.type:		scheduled, continuous, demand, background, recv_pass
+#  down_converter:		selects telemetry to send from the antenna: 1 or 2
+#
+#  The following telemetry chain settings apply to continuous or demand. Currently,
+#  the only continuous telemetries are gvar and wefax. And continuous wefax reception
+#  is overridden by schedules $SATDATA/<satellite>/wefax_schedule.
+#
+#  scheduler.satellite:		e.g., goes-19
+#  scheduler.initial_proc:	process to run every time acquisition starts
+#  scheduler.normal_proc:	process to run every time a new pass starts
+#
+#  The following telemetry chain settings apply to scheduler.type=background. Currently,
+#  the only background scheduling activity is HRIT reception.
+#
+#  Acquistion process is 'initial_proc framer# chain# telemetry normal_proc'
+#  scheduler.satellite:		e.g., goes-19
+#  scheduler.initial_proc:	process to run to do acquisition
+#  scheduler.normal_proc:	sub-process of acquisition process
+#
+#  The following telemetry chain settings apply to scheduler.type = recv_pass.  Tsched
+#  will automatically start up recv_pass if there are any telemetry chains configured
+#  with scheduler.type=recv_pass.  use_shared_memory=yes is recommended if and only if
+#  live processing is required.
+#
+#  recv_pass.on_pass_disk:	yes or no, yes to write to numbered pass files
+#  recv_pass.use_shared_memory:	yes or no, yes is required for live ingest
+#  recv_pass.output_file:	output file name, used when on_pass_disk = no
+#  recv_pass.auto_rename:	yes or no, applies only when on_pass_disk = no
+#  recv_pass.live_process:	process to run when reception starts
+#  recv_pass.post_process:	process to run when reception ends
+#
+#---------------------------------------------------------------------------------
+#  Framer configuration
+#  Framers corresponding to scheduler.type background or recv_pass are virtual and do
+#  not have to be configured here
+#  
+#  [framer-#]			framer unit number, positive integer <= 4
+#  framer.type:			PCI or USB
+#  framer.device:		e.g., /dev/pcd0, /dev/terascan/{fdevice}
+#  framer.channel:		internal or external (default)
+#				can be overridden by framer.channel setting under [chain-#]
+#
+#---------------------------------------------------------------------------------
+#  Hardware decryption configuration
+#
+#  [decrypt-#]			decrypt unit number, positive integer <= 4
+#  decrypt.type:		kg44a or kg44b
+#  decrypt.device:		e.g., /dev/terascan/{port_name}
+#  <satellite>.keyparam:	e.g., f-13.keyparam: 9
+#
+#---------------------------------------------------------------------------------
+#  Bitsync configuration
+#
+#  [bitsync-#]			bitsync unit number, positive integer <= 4
+#  bitsync.type:		HR100 or TR100
+#  bitsync.device:		e.g., /dev/terascan/{port_name}
+#
+#  For Orbital pedestals, the device value must match the receiver.device value.
+#
+#---------------------------------------------------------------------------------
+#  Receiver configuration
+#
+#  [receiver-#]			receiver unit number, positive integer <= 4
+#  receiver.type:		HR300, HRD200, HR100, TR100, 2707D, OMSAT, GRYRX, QUORM
+#  receiver.device:		e.g., /dev/terascan{port_name}
+#
+#  If device is a pseudo tty, like /dev/ptyP0, there are two additional mandatory 
+#  configuration items:
+#  receiver.ip:         e.g. 192.68.124.170
+#  receiver.port:       e.g. 10001
+#
+# Wide AQUA mode. This is supported by some HRD200 receivers to allow the receiver to
+# properly take aqua passes when using certain revisions of the SeaSpace downconverter. 
+# Specify yes or no. It won't hurt anything if you specify yes and wide aqua is not
+# supported.
+#  receiver.wide_aqua:           yes or no
+#
+#---------------------------------------------------------------------------------
+#  Antenna configuration
+#
+#  [antenna-#]			antenna unit number, positive integer <= 4
+#  antenna.type:		See $REFDATA/config/antenna.config for antenna type numbers
+#  antenna.device:		hardware port. e.g., /dev/terascan/{port_name}
+#
+#  For Orbital pedestals, antenna.type should be 'orbital' and antenna.device should 
+#  be '/dev/orbital'. Also there is an additional configuration item:
+#  antenna.pedestal_num:   usually 1, but can be 1, 2, 3, or 4
+#
+#---------------------------------------------------------------------------------
+#  Feed configuration
+#
+#  [feed-#]			feed unit number, positive integer
+#  feed.type:			Tx or Rx
+#  feed.device:			XBAND or SBAND or LBAND
+#  feed.pol:			feed polarity, RHCP or LHCP
+#
+#---------------------------------------------------------------------------------
+#  Local Oscillator configuration
+#
+#  [lo-#]			local oscillator number, positive integer
+#  lo.device:			DC (down converter)
+#  lo.type:			Synthesizer
+#  lo.if:			Input frequency, typically 720 (MHz)
+#  <satellite>.frequency	Per satellite transmission frequency (MHz)
+#  terra-1.frequency:		8212.50
+#  aqua-1.frequency:		8160.00
+#  aura-1.frequency:		8160.00
+#  npp.frequency:               7812.00
+#  noaa-20.frequency:		7812.00
+#  noaa-21.frequency:		7812.00
+#  oceansat-3.frequency:	8300.00
+# 
+#---------------------------------------------------------------------------------
+#  Navigation hardware configuration
+#
+#  [nav-#]			navigation unit number, positive integer, 1 or 2
+#  nav.type:			navigation type: fixed, gyro, nmea
+#  nav.device:			hardware port. e.g., /dev/term/a  Used for nav.type = nmea
+#  nav.baudrate:		2400, 4800, 9600, 19200, 38400, or auto (nav.type=nmea only)
+#  nav.msgfmt:			nmea message type: 0183 v2.10, 0183 v2.230, 0183 v3.00, or nav1.cdg
+#  nav.sentences:		optional list message sentences to process, separated by commas,
+#				e.g. GLL,ZDA,HDT,RMC,HDG,GGA,ZDG,OSD.  All unsepcified sentences
+#				are ignored
+#
+#---------------------------------------------------------------------------------
+#  Lookup table monitor configuration
+#
+#  [lut-#]			lookup table unit number, positive integer
+#  lut.device			hardware port. e.g.,  /dev/terascan/{port_name}
+#  lut.type			metocean
+#  lut.baudrate			2400, 4800, 9600, 19200, or 38400
+#
+#---------------------------------------------------------------------------------
+#  Tape device configuration
+#
+#  [tape-#]			tape unit number, positive integer
+#  tape.device			tape device. e.g.,  /dev/rmt/0n, /dev/nrst0
+#  tape.model			sundat, hpdat, exabyte, wangdat, dlt
+#  tape.driver			linux, solaris, or solaris_fixed
+#
+#---------------------------------------------------------------------------------
+#  tscan_pproc configuration
+#  tscan_pproc is started automatically by capture (scheduled reception) or a result of
+#  configuration (other scheduler.type's).  Using tscan_pproc to configure post processing
+#  is highly recommended, since it automatically starts tscan_send and tscan_archive
+#
+#  [postproc-#]			tscan_pproc config number, positive integer
+#  postproc.active:		yes or no
+#  postproc.assoc_chains:	list of associated telemetry chain numbers, blank separated
+#  postproc.command:		actual command to run, including arguments
+#  postproc.when:		live or post (default); live processes never wait
+#  postproc.wait_for:		list of tscan_pproc config numbers, refers to [postproc-#],
+#				blank separated
+#
+#---------------------------------------------------------------------------------
+#  tscan_send send_pass configuration
+#  tscan_send is started automatically by tscan_pproc if there are any configured instances,
+#  active or not; configuration order determines run order.
+#
+#  [recvhost-#]			tscan_send config number, positive integer
+#  recvhost.active:		yes or no
+#  recvhost.name:		host name or ip address of destination host
+#  recvhost.bandwidth:		bandwidth percentage
+#  recvhost.assoc_chains:	list of associated telemetry chain numbers, blank separated
+#  recvhost.send_live:		yes or no
+#  recvhost.stream_proc:	e.g., rs for CCSDS Reed-Solomon (optional)
+#  recvhost.port:		network port number, default is 1480
+#  recvhost.tries:		number of connect attempts, default is 3
+#
+#---------------------------------------------------------------------------------
+#  tscan_archive configuration
+#  tscan_archive is started automatically by tscan_pproc if there are any configured
+#  instances, active or not.
+#
+#  [archive-#]			archive config number, positive integer
+#  archive.active:		yes or no
+#  archive.assoc_chains:	list of associated telemetry chain numbers, blank separated
+#  tape.index:			reference to [tape-#], positive integer
+#
+#  The following tscan_archive settings apply when there is no tape.index setting
+#  archive.directory:		directory to archive pass data to
+#  archive.sub_directory:	autoname archive sub-directory, default %yyyy/%mm
+#
+#---------------------------------------------------------------------------------
+#  Services configuration
+#  Services can be started up, shutdown, and restarted by tsched. Services should not
+#  be run in daemon mode (i.e., autonomously supporting reset, pause, etc). Signalling
+#  tsched (e.g., via zaptsched) stops and restarts all services. Tsched automatically
+#  restarts failed services, but only if they've managed to stay alive at least
+#  30 seconds.
+#
+#  All TeraScan services (e.g., waitd, sunclock, whereami, ups_monitor) should be be
+#  started using this mechanism. recv_pass should be configured under telemetry chains,
+#  not here. Using this mechanism allows tsched to control, monitor, and log these
+#  subprocesses and allow family tree status using the systemctl status function.
+#
+#  [service-#]			service config number, positive integer
+#  service.active:		yes or no
+#  service.command:		actual command to run, including arguments, e.g., waitd
+#				or archived with no arguments, sunclock #minutes,
+#				whereami #seconds, ups_monitor #seconds
+#
+#---------------------------------------------------------------------------------
+#  Post-processing environment variable directory and environment configuration.
+#  DATADIR, PGSWORKDIR, and PGSSPOOL should all be defined here. PASSDISKDISK,
+#  LOGDATEFORMATOPTS, and additional mission specific variables can also be defined here. 
+#
+#  Currently, the only way for TeraScan tsched to "know about" environment variable
+#  changes is to stop and restart tsched via systemctl as the root user, i.e, 
+#  systemctl restart terascan
+#
+#  [envdir-#]			directory configuration number, positive integer
+#  variable.name:		environment variable name, e.g., DATADIR
+#  directory.path:		directory path, e.g., /data
+#
+#  [envvar-#]			variable configuration number, positive integer
+#  variable.name:		environment variable name, e.g., LOGDATEFORMATOPTS
+#  variable.value:		environment variable value, e.g., --rfc-2822
+#
+#---------------------------------------------------------------------------------
+#
+#  Recv_pass non-chain-specific configuration
+#  Chain-specific configuration for recv_pass occurs under telemetry chain config; global
+#  configuration items are specified here.
+#
+#  [recv_pass]
+#  port_number:			network port number, default 1480
+#  timeout_seconds:		read timeout period in seconds, default 600
+#  max_connections:		max number of simultaneous connections, default 3
+#  pass_record_size:		default read record size, default 20480
+#
+#---------------------------------------------------------------------------------
+#  Global system settings
+#  These are catch-all settings for a number of different programs 
+# 
+#  [system]
+#  tsched.maxsmant:		size of shared memory buffer per framer, e.g., 8192000
+#  tsched.passgap:		inter-pass gap (actually setup time) in seconds (default 180)
+#  tsched.remoterx:		yes/no whether reception is at a remote location (default no)
+#
+#  pgs.maxjobs:			max number of simultaneous jobs run by pgs_pproc (default 3)
+#  pgs.geost.day.sunelev:	min daytime sun elev for geostationary data (default -90)
+#  pgs.polar.day.sunelev:	min daytime sun elev for polar orbiter data (default 5)
+#  ramdisk.size:		cache size, in GB, for TeraFlow's processing area (default auto)
+#  shasum_type:			TeraFlow's output_file checksum validation digest type (default none) 
+#
+#  teraflow.system:		TeraFlow's processing executive, either waitd or torque (default waitd)
+#
+#  multigeo.satellite:		central satellite in TeraFlow multigeo composite, e.g., goes-19
+#  multigeo.hours:		list of hours at which to attempt TeraFlow multigeo composite,
+#				blank separated
+#
+#  ups.type:			SeaSpace part number of UPS unit. e.g. 12076521
+#  ups.index:			su = APC UPS   
+#  ups.device:			hardware port. e.g., /dev/terascan{port_name}
+#
+#  gps.index:			internal-SV6, enternal-acutime, ext-acutime2000, ext-lassensq, nmea, ntp
+#  gps.device:			hardware port, e.g., /dev/terascan/{port_name}, when gps.index != nmea or ntp
+#  gps.type:			SeaSpace part number of GPS assembly. e.g. 70170101
+#  gps.data.source:		positive number, references to [nav-#], for gps.index = nmea only
+#  gps.assoc.chain		If the gps unit and an antenna share the same serial port, this value 
+#				specifies the telemetry chain of the antenna that shares the port.
+#
+#---------------------------------------------------------------------------------
+#  Locale configuration
+#
+#  [locale]
+#  institution:			site name and environment, e.g., SeaSpace Ops
+#  email:			alert email
+#
