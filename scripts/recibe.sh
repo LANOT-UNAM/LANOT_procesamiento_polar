@@ -65,6 +65,11 @@ fi
 RAW_FILE="$1"
 [[ "$RAW_FILE" == */* ]] || RAW_FILE="$INPUT_DIR/$RAW_FILE"
 
+# Ruta absoluta y a la raíz: procesar_pasada.sh hereda el directorio actual, y
+# apptainer no arranca si lanotadm no puede entrar en él (ver procesar_pasada.sh).
+RAW_FILE="$(realpath -m -- "$RAW_FILE")"
+cd / || exit 1
+
 # Antes esto se calculaba una vez y se reusaba hasta el mensaje final, así que
 # todas las líneas del log salían con la hora de entrada.
 marca() { date -u '+%Y-%m-%d %H:%M:%S UTC'; }

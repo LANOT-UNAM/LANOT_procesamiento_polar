@@ -345,6 +345,16 @@ if [ -n "$RAW" ] && [ -n "$CLAVE_PEDIDA" ]; then
     exit 1
 fi
 
+# A la raíz, con las rutas ya absolutas. apptainer entra al directorio actual al
+# crear el contenedor, y lanzado con 'sudo -u lanotadm' desde el home de una
+# persona muere al arrancar —'can't change directory … permission denied',
+# código 255— en todas las etapas a la vez. Así se perdieron dos corridas a mano
+# en tahan el 2026-09-22. La recepción por ssh no lo sufre, porque arranca en el
+# home de lanotadm.
+[ -z "$RAW" ] || RAW="$(realpath -m -- "$RAW")"
+SCRIPTS_DIR="$(realpath -m -- "$SCRIPTS_DIR")"
+cd / || exit 1
+
 # Arma la cadena de una tarea. --force se añade solo si toca: un
 # "${OPT[@]:-}" con el array vacío mete un campo vacío, y ese campo llega al
 # run_*.sh como un argumento de más que rechaza por no reconocido.
