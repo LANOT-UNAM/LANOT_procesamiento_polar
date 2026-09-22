@@ -904,8 +904,25 @@ vestir "Vistas de sondeos" "$HOST_SOUNDER_TIF_OUT" /output_sounder_tif /output_s
 # Flood ya viene como imagen: cspp_viirs_flood2tif.sh le pega la paleta flood.ct
 # con add_colormap.py, así que solo hay que vestirlo. Es el único usuario que le
 # queda a la rama de mapdrawer desde que se retiraron los RGB de superficie.
+#
+# Como no se filtra por REF_FILE, el filtro es lo único que acota la pasada. Era
+# satélite y fecha, y con dos pasadas del mismo satélite en un día la segunda
+# vestía el .tif de la primera (tahan, 2026-09-22: la de las 20:47 tomó
+# noaa21_viirs_flood_20260922_190643.tif). Ahora se aceptan solo los .tif cuyo
+# sello —el inicio del primer gránulo, que pone run_flood_edr.sh— cae en la
+# ventana de la pasada.
+FILTRO_FLOOD='^$'
+for tif in "$HOST_FLOOD_TIF_IN"/"${SAT_VISTA}"_viirs_flood_*.tif; do
+    [ -e "$tif" ] || continue
+    nombre=$(basename "$tif" .tif)
+    sello="${nombre##*_flood_}"; sello="${sello/_/}"
+    [[ "$sello" =~ ^[0-9]{14}$ ]] || continue
+    if [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ]; then
+        FILTRO_FLOOD="$FILTRO_FLOOD|/${nombre}\\.tif\$"
+    fi
+done
 vestir "Vistas de inundaciones" "$HOST_FLOOD_TIF_IN" /output_flood_tif /output_flood_img \
-       mapdrawer "${SAT_VISTA}_viirs_flood_${FECHA#d}_" 0 flood.cpt
+       mapdrawer "$FILTRO_FLOOD" 0 flood.cpt
 
 # ==============================================================================
 # VERIFICACIÓN
