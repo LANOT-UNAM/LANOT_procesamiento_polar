@@ -22,6 +22,63 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-09-22, tarde: la órbita dejó de identificar la pasada
+
+Las pasadas de la tarde recorrieron solas los dos sistemas. En tahan:
+
+- **NOAA-21 19:06 (`chain1-2_pass2`) y NPP 19:42 (`chain4-2_pass32`), completas**, 35 y 30 min.
+  NOAA-21 de día **sí trae OMPS** (19 V8TOZ y 19 V8PRO), así que lo de "sin datos" era la noche;
+  salen los RGB, y HEAP da las cinco familias. En NPP, HEAP queda `sin datos` (no hubo CrIS en la
+  ventana) sin contar como fallo.
+- **El aislamiento funciona**: `Manifiesto:` en cada log de RT-STPS, los `.rdr` en
+  `state/rt-stps/` y ningún `rt_stps_*` en `/data/tmp`. Los logs de pasada salen limpios.
+- **NOAA-20 20:15 (`chain2-3_pass13`) quedó sin procesar**: llegó con la de NPP en curso, salió
+  con 75 y nadie la recoge porque el barrido no está en cron. Es el caso previsto; hay que
+  relanzarla a mano.
+- **El CrIS de NOAA-21 20:47 falló** (`SDR_PREREQ_ABSENT CRIS-SCIENCE-RDR`): ATMS y OMPS tienen un
+  hueco de ~3 min a las 20:51, y con la ventana de ±4 gránulos de CrIS ningún tramo llegó a 9
+  seguidos. Corte de recepción, no de la cadena.
+- **El cron de ATMOS corrió a las 18:17 UTC** y no bajó nada nuevo (38 archivos antes y después).
+- En stratus, el reenvío entregó los cinco crudos y la cadena vieja procesó NPP y NOAA-20. Sus
+  logs quedan cruzados cuando dos pasadas se enciman (`clavrx_d20260922_t1942.log` lleva los
+  productos de las 20:02 y al revés); los productos están bien. No se toca: esa cadena se apaga.
+
+**Y la pasada de NOAA-21 de las 20:47 (`chain1-3_pass3`) no produjo nada de Level 2.** CSPP le
+puso a sus SDR de VIIRS la órbita **`b20040`, la misma que a la de las 19:06**, aunque están
+separadas exactamente por un periodo orbital. ATMS y OMPS del mismo crudo, con los mismos dos TLE,
+sí dijeron `b20041`. Con la clave `j02_d20260922_b20040`, las diez etapas encontraron los
+marcadores de la pasada anterior y salieron `ya estaba`; la ventana salió de 19:06 a 20:59, y un
+`--force` tampoco servía, porque el glob por órbita habría metido las dos pasadas en el staging.
+En `level1` de tahan es la única órbita repetida entre 12 pasadas de VIIRS; por qué la repite
+CSPP sigue sin saberse.
+
+**La clave ahora es la hora de inicio** (`j02_d20260922_t204743`), y los archivos de una pasada se
+eligen **por tiempo**, no por un glob sobre la órbita. Todo vive en `scripts/pasadas.sh`, que
+cargan los diez scripts de pasada y `procesar_pasada.sh`: una pasada es un grupo de SDR de
+geolocalización del mismo satélite sin huecos de más de 20 min (`PASADA_HUECO_S`); dos sobrevuelos
+del mismo satélite están a ~100 min, y un corte de recepción dura minutos. Además:
+
+- Desaparecen diez copias de `clave_de_pasada`/`claves_disponibles`/`resolver_pasada`, y las
+  ventanas que LSR, CRYO y el renderizado de Level 2 sacaban de **un** GMTCO representativo, que
+  con SDR por gránulo daba una ventana de un gránulo.
+- OMPS y HEAP se emparejan con `pasada_que_traslapa`, que ya no se queda con la órbita mayoritaria
+  cuando la órbita cambia a media pasada: el grupo por tiempo la toma entera.
+- `-p` y `--clave` siguen aceptando las claves viejas (`j01_d20260811_b45236`) y trozos como
+  `b45236`; si la órbita la llevan dos pasadas, lo dicen y listan las dos claves nuevas.
+- **Los marcadores viejos quedan huérfanos, y no importa**: el barrido decide por los de RT-STPS,
+  que van por crudo, y ningún proceso automático vuelve sobre pasadas ya hechas. Rehacer una
+  pasada vieja con `--clave` la procesa desde cero, que es lo que se pide al rehacerla.
+
+Probado en bucefalo con un `level1` simulado con los nombres de hoy y un `apptainer` falso que
+enseña el staging: cada uno de los diez scripts toma solo los archivos de las 20:47 (VIIRS, I,
+M, OMPS, CrIS y ATMS con margen, JRR por ventana), la autoselección, las claves viejas —ambigua
+y no ambigua—, `procesar_pasada.sh --dry-run --clave` y la entrada por crudo con manifiestos.
+En tahan, solo lectura: `listar_pasadas` sobre los `level1` reales da 12 pasadas de VIIRS, 9 de
+OMPS y 8 de CrIS en ~5 ms cada uno. **Falta**: instalar y relanzar la pasada de las 20:47 con
+`procesar_pasada.sh --clave t2047`.
+
+---
+
 ## 2026-09-22: cada pasada, aislada de las demás
 
 Con esto dos pasadas pueden correr a la vez sin pisarse, que es el prerrequisito de la cola con

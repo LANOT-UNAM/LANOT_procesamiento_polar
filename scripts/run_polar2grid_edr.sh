@@ -7,7 +7,8 @@
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue renderizada con éxito, avisa y no hace nada. Una pasada se
-# identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
+# identifica por satélite, fecha y hora de inicio (p. ej. j01_d20260811_t194733;
+# ver pasadas.sh).
 #
 # Cada conjunto (ATMOS, LSR, ACSPO, FIRE, SOUNDER) es independiente: si uno
 # falla, se reporta y los otros siguen. Basta con que alguno produzca imágenes
@@ -209,69 +210,17 @@ Uso:
 Opciones:
   -f, --force   Ignora el marcador de renderizado
   -p, --pasada  Pasada concreta en vez de la más reciente: la clave completa
-                (j01_d20260813_b45264) o cualquier trozo que la identifique
+                (j01_d20260813_t191402) o cualquier trozo que la identifique
   -h, --help    Muestra esta ayuda
 
 Pasadas disponibles en $HOST_SDR_IN:
-$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
+$(listar_pasadas "$HOST_SDR_IN" GMTCO 2>/dev/null | cut -d' ' -f1 | sed 's/^/  /' || true)
 EOF
 }
 
-# GMTCO_j01_d20260811_t1947330_e1948557_b45236_c2026...h5 -> j01_d20260811_b45236
-clave_de_pasada() {
-    local nombre sat fecha orbita
-    nombre=$(basename "$1")
-    IFS='_' read -r _ sat fecha _ _ orbita _ <<< "$nombre"
-    if [[ "$fecha" != d* ]] || [[ "$orbita" != b* ]]; then
-        return 1
-    fi
-    echo "${sat}_${fecha}_${orbita}"
-}
-
-# Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
-claves_disponibles() {
-    find "$HOST_SDR_IN" -maxdepth 1 -name 'GMTCO*.h5' -printf '%f\n' 2>/dev/null |
-        while IFS= read -r nombre; do
-            clave_de_pasada "$nombre" || true
-        done | sort -u
-}
-
-# Deja en ULTIMO_GMTCO un archivo representativo de la pasada: el más reciente si
-# no se pidió ninguna, o el primer gránulo de la que se pida con --pasada. De ahí
-# salen la clave y, donde aplica, la ventana temporal con la que se emparejan los
-# productos que no llevan órbita en el nombre.
-resolver_pasada() {
-    local coinciden sat fecha orbita
-
-    if [ -z "$PASADA" ]; then
-        ULTIMO_GMTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name 'GMTCO*.h5' \
-                            -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
-        return 0
-    fi
-
-    # --pasada acepta la clave completa o cualquier trozo que la identifique:
-    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
-    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
-    # inexistente se caza aquí y no a media corrida.
-    mapfile -t coinciden < <(claves_disponibles | grep -F -- "$PASADA" || true)
-
-    if [ "${#coinciden[@]}" -eq 0 ]; then
-        echo "ERROR: Ninguna pasada de $HOST_SDR_IN coincide con '$PASADA'" >&2
-        echo "       Disponibles:" >&2
-        claves_disponibles | sed 's/^/         /' >&2
-        return 1
-    fi
-
-    if [ "${#coinciden[@]}" -gt 1 ]; then
-        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
-        printf '         %s\n' "${coinciden[@]}" >&2
-        return 1
-    fi
-
-    IFS='_' read -r sat fecha orbita <<< "${coinciden[0]}"
-    ULTIMO_GMTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name "GMTCO_${sat}_${fecha}_*_${orbita}_*.h5" \
-                        | sort | head -1)
-}
+# Qué es una pasada y cómo se elige: por tiempo, no por órbita (ver pasadas.sh).
+# Fija CLAVE, SAT, FECHA y la ventana VENTANA_INI – VENTANA_FIN.
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/pasadas.sh"
 
 # Paletas cuyo color N sí es un fondo válido para "sin dato". Es lista explícita
 # y no una heurística sobre el archivo: que un N "parezca" fondo no dice si el
@@ -312,25 +261,9 @@ formato_duracion() {
     fi
 }
 
-# Calcula la ventana temporal de la pasada a partir del SDR agregado:
-#   GMTCO_j01_d20260811_t1947330_e2003097_b45236_... -> 202608111947330 .. 202608112003097
-ventana_de_pasada() {
-    local nombre fecha tini tfin
-    nombre=$(basename "$1")
-    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
-
-    FECHA_NUM="${fecha#d}"
-    VENTANA_INI="${FECHA_NUM}${tini#t}"; VENTANA_INI="${VENTANA_INI:0:14}"
-
-    # Si la hora final es menor que la inicial, la pasada cruzó la medianoche
-    if [ "${tfin#e}" -lt "${tini#t}" ]; then
-        FECHA_SIG=$(date -u -d "${FECHA_NUM} +1 day" +%Y%m%d)
-    else
-        FECHA_SIG="$FECHA_NUM"
-    fi
-
-    VENTANA_FIN="${FECHA_SIG}${tfin#e}"; VENTANA_FIN="${VENTANA_FIN:0:14}"
-
+# La ventana de la pasada la fija resolver_pasada (pasadas.sh) con TODOS sus
+# GMTCO; aquí solo se ensancha.
+ventana_con_margen() {
     # Margen a ambos lados. Hace falta porque no todos los productos fechan
     # igual: el .nc de ACSPO de esta misma pasada sale como 20260811194400,
     # 3.5 minutos ANTES del primer gránulo (t1947330), y sin margen quedaba
@@ -527,19 +460,12 @@ if [ ! -d "$HOST_SDR_IN" ]; then
     exit 1
 fi
 
-resolver_pasada || exit 1
+resolver_pasada "$HOST_SDR_IN" GMTCO "$PASADA" || exit 1
 
-if [ -z "$ULTIMO_GMTCO" ]; then
+if [ -z "$CLAVE" ]; then
     echo "No hay SDR que renderizar en $HOST_SDR_IN (no se ven archivos GMTCO*)."
     exit 0
 fi
-
-if ! CLAVE=$(clave_de_pasada "$ULTIMO_GMTCO"); then
-    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GMTCO")" >&2
-    exit 1
-fi
-
-IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
 SAT_VISTA=$(sat_polar2grid "$SAT")
 
 echo "=== POLAR2GRID v3.2 | pasada $CLAVE ==="
@@ -645,10 +571,9 @@ BINDS_P2G=(
 # justamente 'cspp_dev': quitarlo no ayuda al match, lo impide. Verificado en
 # tahan el 2026-08-13, cuando el lector rechazó los 28 archivos con
 # "No filenames found for reader: viirs_sdr".
-for f in "$HOST_SDR_IN"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
-    [ -e "$f" ] || continue
+while IFS= read -r f; do
     ln -sf "$f" "$STAGING_SDR/"
-done
+done < <(archivos_de_pasada "$HOST_SDR_IN" '*')
 
 SDR_COUNT=$(find "$STAGING_SDR" -name '*.h5' | wc -l)
 
@@ -657,7 +582,7 @@ if [ "$SDR_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-ventana_de_pasada "$ULTIMO_GMTCO"
+ventana_con_margen
 
 EDR_COUNT=0
 LSR_COUNT=0

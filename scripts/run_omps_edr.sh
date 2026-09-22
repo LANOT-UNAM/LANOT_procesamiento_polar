@@ -11,7 +11,8 @@
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR de
 # OMPS y, si ya fue procesada con éxito, avisa y no hace nada. Una pasada se
-# identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
+# identifica por satélite, fecha y hora de inicio (p. ej. j01_d20260811_t194733;
+# ver pasadas.sh).
 #
 # Los dos instrumentos, según el manual §1.4:
 #   V8TOz  necesita SOLO el Nadir Mapper     (SOMTC* + GOTCO*)
@@ -66,7 +67,7 @@ Uso:
 Opciones:
   -f, --force   Ignora el marcador de procesado
   -p, --pasada  Pasada concreta en vez de la más reciente: la clave completa
-                (j01_d20260813_b45264) o cualquier trozo que la identifique
+                (j01_d20260813_t191402) o cualquier trozo que la identifique
   -h, --help    Muestra esta ayuda
 
 Requiere que run_sdr.sh haya corrido para los DOS instrumentos:
@@ -74,65 +75,13 @@ Requiere que run_sdr.sh haya corrido para los DOS instrumentos:
   scripts/run_sdr.sh --sensor omps_np
 
 Pasadas disponibles en $HOST_SDR_IN:
-$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
+$(listar_pasadas "$HOST_SDR_IN" GOTCO 2>/dev/null | cut -d' ' -f1 | sed 's/^/  /' || true)
 EOF
 }
 
-# GOTCO_j01_d20260811_t1948528_e2002357_b45236_c2026...h5 -> j01_d20260811_b45236
-clave_de_pasada() {
-    local nombre sat fecha orbita
-    nombre=$(basename "$1")
-    IFS='_' read -r _ sat fecha _ _ orbita _ <<< "$nombre"
-    if [[ "$fecha" != d* ]] || [[ "$orbita" != b* ]]; then
-        return 1
-    fi
-    echo "${sat}_${fecha}_${orbita}"
-}
-
-# Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
-claves_disponibles() {
-    find "$HOST_SDR_IN" -maxdepth 1 -name 'GOTCO*.h5' -printf '%f\n' 2>/dev/null |
-        while IFS= read -r nombre; do
-            clave_de_pasada "$nombre" || true
-        done | sort -u
-}
-
-# Deja en ULTIMO_GOTCO un archivo representativo de la pasada: el más reciente si
-# no se pidió ninguna, o el primer gránulo de la que se pida con --pasada. De ahí
-# salen la clave y, donde aplica, la ventana temporal con la que se emparejan los
-# productos que no llevan órbita en el nombre.
-resolver_pasada() {
-    local coinciden sat fecha orbita
-
-    if [ -z "$PASADA" ]; then
-        ULTIMO_GOTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name 'GOTCO*.h5' \
-                            -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
-        return 0
-    fi
-
-    # --pasada acepta la clave completa o cualquier trozo que la identifique:
-    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
-    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
-    # inexistente se caza aquí y no a media corrida.
-    mapfile -t coinciden < <(claves_disponibles | grep -F -- "$PASADA" || true)
-
-    if [ "${#coinciden[@]}" -eq 0 ]; then
-        echo "ERROR: Ninguna pasada de $HOST_SDR_IN coincide con '$PASADA'" >&2
-        echo "       Disponibles:" >&2
-        claves_disponibles | sed 's/^/         /' >&2
-        return 1
-    fi
-
-    if [ "${#coinciden[@]}" -gt 1 ]; then
-        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
-        printf '         %s\n' "${coinciden[@]}" >&2
-        return 1
-    fi
-
-    IFS='_' read -r sat fecha orbita <<< "${coinciden[0]}"
-    ULTIMO_GOTCO=$(find "$HOST_SDR_IN" -maxdepth 1 -name "GOTCO_${sat}_${fecha}_*_${orbita}_*.h5" \
-                        | sort | head -1)
-}
+# Qué es una pasada y cómo se elige: por tiempo, no por órbita (ver pasadas.sh).
+# Fija CLAVE, SAT, FECHA y la ventana VENTANA_INI – VENTANA_FIN.
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/pasadas.sh"
 
 formato_duracion() {
     local s="$1"
@@ -194,19 +143,12 @@ fi
 
 # La pasada la define la geolocalización del Nadir Mapper: es el insumo mínimo,
 # porque sin ella no hay ni V8TOz.
-resolver_pasada || exit 1
+resolver_pasada "$HOST_SDR_IN" GOTCO "$PASADA" || exit 1
 
-if [ -z "$ULTIMO_GOTCO" ]; then
+if [ -z "$CLAVE" ]; then
     echo "No hay SDR de OMPS que procesar en $HOST_SDR_IN (no se ven archivos GOTCO*)."
     exit 0
 fi
-
-if ! CLAVE=$(clave_de_pasada "$ULTIMO_GOTCO"); then
-    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GOTCO")" >&2
-    exit 1
-fi
-
-IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
 
 echo "=============================================================================="
 echo "CSPP OMPS EDR v1.0 | pasada $CLAVE"
@@ -259,19 +201,17 @@ NM_COUNT=0
 NP_COUNT=0
 
 for prefijo in SOMTC GOTCO; do
-    for f in "$HOST_SDR_IN"/${prefijo}_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
-        [ -e "$f" ] || continue
+    while IFS= read -r f; do
         ln -sf "$f" "$STAGING_DIR/"
         NM_COUNT=$((NM_COUNT + 1))
-    done
+    done < <(archivos_de_pasada "$HOST_SDR_IN" "$prefijo")
 done
 
 for prefijo in SOMPS GONPO; do
-    for f in "$HOST_SDR_IN"/${prefijo}_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
-        [ -e "$f" ] || continue
+    while IFS= read -r f; do
         ln -sf "$f" "$STAGING_DIR/"
         NP_COUNT=$((NP_COUNT + 1))
-    done
+    done < <(archivos_de_pasada "$HOST_SDR_IN" "$prefijo")
 done
 
 if [ "$NM_COUNT" -eq 0 ]; then

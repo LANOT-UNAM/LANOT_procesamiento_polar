@@ -53,7 +53,7 @@ ESTADO="${ESTADO_BASE:-/data/output/jpss/state}"
 LEVEL0="${RTSTPS_OUTPUT_DIR:-/data/output/jpss/level0}"
 LEVEL1_VIIRS="${SDR_LEVEL1_VIIRS:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/viirs}"
 # Los mismos que leen run_omps_edr.sh y run_heap_edr.sh: de aquí sale qué pasada
-# de esos instrumentos corresponde a la de VIIRS (ver pasada_por_traslape).
+# de esos instrumentos corresponde a la de VIIRS (ver pasada_que_traslapa).
 LEVEL1_OMPS="${OMPS_SDR_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/omps}"
 LEVEL1_CRIS="${HEAP_CRIS_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/cris}"
 
@@ -99,7 +99,8 @@ Uso:
   $0 --dry-run <raw>       Imprime el grafo y los comandos, sin ejecutar
 
 Opciones:
-  -c, --clave <clave>   Pasada concreta: j01_d20260814_b45273
+  -c, --clave <clave>   Pasada concreta: j01_d20260814_t092311, o cualquier trozo
+                        que la identifique (también sirven las de antes, con órbita)
   -f, --force           Se propaga a todas las etapas
   -n, --dry-run
   -h, --help
@@ -118,100 +119,16 @@ titulo() {
     echo "=============================================================================="
 }
 
-# GMTCO_j01_d20260814_t0923110_..._b45273_... -> j01_d20260814_b45273
-clave_de_pasada() {
-    local n="$1" sat fecha orbita
-    sat="$(echo    "$n" | grep -oE '_(npp|j01|j02)_'   | head -1 | tr -d _)"
-    fecha="$(echo  "$n" | grep -oE '_d[0-9]{8}_'       | head -1 | tr -d _)"
-    orbita="$(echo "$n" | grep -oE '_b[0-9]{5,6}_'     | head -1 | tr -d _)"
-    [ -n "$sat" ] && [ -n "$fecha" ] && [ -n "$orbita" ] || return 1
-    echo "${sat}_${fecha}_${orbita}"
-}
-
-# La clave de OMPS no puede ser la de VIIRS: el mismo sobrevuelo lleva otra
-# órbita según el instrumento (b45236 en VIIRS, b45237 en OMPS). Lo mismo vale
-# para HEAP, cuya pasada la fija CrIS. Antes se les pasaba la clave truncada
-# (j01_d20260922) y cada run_*.sh la resolvía contra su directorio, pero eso
-# aborta en cuanto hay dos pasadas del mismo satélite el mismo día —la segunda
-# de cada día, en operación— y no distingue "no hay OMPS" de "no encontré la
-# pasada". Ahora se empareja por TIEMPO: la pasada del otro instrumento es la
-# que se traslapa con la ventana de VIIRS.
-
-# Del nombre de un SDR saca su intervalo como "AAAAMMDDHHMMSS AAAAMMDDHHMMSS".
-# La misma que run_heap_edr.sh: si el fin es menor que el inicio, el archivo
-# cruzó la medianoche. Las comparaciones van con [ ] y no con [[ ]]: los sellos
-# de antes de las 10:00 UTC empiezan con cero y [[ ]] los tomaría por octales.
-intervalo_de() {
-    local nombre fecha tini tfin fecha_fin
-    nombre=$(basename "$1")
-    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
-    if [[ "$fecha" != d* ]] || [[ "$tini" != t* ]] || [[ "$tfin" != e* ]]; then
-        return 1
-    fi
-    fecha="${fecha#d}"; tini="${tini#t}"; tfin="${tfin#e}"
-    if [ "$tfin" -lt "$tini" ]; then
-        fecha_fin=$(date -u -d "${fecha} +1 day" +%Y%m%d)
-    else
-        fecha_fin="$fecha"
-    fi
-    echo "${fecha}${tini:0:6} ${fecha_fin}${tfin:0:6}"
-}
-
-# La ventana de la pasada de VIIRS: el inicio más temprano y el fin más tardío de
-# TODOS sus GMTCO, no los de uno representativo, porque en level1 conviven
-# archivos agregados y por gránulo (ver run_heap_edr.sh, ventana_de_pasada).
-# Imprime "INI FIN"; código 1 si no hay ninguno.
-ventana_viirs() {
-    local sat fecha orbita f ini fin v_ini="" v_fin=""
-    IFS='_' read -r sat fecha orbita <<< "$1"
-    shopt -s nullglob
-    for f in "$LEVEL1_VIIRS"/GMTCO_"${sat}"_"${fecha}"_*_"${orbita}"_*.h5; do
-        read -r ini fin < <(intervalo_de "$f") || continue
-        if [ -z "$v_ini" ] || [ "$ini" -lt "$v_ini" ]; then v_ini="$ini"; fi
-        if [ -z "$v_fin" ] || [ "$fin" -gt "$v_fin" ]; then v_fin="$fin"; fi
-    done
-    shopt -u nullglob
-    [ -n "$v_ini" ] || return 1
-    echo "$v_ini $v_fin"
-}
-
-# pasada_por_traslape <dir> <prefijo> <sat> <ini> <fin>
-#
-# La clave de la pasada del otro instrumento cuya geolocalización (<prefijo>:
-# GOTCO de OMPS, GCRSO de CrIS) se traslapa con la ventana. Del mismo satélite:
-# NPP y NOAA-20 pasan con ~20 minutos de diferencia. Se miran la fecha de la
-# ventana y sus vecinas, porque un archivo puede empezar del otro lado de la
-# medianoche.
-#
-# Si se traslapan varias claves —la órbita cambia al cruzar el ecuador hacia el
-# norte, y puede hacerlo a media pasada— gana la que más archivos aporta, y se
-# avisa en stderr. Código 1 si no hay ninguna: el instrumento no dejó datos.
-pasada_por_traslape() {
-    local dir="$1" prefijo="$2" sat="$3" v_ini="$4" v_fin="$5"
-    local d f ini fin clave mejor="" n_mejor=0
-    local -A cuenta=()
-    shopt -s nullglob
-    for d in $(date -u -d "${v_ini:0:8} -1 day" +%Y%m%d) "${v_ini:0:8}" \
-             $(date -u -d "${v_ini:0:8} +1 day" +%Y%m%d); do
-        for f in "$dir"/"${prefijo}"_"${sat}"_d"${d}"_*.h5; do
-            read -r ini fin < <(intervalo_de "$f") || continue
-            [ "$ini" -le "$v_fin" ] && [ "$fin" -ge "$v_ini" ] || continue
-            clave="$(clave_de_pasada "$(basename "$f")")" || continue
-            cuenta[$clave]=$(( ${cuenta[$clave]:-0} + 1 ))
-        done
-    done
-    shopt -u nullglob
-    for clave in "${!cuenta[@]}"; do
-        if [ "${cuenta[$clave]}" -gt "$n_mejor" ]; then
-            mejor="$clave"; n_mejor="${cuenta[$clave]}"
-        fi
-    done
-    [ -n "$mejor" ] || return 1
-    if [ "${#cuenta[@]}" -gt 1 ]; then
-        echo "  ⚠ $prefijo: se traslapan ${#cuenta[@]} pasadas (${!cuenta[*]}); se toma $mejor" >&2
-    fi
-    echo "$mejor"
-}
+# Qué es una pasada: un grupo de SDR sin huecos largos, identificado por su hora
+# de inicio y no por la órbita (ver pasadas.sh). Da resolver_pasada, que fija
+# CLAVE, SAT y la ventana VENTANA_INI – VENTANA_FIN, y pasada_que_traslapa, con
+# la que se elige la pasada de OMPS y la de CrIS: la órbita tampoco es común
+# entre instrumentos (b45236 en VIIRS, b45237 en OMPS), así que se empareja por
+# tiempo. Antes se les pasaba la clave truncada (j01_d20260922) y cada run_*.sh
+# la resolvía contra su directorio, pero eso aborta en cuanto hay dos pasadas del
+# mismo satélite el mismo día y no distingue "no hay OMPS" de "no encontré la
+# pasada".
+source "$SCRIPT_DIR/pasadas.sh"
 
 # Igual que detectar_sensor de run_sdr.sh:145-149. Está duplicado a propósito:
 # la alternativa es llamar a run_sdr.sh y no poder distinguir "esto no es un RDR
@@ -560,38 +477,40 @@ fi
 # LA CLAVE DE LA PASADA
 # ==============================================================================
 
-if [ -n "$CLAVE_PEDIDA" ]; then
-    CLAVE="$CLAVE_PEDIDA"
-elif [ "$DRY_RUN" -eq 1 ]; then
-    CLAVE="j01_dAAAAMMDD_bNNNNN"
+if [ "$DRY_RUN" -eq 1 ] && [ -z "$CLAVE_PEDIDA" ]; then
+    CLAVE="j01_dAAAAMMDD_tHHMMSS"
 else
-    # La clave sale del manifiesto que dejó el SDR de VIIRS de ESTA pasada, no
-    # del GMTCO más nuevo de level1: con dos pasadas encimadas, el más nuevo
-    # puede ser de la otra, y entonces todo el Level 2 correría con la clave
-    # ajena y el propio no se haría nunca.
-    #
-    # Del manifiesto del SDR y no del nombre del RDR: los RDR traen la órbita que
-    # les pone RT-STPS, que puede ser 'b00001' (NOAA-21, 2026-09-22), mientras
-    # que los SDR llevan la real, que CSPP calcula con el TLE.
-    ANCLA=""
-    MANIFIESTO_SDR="$DIR_SDR/${RDR_VIIRS}.prod"
-    if [ -n "$RDR_VIIRS" ] && [ -f "$MANIFIESTO_SDR" ]; then
-        ANCLA="$(grep -m1 '^GMTCO' "$MANIFIESTO_SDR" || true)"
+    if [ -n "$CLAVE_PEDIDA" ]; then
+        PEDIDO="$CLAVE_PEDIDA"
+    else
+        # La pasada es la que contiene el GMTCO que dejó en su manifiesto el SDR
+        # de VIIRS de ESTA pasada, no el GMTCO más nuevo de level1: con dos
+        # pasadas encimadas, el más nuevo puede ser de la otra, y entonces todo
+        # el Level 2 correría con la clave ajena y el propio no se haría nunca.
+        #
+        # Del manifiesto del SDR y no del nombre del RDR: los RDR traen el tiempo
+        # y la órbita que les pone RT-STPS (b00001 en NOAA-21, 2026-09-22), y la
+        # pasada se agrupa sobre los SDR.
+        PEDIDO=""
+        MANIFIESTO_SDR="$DIR_SDR/${RDR_VIIRS}.prod"
+        if [ -n "$RDR_VIIRS" ] && [ -f "$MANIFIESTO_SDR" ]; then
+            PEDIDO="$(grep -m1 '^GMTCO' "$MANIFIESTO_SDR" || true)"
+        fi
+        if [ -z "$PEDIDO" ]; then
+            echo ""
+            echo "⚠  El SDR de VIIRS no dejó ningún GMTCO en su manifiesto."
+            echo "   Esperado en: ${MANIFIESTO_SDR:-(no hubo RDR de VIIRS en la pasada)}"
+            echo "   Sin clave de pasada no se puede seguir a Level 2."
+            exit 1
+        fi
     fi
-    if [ -z "$ANCLA" ]; then
-        echo ""
-        echo "⚠  El SDR de VIIRS no dejó ningún GMTCO en su manifiesto."
-        echo "   Esperado en: ${MANIFIESTO_SDR:-(no hubo RDR de VIIRS en la pasada)}"
-        echo "   Sin clave de pasada no se puede seguir a Level 2."
-        exit 1
-    fi
-    if ! CLAVE="$(clave_de_pasada "$ANCLA")"; then
-        echo "⚠  No se pudo derivar la clave de: $ANCLA" >&2
+    if ! resolver_pasada "$LEVEL1_VIIRS" GMTCO "$PEDIDO" || [ -z "$CLAVE" ]; then
+        echo "⚠  No se encontró en $LEVEL1_VIIRS la pasada de: $PEDIDO" >&2
         exit 1
     fi
 fi
 
-# OMPS y HEAP, por traslape con la ventana de VIIRS (ver pasada_por_traslape).
+# OMPS y HEAP, por traslape con la ventana de VIIRS (ver pasada_que_traslapa).
 # Sin traslape la etapa no se lanza: no es un fallo sino que no hay datos. OMPS
 # de noche es el caso de todos los días —sus sensores nadir miden luz solar
 # retrodispersada y el crudo no trae ni un paquete (NOAA-21, 2026-09-22)—; sin
@@ -599,23 +518,17 @@ fi
 echo ""
 echo "  Pasada:      $CLAVE"
 if [ "$DRY_RUN" -eq 1 ] && [ -z "$CLAVE_PEDIDA" ]; then
-    CLAVE_OMPS="j01_dAAAAMMDD_bNNNNN"
-    CLAVE_HEAP="j01_dAAAAMMDD_bNNNNN"
-elif ! VENTANA="$(ventana_viirs "$CLAVE")"; then
-    echo "  ⚠ Sin GMTCO de $CLAVE en $LEVEL1_VIIRS: no se puede emparejar OMPS ni HEAP"
-    SIN_DATOS[omps]="sin ventana de VIIRS para emparejar"
-    SIN_DATOS[heap]="sin ventana de VIIRS para emparejar"
+    CLAVE_OMPS="j01_dAAAAMMDD_tHHMMSS"
+    CLAVE_HEAP="j01_dAAAAMMDD_tHHMMSS"
 else
-    read -r V_INI V_FIN <<< "$VENTANA"
-    SAT_PASADA="${CLAVE%%_*}"
-    echo "  Ventana:     $V_INI – $V_FIN"
-    if CLAVE_OMPS="$(pasada_por_traslape "$LEVEL1_OMPS" GOTCO "$SAT_PASADA" "$V_INI" "$V_FIN")"; then
-        echo "  Clave OMPS:  $CLAVE_OMPS  (otra órbita para el mismo sobrevuelo)"
+    echo "  Ventana:     $VENTANA_INI – $VENTANA_FIN"
+    if CLAVE_OMPS="$(pasada_que_traslapa "$LEVEL1_OMPS" GOTCO "$SAT" "$VENTANA_INI" "$VENTANA_FIN")"; then
+        echo "  Clave OMPS:  $CLAVE_OMPS"
     else
         SIN_DATOS[omps]="sin SDR de OMPS en la ventana (de noche no hay: miden luz solar)"
         echo "  Clave OMPS:  —  ${SIN_DATOS[omps]}"
     fi
-    if CLAVE_HEAP="$(pasada_por_traslape "$LEVEL1_CRIS" GCRSO "$SAT_PASADA" "$V_INI" "$V_FIN")"; then
+    if CLAVE_HEAP="$(pasada_que_traslapa "$LEVEL1_CRIS" GCRSO "$SAT" "$VENTANA_INI" "$VENTANA_FIN")"; then
         echo "  Clave HEAP:  $CLAVE_HEAP  (la fija CrIS, no VIIRS)"
     else
         SIN_DATOS[heap]="sin SDR de CrIS en la ventana"

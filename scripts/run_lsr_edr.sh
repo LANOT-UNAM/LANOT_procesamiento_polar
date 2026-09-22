@@ -15,7 +15,8 @@
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue procesada con éxito, avisa y no hace nada. Una pasada se identifica
-# por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
+# por satélite, fecha y hora de inicio (p. ej. j01_d20260811_t194733;
+# ver pasadas.sh).
 #
 # LSR no usa ancillary dinámico (manual §1.5: "No dynamic ancillary data inputs
 # are required"), así que no depende de la red.
@@ -63,71 +64,19 @@ Uso:
 Opciones:
   -f, --force          Ignora el marcador de procesado
   -p, --pasada         Pasada concreta en vez de la más reciente: la clave completa
-                       (j01_d20260813_b45264) o cualquier trozo que la identifique
+                       (j01_d20260813_t191402) o cualquier trozo que la identifique
   -k, --keep-staging   Conserva el directorio de enlaces, para diagnosticar
                        qué vio realmente el contenedor
   -h, --help           Muestra esta ayuda
 
 Pasadas disponibles en $INPUT_SDR_DIR:
-$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
+$(listar_pasadas "$INPUT_SDR_DIR" GMTCO 2>/dev/null | cut -d' ' -f1 | sed 's/^/  /' || true)
 EOF
 }
 
-# GMTCO_j01_d20260811_t1947330_e1948557_b45236_c2026...h5 -> j01_d20260811_b45236
-clave_de_pasada() {
-    local nombre sat fecha orbita
-    nombre=$(basename "$1")
-    IFS='_' read -r _ sat fecha _ _ orbita _ <<< "$nombre"
-    if [[ "$fecha" != d* ]] || [[ "$orbita" != b* ]]; then
-        return 1
-    fi
-    echo "${sat}_${fecha}_${orbita}"
-}
-
-# Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
-claves_disponibles() {
-    find "$INPUT_SDR_DIR" -maxdepth 1 -name 'GMTCO*.h5' -printf '%f\n' 2>/dev/null |
-        while IFS= read -r nombre; do
-            clave_de_pasada "$nombre" || true
-        done | sort -u
-}
-
-# Deja en ULTIMO_GMTCO un archivo representativo de la pasada: el más reciente si
-# no se pidió ninguna, o el primer gránulo de la que se pida con --pasada. De ahí
-# salen la clave y, donde aplica, la ventana temporal con la que se emparejan los
-# productos que no llevan órbita en el nombre.
-resolver_pasada() {
-    local coinciden sat fecha orbita
-
-    if [ -z "$PASADA" ]; then
-        ULTIMO_GMTCO=$(find "$INPUT_SDR_DIR" -maxdepth 1 -name 'GMTCO*.h5' \
-                            -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
-        return 0
-    fi
-
-    # --pasada acepta la clave completa o cualquier trozo que la identifique:
-    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
-    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
-    # inexistente se caza aquí y no a media corrida.
-    mapfile -t coinciden < <(claves_disponibles | grep -F -- "$PASADA" || true)
-
-    if [ "${#coinciden[@]}" -eq 0 ]; then
-        echo "ERROR: Ninguna pasada de $INPUT_SDR_DIR coincide con '$PASADA'" >&2
-        echo "       Disponibles:" >&2
-        claves_disponibles | sed 's/^/         /' >&2
-        return 1
-    fi
-
-    if [ "${#coinciden[@]}" -gt 1 ]; then
-        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
-        printf '         %s\n' "${coinciden[@]}" >&2
-        return 1
-    fi
-
-    IFS='_' read -r sat fecha orbita <<< "${coinciden[0]}"
-    ULTIMO_GMTCO=$(find "$INPUT_SDR_DIR" -maxdepth 1 -name "GMTCO_${sat}_${fecha}_*_${orbita}_*.h5" \
-                        | sort | head -1)
-}
+# Qué es una pasada y cómo se elige: por tiempo, no por órbita (ver pasadas.sh).
+# Fija CLAVE, SAT, FECHA y la ventana VENTANA_INI – VENTANA_FIN.
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/pasadas.sh"
 
 formato_duracion() {
     local s="$1"
@@ -138,27 +87,6 @@ formato_duracion() {
     else
         printf '%ds' "$s"
     fi
-}
-
-# Calcula la ventana temporal de la pasada a partir del SDR agregado:
-#   GMTCO_j01_d20260811_t1947330_e2003097_b45236_... -> 202608111947330 .. 202608112003097
-# Deja el resultado en VENTANA_INI, VENTANA_FIN y las fechas a considerar.
-ventana_de_pasada() {
-    local nombre fecha tini tfin
-    nombre=$(basename "$1")
-    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
-
-    FECHA_NUM="${fecha#d}"
-    VENTANA_INI="${FECHA_NUM}${tini#t}"; VENTANA_INI="${VENTANA_INI:0:14}"
-
-    # Si la hora final es menor que la inicial, la pasada cruzó la medianoche
-    if [ "${tfin#e}" -lt "${tini#t}" ]; then
-        FECHA_SIG=$(date -u -d "${FECHA_NUM} +1 day" +%Y%m%d)
-    else
-        FECHA_SIG="$FECHA_NUM"
-    fi
-
-    VENTANA_FIN="${FECHA_SIG}${tfin#e}"; VENTANA_FIN="${VENTANA_FIN:0:14}"
 }
 
 # Devuelve el sello temporal de un producto como AAAAMMDDHHMMSS, o código 1 si
@@ -309,19 +237,12 @@ if [ ! -d "$INPUT_SDR_DIR" ]; then
     exit 1
 fi
 
-resolver_pasada || exit 1
+resolver_pasada "$INPUT_SDR_DIR" GMTCO "$PASADA" || exit 1
 
-if [ -z "$ULTIMO_GMTCO" ]; then
+if [ -z "$CLAVE" ]; then
     echo "No hay SDR que procesar en $INPUT_SDR_DIR (no se ven archivos GMTCO*)."
     exit 0
 fi
-
-if ! CLAVE=$(clave_de_pasada "$ULTIMO_GMTCO"); then
-    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GMTCO")" >&2
-    exit 1
-fi
-
-IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
 
 echo "=== CSPP LSR v2.0 | pasada $CLAVE ==="
 
@@ -376,11 +297,9 @@ limpiar() {
 }
 trap limpiar EXIT
 
-shopt -s nullglob
-for f in "$INPUT_SDR_DIR"/*_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
+while IFS= read -r f; do
     enlazar "$f" "$STAGING_DIR"/
-done
-shopt -u nullglob
+done < <(archivos_de_pasada "$INPUT_SDR_DIR" '*')
 
 SDR_COUNT=$(find "$STAGING_DIR" -name '*.h5' | wc -l)
 
@@ -389,7 +308,6 @@ if [ "$SDR_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-ventana_de_pasada "$ULTIMO_GMTCO"
 GRANULOS_ATMOS=$(enlazar_en_ventana "$STAGING_DIR" "$INPUT_ATMOS_DIR")
 
 if [ "$GRANULOS_ATMOS" -eq 0 ]; then

@@ -30,7 +30,8 @@
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR de
 # CrIS y, si ya fue procesada con éxito, avisa y no hace nada. Una pasada se
-# identifica por satélite, fecha y órbita (p. ej. j01_d20260811_b45236).
+# identifica por satélite, fecha y hora de inicio (p. ej. j01_d20260811_t194733;
+# ver pasadas.sh).
 #
 # Las cuatro entradas van al MISMO directorio (manual §1.6, Tabla 1):
 #   CrIS  SCRIF*.h5 + GCRSO*.h5
@@ -50,7 +51,7 @@
 # La órbita NO se cruza entre instrumentos: el mismo sobrevuelo lleva un b#####
 # distinto según el sensor (verificado con VIIRS ÷ OMPS el 2026-08-13, y con
 # CrIS ÷ VIIRS el 2026-08-15: b45265 contra b45264). Por eso la pasada la fija
-# CrIS y los SDR de ATMS se emparejan por TIEMPO, enlazando los que se traslapan
+# CrIS —agrupando sus GCRSO por tiempo, ver pasadas.sh— y los SDR de ATMS se emparejan por TIEMPO, enlazando los que se traslapan
 # con la ventana de la pasada MÁS UN MARGEN — sin ese margen se pierde el primer
 # gránulo de cada pasada. Ver enlazar_atms().
 #
@@ -136,9 +137,9 @@ Uso:
 Opciones:
   -f, --force   Ignora el marcador de procesado
   -p, --pasada  Pasada concreta en vez de la más reciente: la clave completa
-                (j01_d20260813_b45265) o cualquier trozo que la identifique.
-                Ojo: la órbita es la de CrIS, que NO es la de VIIRS — el mismo
-                sobrevuelo es b45264 en VIIRS y b45265 aquí.
+                (j01_d20260813_t191402) o cualquier trozo que la identifique.
+                Ojo: la hora es la del primer gránulo de CrIS, que no tiene por
+                qué ser la de VIIRS para el mismo sobrevuelo.
   -h, --help    Muestra esta ayuda
 
 Requiere que run_sdr.sh haya corrido para los DOS sensores:
@@ -148,96 +149,13 @@ Requiere que run_sdr.sh haya corrido para los DOS sensores:
 HEAP 3.0 no procesa S-NPP (manual §1.2): solo NOAA-20 y NOAA-21.
 
 Pasadas disponibles en $HOST_CRIS_IN:
-$(claves_disponibles 2>/dev/null | sed 's/^/  /' || true)
+$(listar_pasadas "$HOST_CRIS_IN" GCRSO 2>/dev/null | cut -d' ' -f1 | sed 's/^/  /' || true)
 EOF
 }
 
-# GCRSO_j01_d20260811_t1947330_e2003097_b45236_c2026...h5 -> j01_d20260811_b45236
-clave_de_pasada() {
-    local nombre sat fecha orbita
-    nombre=$(basename "$1")
-    IFS='_' read -r _ sat fecha _ _ orbita _ <<< "$nombre"
-    if [[ "$fecha" != d* ]] || [[ "$orbita" != b* ]]; then
-        return 1
-    fi
-    echo "${sat}_${fecha}_${orbita}"
-}
-
-# Las pasadas que hay en el directorio de entrada, una por línea y sin repetir.
-claves_disponibles() {
-    find "$HOST_CRIS_IN" -maxdepth 1 -name 'GCRSO*.h5' -printf '%f\n' 2>/dev/null |
-        while IFS= read -r nombre; do
-            clave_de_pasada "$nombre" || true
-        done | sort -u
-}
-
-# Deja en ULTIMO_GCRSO un archivo representativo de la pasada: el más reciente
-# si no se pidió ninguna, o el primer gránulo de la que se pida con --pasada. De
-# ahí salen la clave y la ventana temporal con la que se emparejan los SDR de
-# ATMS, que llevan otra órbita.
-resolver_pasada() {
-    local coinciden sat fecha orbita
-
-    if [ -z "$PASADA" ]; then
-        ULTIMO_GCRSO=$(find "$HOST_CRIS_IN" -maxdepth 1 -name 'GCRSO*.h5' \
-                            -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
-        return 0
-    fi
-
-    # --pasada acepta la clave completa o cualquier trozo que la identifique:
-    # "j01_d20260813_b45264", "d20260813" o hasta "45264". Se resuelve contra las
-    # pasadas que de verdad estén en el directorio, así que un valor ambiguo o
-    # inexistente se caza aquí y no a media corrida.
-    mapfile -t coinciden < <(claves_disponibles | grep -F -- "$PASADA" || true)
-
-    if [ "${#coinciden[@]}" -eq 0 ]; then
-        echo "ERROR: Ninguna pasada de $HOST_CRIS_IN coincide con '$PASADA'" >&2
-        echo "       Disponibles:" >&2
-        claves_disponibles | sed 's/^/         /' >&2
-        return 1
-    fi
-
-    if [ "${#coinciden[@]}" -gt 1 ]; then
-        echo "ERROR: '$PASADA' coincide con más de una pasada; hay que ser más específico:" >&2
-        printf '         %s\n' "${coinciden[@]}" >&2
-        return 1
-    fi
-
-    IFS='_' read -r sat fecha orbita <<< "${coinciden[0]}"
-    ULTIMO_GCRSO=$(find "$HOST_CRIS_IN" -maxdepth 1 -name "GCRSO_${sat}_${fecha}_*_${orbita}_*.h5" \
-                        | sort | head -1)
-}
-
-# Del nombre de un SDR saca su intervalo como "AAAAMMDDHHMMSS AAAAMMDDHHMMSS".
-# Código 1 si el nombre no tiene la forma esperada.
-#   GCRSO_j01_d20260811_t1947330_e2003097_b45236_... -> 20260811194733 20260812200309
-#
-# Los campos t/e traen décimas de segundo (7 dígitos), que se descartan. Si la
-# hora final es menor que la inicial, el archivo cruzó la medianoche.
-#
-# Las comparaciones numéricas van con [ ] y no con [[ ]] a propósito: los sellos
-# de antes de las 10:00 UTC empiezan con cero (t0947330) y [[ ]] los interpreta
-# como octal, con lo que aborta con "value too great for base". [ ] los lee en
-# base 10 siempre.
-intervalo_de() {
-    local nombre fecha tini tfin fecha_fin
-    nombre=$(basename "$1")
-    IFS='_' read -r _ _ fecha tini tfin _ <<< "$nombre"
-
-    if [[ "$fecha" != d* ]] || [[ "$tini" != t* ]] || [[ "$tfin" != e* ]]; then
-        return 1
-    fi
-
-    fecha="${fecha#d}"; tini="${tini#t}"; tfin="${tfin#e}"
-
-    if [ "$tfin" -lt "$tini" ]; then
-        fecha_fin=$(date -u -d "${fecha} +1 day" +%Y%m%d)
-    else
-        fecha_fin="$fecha"
-    fi
-
-    echo "${fecha}${tini:0:6} ${fecha_fin}${tfin:0:6}"
-}
+# Qué es una pasada y cómo se elige: por tiempo, no por órbita (ver pasadas.sh).
+# Fija CLAVE, SAT, FECHA y la ventana VENTANA_INI – VENTANA_FIN.
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/pasadas.sh"
 
 # Suma (o resta) segundos a un sello de 14 dígitos, respetando el cambio de día.
 #   desplazar_sello 20260813191402 -90  ->  20260813191232
@@ -251,44 +169,6 @@ desplazar_sello() {
     local s="$1" base
     base=$(date -u -d "${s:0:4}-${s:4:2}-${s:6:2} ${s:8:2}:${s:10:2}:${s:12:2} UTC" +%s) || return 1
     date -u -d "@$(( base + ($2) ))" +%Y%m%d%H%M%S
-}
-
-# La ventana de la pasada, en VENTANA_INI y VENTANA_FIN: el inicio más temprano
-# y el fin más tardío de TODOS los GCRSO de la órbita.
-#
-# No se puede sacar de un archivo representativo, que es como estaba y costó la
-# primera corrida en tahan (2026-08-15). El motivo es que en level1/cris
-# conviven las dos convenciones, según cómo haya salido cada corrida de
-# run_sdr.sh:
-#
-#   d20260811  GCRSO t1951389_e1954487   un solo archivo de 3 min   (agregado)
-#   d20260813  GCRSO t1914029_e1914327   15 archivos de 30 s        (por gránulo)
-#
-# Con la pasada por gránulos, la ventana de uno solo salía de 30 segundos y el
-# traslape enganchaba 4 archivos de ATMS en vez de la pasada entera: HEAP recibía
-# 15 gránulos de CrIS y microondas para medio minuto, y terminaba en 0 sin un
-# solo producto. Recorriendo todos, la ventana es correcta en los dos casos.
-ventana_de_pasada() {
-    local f ini fin
-    VENTANA_INI=""
-    VENTANA_FIN=""
-
-    shopt -s nullglob
-    for f in "$HOST_CRIS_IN"/GCRSO_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
-        ini=""; fin=""
-        read -r ini fin < <(intervalo_de "$f") || true
-        [ -n "$ini" ] && [ -n "$fin" ] || continue
-
-        if [ -z "$VENTANA_INI" ] || [ "$ini" -lt "$VENTANA_INI" ]; then
-            VENTANA_INI="$ini"
-        fi
-        if [ -z "$VENTANA_FIN" ] || [ "$fin" -gt "$VENTANA_FIN" ]; then
-            VENTANA_FIN="$fin"
-        fi
-    done
-    shopt -u nullglob
-
-    [ -n "$VENTANA_FIN" ]
 }
 
 # Enlaza un archivo en el staging. Se prefiere el enlace DURO: algunas
@@ -439,19 +319,12 @@ if [ ! -d "$HOST_CRIS_IN" ]; then
     exit 1
 fi
 
-resolver_pasada || exit 1
+resolver_pasada "$HOST_CRIS_IN" GCRSO "$PASADA" || exit 1
 
-if [ -z "$ULTIMO_GCRSO" ]; then
+if [ -z "$CLAVE" ]; then
     echo "No hay SDR de CrIS que procesar en $HOST_CRIS_IN (no se ven archivos GCRSO*)."
     exit 0
 fi
-
-if ! CLAVE=$(clave_de_pasada "$ULTIMO_GCRSO"); then
-    echo "ERROR: No se pudo derivar la pasada del nombre: $(basename "$ULTIMO_GCRSO")" >&2
-    exit 1
-fi
-
-IFS='_' read -r SAT FECHA ORBITA <<< "$CLAVE"
 
 echo "=============================================================================="
 echo "CSPP HEAP v3.0 (NUCAPS) | pasada $CLAVE"
@@ -544,14 +417,12 @@ trap 'rm -rf "$HOST_WORK" "$STAGING_DIR"' EXIT
 
 CRIS_COUNT=0
 
-shopt -s nullglob
 for prefijo in SCRIF GCRSO; do
-    for f in "$HOST_CRIS_IN"/${prefijo}_"${SAT}"_"${FECHA}"_*_"${ORBITA}"_*.h5; do
+    while IFS= read -r f; do
         enlazar "$f" "$STAGING_DIR"/
         CRIS_COUNT=$((CRIS_COUNT + 1))
-    done
+    done < <(archivos_de_pasada "$HOST_CRIS_IN" "$prefijo")
 done
-shopt -u nullglob
 
 if [ "$CRIS_COUNT" -eq 0 ]; then
     echo "ERROR: No se enlazó ningún SDR de CrIS de la pasada $CLAVE" >&2
@@ -559,15 +430,11 @@ if [ "$CRIS_COUNT" -eq 0 ]; then
     exit 1
 fi
 
-# La ventana abarca todos los GCRSO de la órbita; las tres fechas acotan la
-# búsqueda de los SDR de ATMS, que pueden caer del otro lado de la medianoche.
-if ! ventana_de_pasada; then
-    echo "ERROR: No se pudo derivar la ventana temporal de la pasada $CLAVE" >&2
-    echo "       Ningún GCRSO de $HOST_CRIS_IN tiene la forma esperada" >&2
-    echo "       (GCRSO_<sat>_d<fecha>_t<inicio>_e<fin>_b<órbita>_...)." >&2
-    exit 1
-fi
-
+# La ventana abarca todos los GCRSO de la pasada (resolver_pasada) —no los de un
+# archivo representativo: en level1/cris conviven agregados de 3 min y gránulos
+# de 30 s, y con uno solo la ventana salía de medio minuto (tahan, 2026-08-15)—.
+# Las tres fechas acotan la búsqueda de los SDR de ATMS, que pueden caer del
+# otro lado de la medianoche.
 FECHA_NUM="${FECHA#d}"
 FECHA_PREV=$(date -u -d "${FECHA_NUM} -1 day" +%Y%m%d)
 FECHA_SIG=$(date -u -d "${FECHA_NUM} +1 day" +%Y%m%d)
