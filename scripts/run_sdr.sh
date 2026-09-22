@@ -286,6 +286,7 @@ echo "[$TIMESTAMP] Salida:           $OUTPUT_DIR"
 # archivos, así que una pasada fallida se reintenta sola.
 
 MARKER="${STATE_DIR}/${FILENAME}.done"
+MANIFIESTO="${STATE_DIR}/${FILENAME}.prod"
 
 if [ -f "$MARKER" ] && [ "$FORCE" -eq 0 ]; then
     echo ""
@@ -423,6 +424,11 @@ mkdir -p "$STATE_DIR"
     echo "log:       $LOG_FILE"
 } > "$MARKER"
 
+# Manifiesto: QUÉ productos son de esta corrida, uno por línea. De ahí saca
+# procesar_pasada.sh la clave de la pasada (del primer GMTCO), en vez de buscar
+# en level1 el más nuevo, que con dos pasadas a la vez puede ser de la otra.
+printf '%s\n' "${PRODUCTOS[@]##*/}" > "$MANIFIESTO"
+
 echo ""
 echo "=============================================================================="
 echo "[$TIMESTAMP] PROCESAMIENTO COMPLETADO"
@@ -433,6 +439,7 @@ echo "  Duración:      $DURACION"
 echo "  Salida:        $OUTPUT_DIR"
 echo "  Log:           $LOG_FILE"
 echo "  Marcador:      $MARKER"
+echo "  Manifiesto:    $MANIFIESTO"
 echo "=============================================================================="
 
 exit 0

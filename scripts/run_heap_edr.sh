@@ -75,6 +75,7 @@
 #   HEAP_LOG_BASE    Raíz de logs     (def. /var/log/lanot/polares)
 #   HEAP_MARGEN_ATMS Margen al enlazar ATMS (def. 90 s). Con 0 se pierde el
 #                    primer gránulo de cada pasada: ver enlazar_atms().
+#   HEAP_ESPERA      Segundos de espera por el candado del bundle (def. 3600)
 #   HEAP_SALIDA      Cadena de -o (def. RO: OLR + recuperación). Letra por letra.
 #   HEAP_OPTS        Banderas extra para run_heap.bash
 #
@@ -109,6 +110,10 @@ JOB_ID="${SLURM_JOB_ID:-$$}"
 # Segundos que se ensancha, a cada lado, la ventana con la que se enlazan los
 # SDR de ATMS. Ver enlazar_atms(). 0 = traslape estricto.
 MARGEN_ATMS="${HEAP_MARGEN_ATMS:-90}"
+
+# Segundos que se espera por el candado del bundle. Ver más abajo: dos HEAP a la
+# vez se pisan. Una corrida tarda ~2 min.
+ESPERA_CANDADO="${HEAP_ESPERA:-3600}"
 
 # Qué familias pide el driver: O = OLR, R = recuperación, S = subsetter. La ayuda
 # del binario la documenta como "cadena de la forma ORS" con [choices: O, R, S] —
@@ -600,6 +605,22 @@ fi
 # guion y bash recibe argumentos de más.
 
 echo "" | tee -a "$LOG_FILE"
+
+# HEAP, de uno en uno. Su bundle vive en el host y tiene que ser ESCRIBIBLE
+# —airsb103.exe abre 'fort.40' dentro—, así que dos corridas simultáneas se
+# pisarían ahí y en la descarga del GFS al caché. El candado va junto al bundle,
+# que es lo compartido; cuando el bundle se mude a /datawork, el candado se
+# vuelve compartido con él sin tocar nada. Una corrida tarda ~2 min.
+exec 7>>"$HOST_HEAP_HOME/.candado"
+if ! flock -n 7; then
+    echo "  Otra corrida de HEAP tiene el bundle; esperando (hasta $((ESPERA_CANDADO / 60)) min)..." | tee -a "$LOG_FILE"
+    if ! flock -w "$ESPERA_CANDADO" 7; then
+        echo "❌ ERROR: el candado de HEAP no se liberó en $((ESPERA_CANDADO / 60)) min" | tee -a "$LOG_FILE"
+        echo "   Candado: $HOST_HEAP_HOME/.candado" | tee -a "$LOG_FILE"
+        exit 1
+    fi
+fi
+
 echo ">>> Ejecutando run_heap.bash (misión $MISION, modo HR_IRMW)..." | tee -a "$LOG_FILE"
 
 EXIT_CODE=0

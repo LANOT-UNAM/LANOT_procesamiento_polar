@@ -503,9 +503,6 @@ echo "  Scripts:  $SCRIPTS_DIR"
 echo "  Log:      $LOG"
 [ "$DRY_RUN" -eq 0 ] || echo "  MODO DRY-RUN: no se ejecuta nada"
 
-MARCA="$TRABAJO/marca"
-touch "$MARCA"
-
 CLAVE=""
 CLAVE_OMPS=""
 CLAVE_HEAP=""
@@ -518,22 +515,35 @@ if [ -n "$RAW" ]; then
     ejecutar_nivel "RT-STPS" \
         "$(armar_tarea rt_stps "$SCRIPTS_DIR/run_rt_stps.sh" "$RAW")"
 
-    # Los RDR que acaba de producir. Se nombran explícitamente en vez de dejar
-    # que run_sdr.sh autoseleccione: su filtro de edad mínima (1 min) haría que
-    # no viera nada recién salido de RT-STPS y saliera en 0 sin hacer nada.
+    # Los RDR que acaba de producir, tomados de SU manifiesto. Se nombran
+    # explícitamente en vez de dejar que run_sdr.sh autoseleccione: su filtro de
+    # edad mínima (1 min) haría que no viera nada recién salido de RT-STPS y
+    # saliera en 0 sin hacer nada. Y salen del manifiesto y no de
+    # 'find level0 -newer marca', que con otra pasada en curso toma también los
+    # RDR ajenos y los calibraría como si fueran de ésta.
+    MANIFIESTO_RDR="$DIR_RTSTPS/$(basename "$RAW").rdr"
     TAREAS_SDR=()
+    RDR_VIIRS=""
     if [ "$DRY_RUN" -eq 1 ]; then
         echo ""
-        echo "  [dry-run] aquí se buscarían los RDR nuevos en $LEVEL0"
+        echo "  [dry-run] aquí se leerían los RDR de $MANIFIESTO_RDR"
         TAREAS_SDR=("$(armar_tarea sdr_EJEMPLO.h5 \
                                    "$SCRIPTS_DIR/run_sdr.sh" "$LEVEL0/EJEMPLO.h5")")
+    elif [ ! -f "$MANIFIESTO_RDR" ]; then
+        echo ""
+        echo "⚠  No hay manifiesto de RT-STPS para este crudo: $MANIFIESTO_RDR"
+        echo "   Lo escribe run_rt_stps.sh al terminar; si la pasada se decodificó"
+        echo "   antes del 2026-09-22, no existe. Vuelve a decodificar con --force,"
+        echo "   o entra por --clave si ya tienes los SDR."
+        exit 1
     else
-        while IFS= read -r rdr; do
-            base="$(basename "$rdr")"
-            clave_sensor "$base" >/dev/null || continue
+        while IFS= read -r base; do
+            [ -n "$base" ] || continue
+            sensor="$(clave_sensor "$base")" || continue
+            [ "$sensor" != viirs ] || RDR_VIIRS="$base"
             TAREAS_SDR+=("$(armar_tarea "sdr_$base" \
-                                        "$SCRIPTS_DIR/run_sdr.sh" "$rdr")")
-        done < <(find "$LEVEL0" -maxdepth 1 -type f -name '*.h5' -newer "$MARCA" 2>/dev/null | sort)
+                                        "$SCRIPTS_DIR/run_sdr.sh" "$LEVEL0/$base")")
+        done < "$MANIFIESTO_RDR"
     fi
 
     if [ "${#TAREAS_SDR[@]}" -eq 0 ]; then
@@ -555,15 +565,28 @@ if [ -n "$CLAVE_PEDIDA" ]; then
 elif [ "$DRY_RUN" -eq 1 ]; then
     CLAVE="j01_dAAAAMMDD_bNNNNN"
 else
-    ANCLA="$(find "$LEVEL1_VIIRS" -maxdepth 1 -type f -name 'GMTCO*.h5' -newer "$MARCA" 2>/dev/null | sort | head -1)"
+    # La clave sale del manifiesto que dejó el SDR de VIIRS de ESTA pasada, no
+    # del GMTCO más nuevo de level1: con dos pasadas encimadas, el más nuevo
+    # puede ser de la otra, y entonces todo el Level 2 correría con la clave
+    # ajena y el propio no se haría nunca.
+    #
+    # Del manifiesto del SDR y no del nombre del RDR: los RDR traen la órbita que
+    # les pone RT-STPS, que puede ser 'b00001' (NOAA-21, 2026-09-22), mientras
+    # que los SDR llevan la real, que CSPP calcula con el TLE.
+    ANCLA=""
+    MANIFIESTO_SDR="$DIR_SDR/${RDR_VIIRS}.prod"
+    if [ -n "$RDR_VIIRS" ] && [ -f "$MANIFIESTO_SDR" ]; then
+        ANCLA="$(grep -m1 '^GMTCO' "$MANIFIESTO_SDR" || true)"
+    fi
     if [ -z "$ANCLA" ]; then
         echo ""
-        echo "⚠  El SDR de VIIRS no dejó ningún GMTCO nuevo en $LEVEL1_VIIRS."
+        echo "⚠  El SDR de VIIRS no dejó ningún GMTCO en su manifiesto."
+        echo "   Esperado en: ${MANIFIESTO_SDR:-(no hubo RDR de VIIRS en la pasada)}"
         echo "   Sin clave de pasada no se puede seguir a Level 2."
         exit 1
     fi
-    if ! CLAVE="$(clave_de_pasada "$(basename "$ANCLA")")"; then
-        echo "⚠  No se pudo derivar la clave de: $(basename "$ANCLA")" >&2
+    if ! CLAVE="$(clave_de_pasada "$ANCLA")"; then
+        echo "⚠  No se pudo derivar la clave de: $ANCLA" >&2
         exit 1
     fi
 fi

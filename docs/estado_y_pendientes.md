@@ -22,6 +22,32 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-09-22: cada pasada, aislada de las demás
+
+Con esto dos pasadas pueden correr a la vez sin pisarse, que es el prerrequisito de la cola con
+turnos (plan, 0.6, puntos 1, 2, 3 y 5):
+
+- **`run_rt_stps.sh` ya no escribe en `level0`.** Trabaja en `/data/tmp/rt_stps_<sello>/salida`,
+  cuenta ahí —sin `find -newer`, porque el directorio es suyo—, entrega a `level0` y deja la
+  lista de sus RDR en `state/rt-stps/<crudo>.rdr`. Antes, con otra RT-STPS corriendo, un crudo
+  corrupto quedaba `.done` gracias a los RDR ajenos.
+- **`run_sdr.sh` deja su propia lista** en `state/cspp-sdr/<rdr>.prod`.
+- **`procesar_pasada.sh` lee las dos**: a qué RDR llamar al SDR, y de qué `GMTCO` sacar la clave.
+  **La clave NO puede salir del RDR**, como decía el plan: los RDR traen la órbita que les pone
+  RT-STPS, que en NOAA-21 es `b00001`; la real la calcula CSPP con el TLE y solo está en los SDR.
+- **HEAP corre de uno en uno**, con `flock` sobre `$HOST_HEAP_HOME/.candado` (espera 1 h,
+  `HEAP_ESPERA`): su bundle es escribible y compartido.
+- Una pasada decodificada antes de este cambio no tiene manifiesto; `procesar_pasada.sh` lo dice
+  y sugiere `--force` o `--clave` en vez de fallar de forma opaca.
+
+Probado en bucefalo con un `apptainer` simulado: dos pasadas (NOAA-20 y NOAA-21) lanzadas a la vez
+sobre los mismos directorios, cada una con su clave (`b45500` y `b20033`); el candado de HEAP con
+dos corridas, una esperando y otra venciendo su plazo. **Falta en tahan**: los puntos 6 y 7 del
+plan —`de_otro_satelite()` con dos satélites en la misma ventana, y los cachés de ACSPO y Active
+Fire con dos corridas a la vez.
+
+---
+
 ## Al retomar la tarde del 2026-09-22
 
 Todo quedó listo para que las pasadas JPSS de la tarde (~19–21 UTC) recorran solas los dos

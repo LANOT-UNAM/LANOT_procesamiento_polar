@@ -30,6 +30,7 @@
 #   RTSTPS_CONFIG_DIR   XMLs de RT-STPS   (def. /data/opt/RT-STPS/rt-stps/config)
 #   RTSTPS_LEAPSEC      leapsec.dat       (def. /data/ancillary/common/leapsec.dat)
 #   CADENAS_TSV         Cadena → satélite (def. <scripts>/../config/cadenas.tsv)
+#   RTSTPS_WORK_BASE    Raíz de trabajo   (def. /data/tmp)
 #
 ################################################################################
 
@@ -58,6 +59,11 @@ MIN_AGE_MIN="${RTSTPS_MIN_AGE_MIN:-1}"
 
 # Directorio de salida
 DIR_L0="${RTSTPS_OUTPUT_DIR:-/data/output/jpss/level0}"
+
+# Raíz del directorio de trabajo. Todo lo intermedio vive en /data/tmp, nunca
+# bajo el árbol de productos.
+WORK_BASE="${RTSTPS_WORK_BASE:-/data/tmp}"
+JOB_ID="${SLURM_JOB_ID:-$$}"
 
 # Directorio de logs
 LOG_BASE="${RTSTPS_LOG_BASE:-/var/log/lanot/polares}"
@@ -231,6 +237,7 @@ echo "[$TIMESTAMP] Configuración XML: $XML_TARGET"
 # reprocese, sin --force.
 
 MARKER="${STATE_DIR}/${FILENAME}.done"
+MANIFIESTO="${STATE_DIR}/${FILENAME}.rdr"
 
 if [ -f "$MARKER" ] && [ "$MARKER" -nt "$INPUT_FILE" ] && [ "$FORCE" -eq 0 ]; then
     echo ""
@@ -282,9 +289,18 @@ echo "--------------------------------------------------------------------------
 echo "[$TIMESTAMP] RT-STPS - Decodificación RAW → Level 0"
 echo "------------------------------------------------------------------------------"
 
-# Crear directorio temporal para configuración modificada
-WORK_DIR=$(mktemp -d -t rt_stps_XXXXXX)
-trap "rm -rf $WORK_DIR" EXIT  # Limpieza automática al salir
+# Directorio de trabajo propio, con la salida dentro: RT-STPS NO escribe en
+# level0. Antes montaba el level0 compartido como /output y contaba sus RDR con
+# 'find -newer', así que con otra RT-STPS corriendo a la vez la cuenta incluía
+# los RDR ajenos y un crudo corrupto —que no decodifica nada y sale en 0— se
+# habría marcado como procesado. Con salida propia, lo que hay ahí es de esta
+# corrida y de ninguna otra.
+WORK_DIR="${WORK_BASE}/rt_stps_${TIMESTAMP_FILE}_${JOB_ID}"
+SALIDA_DIR="$WORK_DIR/salida"
+mkdir -p "$SALIDA_DIR"
+# Se borra al salir bien; si algo falla se conserva, y para eso los exits de
+# error hacen 'trap - EXIT' antes.
+trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Crear directorios de salida y logs si no existen
 mkdir -p "$DIR_L0"
@@ -306,23 +322,13 @@ echo "[$TIMESTAMP] Procesando con RT-STPS..."
 
 LOG_FILE="${LOG_RT_STPS}/${TIMESTAMP_FILE}_${SATELLITE}_${FILENAME}.log"
 
-# Referencia para contar únicamente los RDR de esta corrida. No sirve el mtime
-# del RAW: si es viejo (o se reprocesa con --force), la cuenta arrastraría los
-# RDR de todas las pasadas posteriores.
-# Nota: 'find -newer' exige mtime estrictamente mayor y el reloj puede dar el
-# mismo sello a dos escrituras inmediatas, así que una corrida instantánea
-# contaría 0. No afecta a RT-STPS (tarda minutos) y falla del lado seguro: en
-# el peor caso se reintenta, nunca se marca por error como procesado.
-REF_FILE="${WORK_DIR}/.inicio"
-touch "$REF_FILE"
-
 # --- Ejecución del contenedor ---
 # El '|| APPTAINER_EXIT_CODE=$?' es indispensable: sin él, 'set -e' abortaría el
 # script antes de poder informar cuál es el log que hay que revisar.
 APPTAINER_EXIT_CODE=0
 apptainer exec \
     --bind "$INPUT_DIR_REAL":/input \
-    --bind "$DIR_L0":/output \
+    --bind "$SALIDA_DIR":/output \
     --bind "$WORK_DIR":/config_bind \
     --bind "$HOST_LEAPSEC":/opt/rt-stps/leapsec.dat \
     "$CONTAINER_RT_STPS" \
@@ -339,11 +345,14 @@ if [ $APPTAINER_EXIT_CODE -ne 0 ]; then
     echo "[$TIMESTAMP] ERROR: RT-STPS falló (código $APPTAINER_EXIT_CODE)" >&2
     echo "[$TIMESTAMP] Ver log: $LOG_FILE" >&2
     echo "[$TIMESTAMP] No se escribió el marcador: el archivo se reintentará." >&2
+    echo "[$TIMESTAMP] Se conserva el directorio de trabajo: $WORK_DIR" >&2
+    trap - EXIT
     exit 1
 fi
 
-# Contar los archivos RDR generados en esta corrida
-RDR_COUNT=$(find "$DIR_L0" -name "*.h5" -newer "$REF_FILE" 2>/dev/null | wc -l)
+# Los RDR de esta corrida, que son todo lo que hay en la salida propia.
+mapfile -t RDRS < <(find "$SALIDA_DIR" -maxdepth 1 -type f -name '*.h5' -printf '%f\n' | sort)
+RDR_COUNT=${#RDRS[@]}
 
 # RT-STPS termina con código 0 aunque el RAW sea basura y no decodifique nada
 # (verificado en tahan el 2026-08-12), así que el código de salida por sí solo
@@ -353,8 +362,13 @@ if [ "$RDR_COUNT" -eq 0 ]; then
     echo "[$TIMESTAMP] El RAW puede estar corrupto o incompleto: $FILENAME" >&2
     echo "[$TIMESTAMP] Ver log: $LOG_FILE" >&2
     echo "[$TIMESTAMP] No se escribió el marcador: el archivo se reintentará." >&2
+    echo "[$TIMESTAMP] Se conserva el directorio de trabajo: $WORK_DIR" >&2
+    trap - EXIT
     exit 1
 fi
+
+# Entrega a level0. Van también los .PDS que RT-STPS deja junto a los RDR.
+mv "$SALIDA_DIR"/* "$DIR_L0"/
 
 # ============================================================================
 # MARCADOR DE PROCESAMIENTO EXITOSO
@@ -368,6 +382,11 @@ mkdir -p "$STATE_DIR"
     echo "log:       $LOG_FILE"
 } > "$MARKER"
 
+# Manifiesto: QUÉ RDR son de esta pasada, uno por línea. procesar_pasada.sh lo
+# lee para saber a qué archivos llamar al SDR. Antes los buscaba con
+# 'find level0 -newer', que con dos pasadas a la vez toma también los ajenos.
+printf '%s\n' "${RDRS[@]}" > "$MANIFIESTO"
+
 echo ""
 echo "=============================================================================="
 echo "[$TIMESTAMP] PROCESAMIENTO COMPLETADO"
@@ -377,6 +396,7 @@ echo "  Archivos RDR:  $RDR_COUNT archivos .h5"
 echo "  Duración:      $DURACION"
 echo "  Log:           $LOG_FILE"
 echo "  Marcador:      $MARKER"
+echo "  Manifiesto:    $MANIFIESTO"
 echo "=============================================================================="
 
 exit 0

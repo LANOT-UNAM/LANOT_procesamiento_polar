@@ -364,6 +364,10 @@ vez a las 20:33 y 20:53. La cadena tarda ~30 minutos por pasada.
 Hoy lo único que impide que dos pasadas se mezclen es el candado global: el código identifica "lo
 suyo" por marcas de tiempo sobre directorios compartidos. Antes de abrir el segundo turno:
 
+**Puntos 1, 2, 3 y 5 hechos el 2026-09-22**, probados en bucefalo con dos pasadas simuladas a la
+vez (NOAA-20 y NOAA-21 compartiendo `level0` y `level1`): cada una derivó su propia clave. Quedan
+el 6 y el 7, que son pruebas en tahan con datos reales.
+
 1. **`run_rt_stps.sh` escribe en un directorio propio.** Hoy monta el `level0` compartido como
    `/output` y cuenta sus RDR con `find -newer` (`:348`): con otra RT-STPS corriendo, un crudo
    corrupto quedaría `.done` gracias a los RDR ajenos. Cambio: escribir en `$WORK_DIR/salida`,
@@ -371,10 +375,12 @@ suyo" por marcas de tiempo sobre directorios compartidos. Antes de abrir el segu
    marcador (`state/rt-stps/<crudo>.rdr`).
 2. **`procesar_pasada.sh` lee ese manifiesto** en vez de `find level0 -newer marca` (`:462`), que
    tomaría también los RDR de la otra pasada.
-3. **La clave sale del RDR de VIIRS del manifiesto**, no del primer `GMTCO` más nuevo que la
-   marca (`:484`), que puede ser de la otra pasada: entonces todo el Level 2 correría con la clave
-   ajena y el propio no se haría nunca. `clave_de_pasada()` ya funciona con cualquier nombre que
-   traiga `_sat_dAAAAMMDD_…_bNNNNN_`.
+3. **La clave sale del manifiesto del SDR de VIIRS**, no del primer `GMTCO` más nuevo que una
+   marca de tiempo, que puede ser de la otra pasada: entonces todo el Level 2 correría con la clave
+   ajena y el propio no se haría nunca. **Corrección al plan**: aquí decía "del RDR de VIIRS del
+   manifiesto", y no sirve — los RDR llevan la órbita que les pone RT-STPS, que puede ser `b00001`
+   (NOAA-21, 2026-09-22), mientras que los SDR llevan la real, calculada con el TLE. Por eso
+   `run_sdr.sh` deja también su manifiesto (`state/cspp-sdr/<rdr>.prod`) y de ahí sale el `GMTCO`.
 4. **OMPS y HEAP: la clave truncada es ambigua, y esto ya falla en serie.** **Hecho el
    2026-09-22**, como se describe abajo, en `procesar_pasada.sh` (`pasada_por_traslape`); los
    `run_*.sh` no cambiaron. Además, sin traslape la etapa queda `sin datos` y no `fallo`: OMPS no
@@ -391,7 +397,7 @@ suyo" por marcas de tiempo sobre directorios compartidos. Antes de abrir el segu
 5. **HEAP, de uno en uno.** Su bundle es escribible (`fort.40`) y compartido: dos HEAP
    simultáneos se pisarían, y también su descarga de GFS. Candado junto al bundle, `flock -w`
    sobre `$HOST_HEAP_HOME/.candado`, que se vuelve compartido solo con mudar el bundle en la fase
-   2. HEAP tarda ~2 minutos.
+   2. HEAP tarda ~2 minutos. La espera se ajusta con `HEAP_ESPERA` (def. 1 h).
 6. **Dos satélites en la misma ventana de Level 2.** Con ~20 minutos entre NPP y NOAA-20 y
    `P2G_MARGEN_MIN=10`, sus ventanas se tocan. Los separa `de_otro_satelite()`
    (`run_lsr_edr.sh:212`, `run_cryo_edr.sh:210`, `run_polar2grid_edr.sh:437`), que **nunca se ha
