@@ -621,6 +621,49 @@ apagado no duplica nada.
 
 ---
 
+## Fase 4 — METOP en contenedores, y apagar el sistema viejo
+
+Acordado el 2026-09-22. El destino no es solo repartir JPSS: es que **los tres servidores
+—tahan, stratus y tsom03— puedan tomar cualquier pasada**, y para eso el trabajo tiene que estar
+dentro de contenedores; si no, habría que instalar AAPP, el metopizer y compañía en los tres. Eso
+obliga a incorporar a esta cadena **todo lo que hoy procesa el sistema viejo, menos Aqua**, que ya
+no se procesa (IPOPP quedó descontinuado y el satélite se apaga entre finales de 2026 y principios
+de 2027). Mientras quede una rama fuera, el sistema viejo no se puede apagar y stratus y tsom03
+siguen atados a sus instalaciones.
+
+**Lo que falta es menos de lo que parece**, porque dos de las tres piezas ya están:
+
+- **Sondeos de METOP: ya los cubre `cspp_heap_v3.0.sif`.** HEAP 3.0 soporta `m01` y `m03`
+  (manual §1.2), que son METOP-B y METOP-C. Hoy `metop2.sh` se los manda a tsom03 con un HEAP 2.x
+  aparte. `run_heap_edr.sh` ya traduce nombres de misión: habría que darle las entradas de IASI,
+  AMSU y MHS en vez de CrIS y ATMS.
+- **Renderizado: ya lo cubre `polar2grid_v3.2-mapdrawer.sif`.** Satpy trae los lectores
+  `avhrr_l1b_aapp`, `mhs_l1c_aapp`, `amsub_l1c_aapp` e `iasi_l2`, y la vista de AVHRR que publica
+  hoy la cadena vieja ya sale de Polar2Grid con nuestra rejilla.
+- **Lo que hay que construir: un contenedor de Level 0 → Level 1 de METOP**, con AAPP y el
+  metopizer, y su `run_metop_l1.sh` con el mismo patrón que los demás (marcador, `--force`,
+  autoselección, trabajo en `/data/tmp`). `referencia/metop2.sh` es la receta de lo que hace hoy:
+  `cadu_to_ccsds`, luego el metopizer y AAPP por instrumento.
+
+**Orden sugerido**, después de la fase 3a (stratus como segundo trabajador):
+
+1. Contenedor de METOP L1 y `run_metop_l1.sh`, probado con un crudo `chain6` real.
+2. Renderizado de AVHRR con `run_polar2grid_l1.sh` (o el suyo propio), comparando con las vistas
+   que publica hoy el sistema viejo.
+3. Sondeos de METOP por `run_heap_edr.sh`, con las entradas de IASI/AMSU/MHS.
+4. `config/cadenas.tsv` pasa a decir "de esta cadena" para METOP, y `recibe.sh` lo encola.
+5. **Apagar el sistema viejo**: `cspp.sh`, `metop2.sh` y el `recibe.sh` de stratus; liberar
+   `/data3` y las instalaciones de AAPP y el metopizer. Entonces `copypolar.sh` deja de copiar a
+   stratus y avisa solo al buzón.
+6. tsom03 entra como tercer trabajador: monta `/datawork`, Apptainer, `lanotadm` con el mismo uid
+   y su turno en la cola.
+
+**Lo que no entra:** Aqua (nadie lo procesa; sus crudos solo se guardan) y los NOAA heredados
+(NOAA-15/19, sin pasadas desde agosto de 2025). Si METOP-SG empieza a llegar —`chain3` es
+`metopsgdb`, hoy inactiva—, será otra rama y otro contenedor.
+
+---
+
 ## Detalles por resolver
 
 **Antes de la fase 0**
