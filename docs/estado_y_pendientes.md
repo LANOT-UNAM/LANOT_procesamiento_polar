@@ -22,6 +22,29 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## Al retomar la tarde del 2026-09-22
+
+Todo quedó listo para que las pasadas JPSS de la tarde (~19–21 UTC) recorran solas los dos
+sistemas. Qué mirar en cada una:
+
+- **stratus**: `~/log/reenvio_polar.log` —la copia al buzón y el aviso a tahan— y
+  `~/log2/<crudo>.log`, `cspp.sh` de la cadena vieja con los patrones nuevos (`chain2` NOAA-20,
+  `chain4` NPP).
+- **tahan**: `cadena/<fecha>_recibe.log` y el log de la pasada, que ahora debe salir limpio (sin
+  bloques repetidos).
+- **NOAA-21 de día**: que OMPS traiga datos (de noche quedaba `sin datos`) y que salgan los RGB.
+- **La segunda pasada de NOAA-20 del día**: que OMPS y HEAP ya no aborten por ambigüedad.
+- **Dos pasadas encimadas**: con un solo turno, la segunda sale con 75 y **nadie la recoge**,
+  porque el barrido no está en cron. Si pasa, relanzarla a mano.
+- **Cron**: `cadena/cron.log` a las 18:17 CST, primera descarga automática de ATMOS.
+- **Mañana 07–09 UTC**: ATMOS en las pasadas de la mañana decide si alcanza un CMCSST de dos días
+  (plan, 0.2).
+
+Estado del despliegue: `/opt/lanot/polares` en `6ee3fa0`, cron de ancillary instalado, METOP ya se
+procesa otra vez en la cadena vieja (probado a mano con `chain6-4_pass54`, vistas publicadas).
+
+---
+
 ## 2026-09-22: llegó NOAA-21, y TeraScan reasignó todas las cadenas
 
 El 2026-09-21, entre las 20:34 y las 22:36 UTC, polaracq empezó a recibir NOAA-21 y **cambió qué
