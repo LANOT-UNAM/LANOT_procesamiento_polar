@@ -42,7 +42,6 @@ CSPP_PORTADA="${CSPP_PORTADA:-https://cimss.ssec.wisc.edu/cspp/}"
 RAIZ="${RAIZ:-}"
 
 URL_CIMSS="https://cimss.ssec.wisc.edu/cspp/download/"
-URL_DRL="https://directreadout.sci.gsfc.nasa.gov/"
 
 TEMPORALES="$(mktemp -d)"
 trap 'rm -rf "$TEMPORALES"' EXIT
@@ -247,7 +246,6 @@ descargar() {
         echo "  $archivo"
         case "$origen" in
             cimss) echo "      de:    $URL_CIMSS" ;;
-            drl)   echo "      de:    $URL_DRL" ;;
             *)     echo "      de:    (origen '$origen' no reconocido)" ;;
         esac
         echo "      a:     $(dirname "$ruta")/"

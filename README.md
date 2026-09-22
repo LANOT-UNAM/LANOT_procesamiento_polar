@@ -15,7 +15,7 @@ El objetivo es migrar de scripts monolíticos en servidor ("bare metal") a una a
 * **Soporte Moderno:** Capacidad para procesar NOAA-21 (JPSS-2).
 * **Aislamiento:** Eliminación de conflictos de bibliotecas entre cadenas de procesamiento antiguas y nuevas.
 
-**No contiene software científico ni datos**: solo recetas, scripts, plantillas XML y documentación. Los tarballs oficiales de CIMSS/SSEC y NASA DRL están listados en el manifiesto `contenedores/tarballs.tsv`.
+**No contiene software científico ni datos**: solo recetas, scripts, plantillas XML y documentación. Los tarballs oficiales de CIMSS/SSEC están listados en el manifiesto `contenedores/tarballs.tsv`.
 
 ### 🛰️ Satélites Soportados
 * **Suomi-NPP**
@@ -168,7 +168,7 @@ Este es un proyecto interno del LANOT. Se trabaja **directo sobre `main`**, sin 
 *   **Código de Orquestación:** Distribuido bajo licencia GNU GPLv3.
 *   **Software Base:**
     *   CSPP (SDR, ATMOS, LSR, CRYO, ACSPO, Active Fire, Flood, OMPS) y Polar2Grid: University of Wisconsin-Madison (SSEC/CIMSS).
-    *   RT-STPS: NASA Direct Readout Laboratory (DRL).
+    *   RT-STPS: NASA Direct Readout Laboratory (DRL); lo distribuye y parchea CSPP (SSEC/CIMSS), porque el DRL está congelado.
 
 ---
 *Laboratorio Nacional de Observación de la Tierra (LANOT) - UNAM, 2026.*

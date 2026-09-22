@@ -21,8 +21,10 @@
 #   version      La que tenemos instalada, con el formato de esa URL.
 #   archivo      Nombre exacto del tarball.
 #   origen       cimss = https://cimss.ssec.wisc.edu/cspp/download/  (registro)
-#                drl   = https://directreadout.sci.gsfc.nasa.gov/    (otro registro).
-#                RT-STPS se baja de la DRL de la NASA aunque CSPP lo anuncie.
+#                Todos salen de ahí, RT-STPS incluido: lo escribió el Direct
+#                Readout Laboratory de la NASA, pero el DRL pasó a "estado de
+#                archivo" (congelado, sin soporte) y quien lo distribuye y
+#                parchea es CSPP. Aquí decía que se bajaba de la DRL: era error.
 #   receta       El .def que lo consume, o '-' si no lo consume ninguno.
 #   destino      Dónde se extrae (solo estáticos).
 #   comprobacion Ruta que debe existir y no estar vacía después de extraer. Es lo que
@@ -38,8 +40,8 @@
 #rol	slug	version	archivo	origen	receta	destino	comprobacion	sha1
 bundle	jpss_sdr	4.1.1	CSPP_SDR_V4.1.tar.gz	cimss	cspp_sdr_v4.1.1	-	-	179f9f6ca8dc4e2c03f5a9c23d93b0faa12fbd03
 bundle	jpss_sdr	4.1.1	CSPP_SDR_V4.1.1_patch.tar.gz	cimss	cspp_sdr_v4.1.1	-	-	f87b482a75d81588acdc65d08c1235e764ff1703
-bundle	rt_stps	7.0_patch1	RT-STPS_7.0.tar.gz	drl	rt_stps_7.0	-	-	848c22327a9bd7f84f122715a33069cd0fdbde95
-bundle	rt_stps	7.0_patch1	RT-STPS_7.0_PATCH_1.tar.gz	drl	rt_stps_7.0	-	-	acc3b62e9eb8f0100ce93622170f5a1b88d1803f
+bundle	rt_stps	7.0_patch1	RT-STPS_7.0.tar.gz	cimss	rt_stps_7.0	-	-	848c22327a9bd7f84f122715a33069cd0fdbde95
+bundle	rt_stps	7.0_patch1	RT-STPS_7.0_PATCH_1.tar.gz	cimss	rt_stps_7.0	-	-	acc3b62e9eb8f0100ce93622170f5a1b88d1803f
 bundle	polar2grid	3.2	CSPP_POLAR2GRID_V3.2.tar.gz	cimss	polar2grid_v3.2-mapdrawer	-	-	3e5226ad99bb1309437ec162a61aef82c0deb74b
 bundle	viirs_atmos	1.0	CSPP_VIIRS_ATMOS_V1.0.tar.gz	cimss	cspp_atmos_edr_v1.0	-	-	d9cf75df99542d4d9c02243b52aa1aefd3205fa7
 bundle	viirs_cryo	1.0	CSPP_VIIRS_CRYO_V1.0.tar.gz	cimss	cspp_cryo_edr_v1.0	-	-	73210885f8faba445b06afbf054bef65984261bd
