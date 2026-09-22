@@ -53,7 +53,16 @@ satélite llega por cada `chainN`**: NOAA-21 es `chain1`, NOAA-20 `chain2`, NPP 
   - ACSPO 1, Fire 10 y P2G_L1 43 GeoTIFF + la vista DNB (sin RGB: es de noche). Flood, sin
     productos por la misma razón.
   - **ATMOS falla por falta de CMCSST** del día: `update_atmos_ancillary.sh` nunca se ha
-    corrido (plan, 0.2). Con él caen LSR y CRYO.
+    corrido (plan, 0.2). Con él caen LSR y CRYO. Corrido el updater —que baja el CMCSST del día
+    anterior, porque el del mismo día no está publicado todavía— y relanzada la pasada con
+    `--clave`: ATMOS 120 productos, CRYO 20 (primera vez con NOAA-21) y LSR 10.
+  - **LSR no falla de noche, contra lo que decía el resumen de `procesar_pasada.sh`.** Termina
+    bien y escribe sus `.nc`, pero NDVI y EVI salen sin un solo píxel válido, igual que el AOD
+    de ATMOS; `vestir()` los descarta con el código 3 y no publica vista. Se quitó el
+    recordatorio, que habría hecho pasar por esperado un fallo real de LSR.
+  - La primera corrida del updater se cortó a la mitad sin dejar rastro en su log (sin
+    `terminó con código` ni resumen): la terminal que lo lanzó se interrumpió. Relanzado con
+    `nohup`, completó. Para el cron no importa, pero al correrlo a mano, en segundo plano.
   - **OMPS: el crudo no trae un solo paquete de OMPS** (`Packets Output=0` en los 16 APID). Lo
     más probable es que sea por la noche: los sensores nadir miden luz solar retrodispersada, y
     todas las pruebas de OMPS con NOAA-20 fueron vespertinas. Falta confirmarlo con una pasada

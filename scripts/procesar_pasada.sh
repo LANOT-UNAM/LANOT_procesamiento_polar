@@ -21,9 +21,11 @@
 # Tres a la vez y no cinco: tahan tiene 64 CPU y los hilos que ya pide cada
 # script suman ~48 con tres simultáneas; con cinco pedirían ~72 y pelearían.
 #
-# UN FALLO NO DETIENE LA CADENA. LSR falla en toda pasada nocturna —no hay
-# reflectancia de superficie sin sol— y eso no puede detener a las demás. Cada
-# etapa se invoca con `|| codigo=$?`, que es la forma correcta bajo set -e.
+# UN FALLO NO DETIENE LA CADENA: si ATMOS cae, por ejemplo, las ramas que no
+# dependen de él siguen. Cada etapa se invoca con `|| codigo=$?`, que es la
+# forma correcta bajo set -e. (Aquí decía que LSR falla en toda pasada
+# nocturna. No es así: de noche termina bien y escribe sus .nc sin un solo
+# píxel válido, y es vestir() quien los descarta — tahan, 2026-09-22.)
 #
 # Variables de entorno: las de los doce run_*.sh se respetan tal cual, y este
 # script lee las mismas *_STATE_DIR para poder leer los marcadores.
@@ -589,7 +591,6 @@ if [ "$fallos" -eq 0 ]; then
     echo "  Todas las etapas terminaron bien."
 else
     echo "  Etapas con fallo: $fallos  (las demás siguieron; ver arriba)"
-    echo "  Recordatorio: LSR falla en toda pasada nocturna, y es esperado."
 fi
 echo "  Log de la pasada: $LOG"
 
