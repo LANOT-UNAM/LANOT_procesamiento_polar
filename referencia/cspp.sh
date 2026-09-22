@@ -72,7 +72,9 @@ echo -e "\nInicia Proceso RAW to L0\n"
 
 ## Genera RDR NPP y JPSS1
 
-if [[ $rawfile =~ ^chain2-* ]]; then
+# NPP llega por chain4 desde el 2026-09-21 (antes, chain2). El marcador lastch2
+# conserva su nombre: es de este bloque, no de la cadena.
+if [[ $rawfile =~ ^chain4- ]]; then
     if [[ ! $lastpathfile == `cat $log/lastch2` ]]
     then
         echo "Procesando $rawfile"
@@ -205,7 +207,8 @@ if [[ $rawfile =~ ^chain2-* ]]; then
     else
         echo -e "\nYa fue procesado $rawfile\n"
     fi
-elif [[ $rawfile =~ ^chain6-* ]]; then
+# NOAA-20 llega por chain2 desde el 2026-09-21 (antes, chain6).
+elif [[ $rawfile =~ ^chain2- ]]; then
     if [[ ! $lastpathfile == `cat $log/lastch6` ]]
     then
         echo "Procesando $rawfile"

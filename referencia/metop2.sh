@@ -40,7 +40,10 @@ then
     echo $lastch5 > $log/lastch5
     cp -uv $lastch5 $PROC_DIR/level0
     cd $PROC_DIR/level0
-    chain5=$(ls -t $PROC_DIR/level0/chain5-*|head -1)
+    # El crudo que se acaba de copiar, no "el chain5 más reciente": desde el
+    # 2026-09-21 METOP llega por chain6 y chain5 es Aqua. Así no depende del
+    # número de cadena.
+    chain5=$PROC_DIR/level0/$rawfile
     echo -e "\n Inicia proceso CADU to CCSDS\n"
     date
     $METOP/bin/cadu_to_ccsds --in $chain5 --out isps > proc_cadu_to_ccsds
