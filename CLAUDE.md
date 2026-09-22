@@ -175,6 +175,8 @@ aplicar esto a **criósfera**, que hoy se da por bloqueada por la misma clase de
 
 **Se trabaja directo sobre `main`, sin ramas ni PR.** `tahan` es servidor de desarrollo, no el que está conectado a la antena, así que la ceremonia de rama + PR solo estorba: el ciclo real es editar aquí, `git push`, `git pull` en tahan y correr el script.
 
+**Desarrollo desde el clon, operación desde `/opt/lanot/polares`** (decidido el 2026-09-22). Las pruebas a mano corren desde el clon, como la persona; lo que corre solo —cron y la recepción— corre como `lanotadm` desde la copia que deja `sudo ./scripts/instalar.sh`. Por eso **un `git pull` en tahan no llega a operación hasta que se reinstala**, y al dar pasos para tahan hay que distinguir si son prueba (clon) u operación (`/opt`). Las dos escriben en los mismos `/data/...`, así que el usuario de pruebas tiene que estar en el grupo de `lanotadm`. `/opt/lanot_shared` es de pruebas de otra persona: no es de esta cadena.
+
 **El `push` lo hace siempre Alejandro, nunca Claude.** No es una formalidad: revisar lo que sale es como se mantiene al tanto de por dónde va el proyecto. Commitear está bien; empujar, no — dejarlo commiteado y avisar.
 
 **Lo que sale del proyecto se firma `Alejandro Aguilar Sierra`**, el nombre oficial con los dos apellidos, que es el que ya llevan los nueve `.def` en su línea `Author`. En inglés la tentación es dejar un solo apellido —los dos reportes al foro de SSEC del 2026-08-24 se enviaron como "Alejandro Sierra"—, pero la forma oficial es la buena. Lo ya enviado **no se retoca**: los textos publicados se conservan tal cual en `docs/reporte_*.md` y `docs/respuesta_*.bbcode`, que son registro de lo que se envió, no borrador.

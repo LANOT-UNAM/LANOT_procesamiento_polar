@@ -17,6 +17,12 @@ ANC_ATMOS="$HOST_DYNAMIC/atmos"
 LOG_DIR="/var/log/lanot/polares/cspp-sdr"
 mkdir -p "$LOG_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Directorio de trabajo propio. Sin él, los scripts de CSPP trabajan en el pwd
+# heredado: desde cron, el $HOME de lanotadm; a mano, el clon. Se conserva si
+# falla, para depurar, como en los run_*.sh.
+WORK_DIR="${SDR_WORK_BASE:-/data/tmp}/sdr_update_${TIMESTAMP}_$$"
+mkdir -p "$WORK_DIR"
 START_EPOCH=$(date '+%s')
 LOG_FILE="$LOG_DIR/update_daily_${TIMESTAMP}.log"
 
@@ -52,6 +58,8 @@ apptainer exec \
     --bind "$HOST_STATIC_BASE/atms/luts:/opt/SDR_4_1/atms/luts" \
     --bind "$HOST_STATIC_BASE/cris/luts:/opt/SDR_4_1/cris/luts" \
     --bind "$HOST_STATIC_BASE/omps/luts:/opt/SDR_4_1/omps/luts" \
+    --bind "$WORK_DIR:/work" \
+    --pwd /work \
     "$SIF_CSPP" /bin/bash -c "
         export CSPP_SDR_HOME=/opt/cspp_sdr
         export CSPP_DYNAMIC_ANCIL_DIR=/ancillary
@@ -74,8 +82,10 @@ DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ ERROR: La actualización falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
     echo "   Revisa el log detallado en: $LOG_FILE" | tee -a "$LOG_FILE"
+    echo "   Se conserva el directorio de trabajo: $WORK_DIR" | tee -a "$LOG_FILE"
     exit $EXIT_CODE
 fi
+rm -rf "$WORK_DIR"
 
 LUTS_NUEVOS=$(contar_nuevos "$HOST_STATIC_BASE")
 LUTS_TOTAL=$(contar_total "$HOST_STATIC_BASE")

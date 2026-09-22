@@ -25,8 +25,10 @@
 #        PREFIX=/tmp/prueba ./scripts/instalar.sh
 #
 # Variables de entorno:
-#   PREFIX   Dónde instalar   (def. /opt/lanot/polares)
-#   DUENO    Dueño            (def. lanotadm:lanotadm)
+#   PREFIX           Dónde instalar   (def. /opt/lanot/polares)
+#   DUENO            Dueño            (def. lanotadm:lanotadm)
+#   LOCK_FILE        Candado de procesar_pasada.sh (def. /data/tmp/lanot_polares.lock)
+#   INSTALAR_ESPERA  Segundos que se espera a la pasada en curso (def. 2700)
 # ==============================================================================
 
 set -euo pipefail
@@ -36,6 +38,8 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 PREFIX="${PREFIX:-/opt/lanot/polares}"
 DUENO="${DUENO:-lanotadm:lanotadm}"
+LOCK_FILE="${LOCK_FILE:-/data/tmp/lanot_polares.lock}"
+INSTALAR_ESPERA="${INSTALAR_ESPERA:-2700}"
 
 # Lo que NO se instala, y por qué. Es lista de exclusión y no de inclusión para
 # que un run_*.sh nuevo entre solo, sin tener que acordarse de este archivo.
@@ -121,6 +125,34 @@ if [ "$DRY_RUN" -eq 0 ] && [ "$EUID" -ne 0 ]; then
     if [ ! -w "$base" ]; then
         echo "ERROR: no se puede escribir en $base. Usa sudo, o PREFIX." >&2
         exit 1
+    fi
+fi
+
+# ==============================================================================
+# ESPERAR A LA PASADA EN CURSO
+# ==============================================================================
+# procesar_pasada.sh invoca cada run_*.sh de nuevo en cada etapa, así que
+# instalar a media pasada no corrompe el script que se está ejecutando —install
+# escribe un archivo nuevo, y el que corre conserva el suyo— pero sí deja una
+# pasada hecha la mitad con una versión y la mitad con otra. Se toma el mismo
+# candado que ella y se retiene hasta el final: mientras se copia, tampoco
+# arranca ninguna. Una pasada tarda ~30 min; el plazo por omisión, 45.
+#
+# Sin el directorio del candado (una máquina de desarrollo, un PREFIX de
+# prueba) no hay pasada que esperar.
+
+if [ "$DRY_RUN" -eq 0 ] && [ -d "$(dirname "$LOCK_FILE")" ]; then
+    exec 9>>"$LOCK_FILE"
+    if ! flock -n 9; then
+        echo "Hay una pasada en curso (candado: $LOCK_FILE)."
+        echo "Se espera a que termine, hasta $((INSTALAR_ESPERA / 60)) min..."
+        if ! flock -w "$INSTALAR_ESPERA" 9; then
+            echo "ERROR: la pasada no terminó en $((INSTALAR_ESPERA / 60)) min; no se instaló nada." >&2
+            echo "       Reintenta más tarde, o sube INSTALAR_ESPERA." >&2
+            exit 1
+        fi
+        echo "La pasada terminó; se instala."
+        echo ""
     fi
 fi
 
@@ -224,14 +256,28 @@ else
     fallos=$((fallos + 1))
 fi
 
+# Igual de indispensable: sin la tabla de cadenas, recibe.sh, run_rt_stps.sh y
+# el barrido no reconocen ningún crudo (scripts/cadenas.sh la busca ahí).
+cadenas_desde_scripts="$PREFIX/scripts/../config/cadenas.tsv"
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [dry-run] se comprobaría $cadenas_desde_scripts"
+elif [ -f "$cadenas_desde_scripts" ]; then
+    echo "  ✓ la tabla de cadenas resuelve desde scripts/: config/cadenas.tsv"
+else
+    echo "  ✗ no resuelve $cadenas_desde_scripts"
+    echo "    recibe.sh, run_rt_stps.sh y barrer_pendientes.sh no reconocerían ningún crudo."
+    fallos=$((fallos + 1))
+fi
+
 echo ""
 echo "=============================================================="
 if [ "$fallos" -eq 0 ]; then
     echo "  Listo: $n_sh scripts y $n_cfg archivos de configuración."
     echo ""
-    echo "  La cadena se invoca desde $PREFIX/scripts/, no desde el clon."
-    echo "  El enlace que ve la antena:"
-    echo "    sudo ln -sf $PREFIX/scripts/recibe.sh /home/lanotadm/bin/recibe.sh"
+    echo "  En operación la cadena se invoca desde $PREFIX/scripts/, como lanotadm:"
+    echo "    recepción:  ssh lanotadm@<servidor> $PREFIX/scripts/recibe.sh <crudo>"
+    echo "    cron:       $PREFIX/scripts/update_sdr_daily.sh, update_atmos_ancillary.sh…"
+    echo "  Sin enlace en ~lanotadm/bin: ahí vive el recibe.sh de la cadena vieja."
     exit 0
 fi
 echo "  Instalación incompleta: $fallos comprobación(es) fallaron."

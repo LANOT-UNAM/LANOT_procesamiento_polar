@@ -134,13 +134,9 @@ Los tarballs de datos estáticos se borran después de extraerlos y comprobar qu
 sudo ./scripts/instalar.sh    # copia a /opt/lanot/polares
 ```
 
-La cadena se ejecuta desde `/opt/lanot/polares/scripts/`, **no** desde el clon: así un `git pull` a media pasada no cambia el script que se está ejecutando. `VERSION` anota de qué commit salió.
+En operación la cadena se ejecuta como `lanotadm` desde `/opt/lanot/polares/scripts/`, **no** desde el clon: así un `git pull` o una edición en el servidor no cambian lo que corre el cron. `VERSION` anota de qué commit salió. Si hay una pasada en curso, `instalar.sh` espera a que termine (hasta 45 min, `INSTALAR_ESPERA`), para que ninguna quede hecha con dos versiones.
 
-El único punto de contacto con la antena, que invoca una ruta fija:
-
-```bash
-sudo ln -sf /opt/lanot/polares/scripts/recibe.sh /home/lanotadm/bin/recibe.sh
-```
+La recepción invoca `/opt/lanot/polares/scripts/recibe.sh <crudo>` directamente por `ssh`. **Sin enlace en `~lanotadm/bin`**: ahí vive el `recibe.sh` de la cadena vieja.
 
 ### 5. Comprobar que hay versión nueva de algún paquete
 

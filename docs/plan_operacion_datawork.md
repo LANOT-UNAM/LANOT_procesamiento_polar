@@ -183,14 +183,21 @@ eslabones, los permisos de HEAP y adoptar `lanotadm`.
 
 ### 0.1 La cadena corre como `lanotadm`, desde `/opt/lanot/polares`
 
+**Código listo el 2026-09-22** (ruta y método confirmados ese día: `/opt/lanot/polares` con
+`instalar.sh`, no un clon en `/opt`). `instalar.sh` espera a la pasada en curso tomando su
+candado, comprueba que resuelva `config/cadenas.tsv` y ya no sugiere el enlace; los `update_*.sh`
+trabajan en un directorio propio bajo `/data/tmp` en vez del `pwd` heredado. Faltan los pasos en
+tahan, que siguen:
+
 Un cron y un `ssh` que corren como `lanotadm` no pueden ejecutar desde el clon del `$HOME` de una
 persona (decisión del 2026-08-29). En tahan:
 
 1. `git pull` en el clon y `sudo ./scripts/instalar.sh`.
 2. `chown -R lanotadm:lanotadm` de barrido sobre `/data/output/jpss`, `/data/tmp`,
    `/data/ancillary` y `/var/log/lanot/polares`.
-3. **Sin enlace en `~lanotadm/bin`**, aunque lo sugiera `instalar.sh:234`: `copypolar.sh` llama
-   directo a `/opt/lanot/polares/scripts/recibe.sh`, y `~lanotadm/bin` es el sistema viejo.
+3. **Sin enlace en `~lanotadm/bin`**: `copypolar.sh` llama directo a
+   `/opt/lanot/polares/scripts/recibe.sh`, y `~lanotadm/bin` es el sistema viejo. (`instalar.sh`
+   lo sugería; desde el 2026-09-22 ya no.)
 4. Comprobar como `lanotadm` que ve imágenes y estáticos:
    `sudo -u lanotadm ./scripts/preparar_servidor.sh --verificar`.
 5. **Montar `/datawork` con `hard`** en vez de `soft` (fase 1, apartado 2): el buzón vive ahí

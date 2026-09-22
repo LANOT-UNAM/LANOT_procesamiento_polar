@@ -23,6 +23,7 @@
 #   ATMOS_CACHE      Caché dinámico (def. /data/ancillary/atmos)
 #   ATMOS_CONTAINER  Imagen .sif    (def. /opt/containers/cspp_atmos_edr_v1.0.sif)
 #   ATMOS_LOG_BASE   Raíz de logs   (def. /var/log/lanot/polares)
+#   ATMOS_WORK_BASE  Raíz de trabajo (def. /data/tmp)
 #
 # ==============================================================================
 
@@ -51,7 +52,12 @@ if [ ! -f "$SIF_ATMOS" ]; then
     exit 1
 fi
 
-mkdir -p "$HOST_CACHE" "$LOG_DIR"
+# Directorio de trabajo propio: atmos_ancillary.sh trabaja en el pwd ("work dir"
+# en su log), que heredado sería el $HOME de lanotadm desde cron y el clon a mano
+# (así salió el 2026-09-22). Se conserva si falla, como en los run_*.sh.
+WORK_DIR="${ATMOS_WORK_BASE:-/data/tmp}/atmos_ancillary_${TIMESTAMP}_$$"
+
+mkdir -p "$HOST_CACHE" "$LOG_DIR" "$WORK_DIR"
 LOG_FILE="$LOG_DIR/atmos_ancillary_${TIMESTAMP}.log"
 
 echo "=== ACTUALIZANDO ANCILLARY DINÁMICO DE ATMOS: $(date) ===" | tee -a "$LOG_FILE"
@@ -65,6 +71,8 @@ ANTES=$(find "$HOST_CACHE" -maxdepth 1 -type f 2>/dev/null | wc -l)
 EXIT_CODE=0
 apptainer exec \
     --bind "$HOST_CACHE:/opt/CSPP_ATMOS_1_0/anc/cache" \
+    --bind "$WORK_DIR:/work" \
+    --pwd /work \
     "$SIF_ATMOS" /bin/bash -c "
         export CSPP_VIIRS_ATMOS_HOME=/opt/CSPP_ATMOS_1_0
         export CSPP_DYNAMIC_ANCIL_DIR=\$CSPP_VIIRS_ATMOS_HOME/anc/cache
@@ -90,8 +98,10 @@ DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ ERROR: La actualización falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
     echo "   Revisa el log: $LOG_FILE" | tee -a "$LOG_FILE"
+    echo "   Se conserva el directorio de trabajo: $WORK_DIR" | tee -a "$LOG_FILE"
     exit $EXIT_CODE
 fi
+rm -rf "$WORK_DIR"
 
 echo "✅ ÉXITO: caché con $DESPUES archivos (antes $ANTES) en $DURACION" | tee -a "$LOG_FILE"
 echo "   Espacio usado: $(du -sh "$HOST_CACHE" | cut -f1)" | tee -a "$LOG_FILE"

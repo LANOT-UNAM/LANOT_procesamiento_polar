@@ -88,6 +88,26 @@ satélite llega por cada `chainN`**: NOAA-21 es `chain1`, NOAA-20 `chain2`, NPP 
 - **La cadena vieja de stratus no se ajustó** y sigue con el esquema anterior. Por decisión de
   Alejandro, lo que se haga aquí será lo primero que pruebe las cadenas nuevas.
 
+### El despliegue para operar sola
+
+Discutido el mismo día: la cadena se instala en **`/opt/lanot/polares`** con
+`sudo ./scripts/instalar.sh`, como ya estaba diseñado, y corre ahí como `lanotadm`; el clon queda
+para desarrollar y probar. `/opt/lanot_shared`, que existe en los servidores, es de pruebas de
+otra persona y no tiene que ver. Cambios para que `instalar.sh` sirva de verdad, que nunca se
+había usado:
+
+- **Espera a la pasada en curso**: toma el candado de `procesar_pasada.sh` con `flock -w` (45 min,
+  `INSTALAR_ESPERA`). Instalar a media pasada no rompe el script que corre, pero dejaría la pasada
+  hecha con dos versiones, porque cada etapa invoca su `run_*.sh` de nuevo.
+- **Comprueba `config/cadenas.tsv`** además de `grid.yaml`.
+- **Ya no sugiere el enlace en `~lanotadm/bin`**, que contradecía el plan (0.1).
+- **`update_sdr_daily.sh` y `update_atmos_ancillary.sh` trabajan en un directorio propio** bajo
+  `/data/tmp`: heredaban el `pwd`, que desde cron sería el `$HOME` de `lanotadm` (el log del
+  updater de ATMOS decía `work dir : /home/aguilars/LANOT_procesamiento_polar`).
+
+Probado en bucefalo con `PREFIX` temporal, un candado tomado y un `apptainer` simulado. Los pasos en
+tahan están en el plan, 0.1 y 0.2.
+
 ---
 
 ## 2026-09-14: `/datawork` listo, y el plan para operar sobre él
