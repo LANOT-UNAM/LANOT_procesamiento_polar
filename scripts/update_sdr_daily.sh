@@ -2,6 +2,12 @@
 # ==============================================================================
 # SCRIPT: Actualización Diaria de LUTs y Ancillary (CSPP SDR v4.1.1)
 # ==============================================================================
+#
+# Cron (crontab de lanotadm; el bloque completo está en
+# docs/plan_operacion_datawork.md, 0.2). 23:40 CST = 05:40 UTC, antes de las
+# pasadas de la mañana:
+#
+#   40 23 * * * flock -n /data/tmp/update_sdr.lock /opt/lanot/polares/scripts/update_sdr_daily.sh >> /var/log/lanot/polares/cadena/cron.log 2>&1
 
 # 1. CONFIGURACIÓN DE RUTAS
 SIF_CSPP="/opt/containers/cspp_sdr_v4.1.1.sif"

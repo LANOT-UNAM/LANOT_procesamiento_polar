@@ -10,11 +10,13 @@
 # '-l' (sin red) y una pasada nunca se queda esperando a que responda el
 # servidor de SSEC.
 #
-# Cron sugerido (crontab de lanotadm). Cuatro veces al día porque el GFS tiene
+# Cron (crontab de lanotadm; el bloque completo, con los otros dos, está en
+# docs/plan_operacion_datawork.md, 0.2). Cuatro veces al día porque el GFS tiene
 # cuatro corridas diarias (00z, 06z, 12z, 18z) y el manual (§2.4) pide juntar
-# las cuatro:
+# las cuatro. Horas en CST (UTC-6), la de tahan: 06, 12, 18 y 00 UTC, justo
+# antes de las pasadas de la mañana (07-09 UTC) y de la tarde (19-21 UTC).
 #
-#   17 2,8,14,20 * * * /opt/lanot/polares/scripts/update_atmos_ancillary.sh
+#   17 0,6,12,18 * * * flock -n /data/tmp/update_atmos.lock /opt/lanot/polares/scripts/update_atmos_ancillary.sh >> /var/log/lanot/polares/cadena/cron.log 2>&1
 #
 # El podado va incluido en cada corrida: delete_old_anc.sh solo borra lo que
 # pasa de 14 días, así que es idempotente y no hace falta un cron aparte.

@@ -25,7 +25,7 @@
 # Cron sugerido (crontab de lanotadm). Semanal basta: el GFS de un día son unos
 # pocos GB y el podado es idempotente.
 #
-#   40 3 * * 0 /opt/lanot/polares/scripts/update_heap_ancillary.sh
+#   40 3 * * 0 /opt/lanot/polares/scripts/update_heap_ancillary.sh >> /var/log/lanot/polares/cadena/cron.log 2>&1
 #
 # Uso:
 #   ./update_heap_ancillary.sh              # poda de verdad

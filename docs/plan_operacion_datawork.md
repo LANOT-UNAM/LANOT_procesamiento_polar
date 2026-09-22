@@ -205,21 +205,57 @@ persona (decisión del 2026-08-29). En tahan:
 
 ### 0.2 Cron de ancillary
 
+**Instalado en tahan el 2026-09-22**, en el crontab de `lanotadm`, después de correr los tres a
+mano como `lanotadm` desde `/opt`: SDR 101 archivos nuevos en 7m 57s, ATMOS 3 en 3m 50s (con su
+podado), HEAP en `--dry-run` (borraría dos días, 617 MB). Ninguno tuvo problemas de permisos.
+
 Antes del cron, correr cada uno a mano como `lanotadm` y leer su log.
 `update_atmos_ancillary.sh` **no se ha ejecutado nunca**, y sin él `run_atmos_edr.sh` (que corre
 con `-l`) falla en cuanto cambia la fecha.
 
 ```cron
-# crontab de lanotadm
-30 1 * * *          /opt/lanot/polares/scripts/update_sdr_daily.sh
-17 2,8,14,20 * * *  /opt/lanot/polares/scripts/update_atmos_ancillary.sh
-40 3 * * 0          /opt/lanot/polares/scripts/update_heap_ancillary.sh
+# Cadena polar: refresco y podado del ancillary. Horas en CST (UTC-6).
+PATH=/usr/local/bin:/usr/bin:/bin
+MAILTO=""
+
+# SDR: LUTs de calibración, TLE y ancillary. 23:40 CST = 05:40 UTC, antes de
+# las pasadas de la mañana (07-09 UTC).
+40 23 * * *        flock -n /data/tmp/update_sdr.lock   /opt/lanot/polares/scripts/update_sdr_daily.sh       >> /var/log/lanot/polares/cadena/cron.log 2>&1
+
+# ATMOS: GFS, CMCSST, nieve. Cada 6 h, alineado con las corridas del GFS y justo
+# antes de cada tanda de pasadas: 06, 12, 18 y 00 UTC.
+17 0,6,12,18 * * * flock -n /data/tmp/update_atmos.lock /opt/lanot/polares/scripts/update_atmos_ancillary.sh >> /var/log/lanot/polares/cadena/cron.log 2>&1
+
+# HEAP: solo poda lo de más de 14 días (HEAP descarga por su cuenta). Semanal.
+40 3 * * 0         /opt/lanot/polares/scripts/update_heap_ancillary.sh                                    >> /var/log/lanot/polares/cadena/cron.log 2>&1
 ```
 
-La hora de `update_sdr_daily.sh` es propuesta: su encabezado no sugiere ninguna.
-`update_heap_ancillary.sh` va primero con `--dry-run`. Se verifica al día siguiente: logs nuevos
-en `cspp-sdr/` y `cspp-edr/`, un directorio del día en el caché de SDR y archivos con ctime de hoy
-en `/data/ancillary/atmos`.
+Acordado el 2026-09-22. Por qué así:
+
+- **Horas en CST**, que es la hora de tahan y la que usa cron. La propuesta anterior (2, 8, 14 y
+  20) daba descargas a 08, 14, 20 y 02 UTC; lo que importa es que haya una **justo antes de cada
+  tanda de pasadas**, porque `run_atmos_edr.sh` corre con `-l` y solo ve el caché: 06 UTC para
+  la de la mañana (07–09) y 18 UTC para la de la tarde (19–21). El GFS de 00Z ya está a las 06 y
+  el de 12Z a las 18.
+- **`flock -n`**: una descarga colgada no se encima con la siguiente.
+- **`cadena/cron.log`** junta el resumen de cada corrida (`✅`/`❌`) y lo que falle antes de que el
+  script abra su log (un contenedor que no está). El detalle sigue en `cspp-sdr/` y `cspp-edr/`.
+- **`PATH` explícito**: el de cron es mínimo.
+
+Se instala estando como `lanotadm` (`crontab -e`, sin `sudo`: `lanotadm` no está en sudoers).
+Antes, cada uno a mano desde `/opt/lanot/polares/scripts/`, con `nohup` los dos que descargan, y
+`update_heap_ancillary.sh --dry-run`. Se verifica al día siguiente: logs nuevos en `cspp-sdr/` y
+`cspp-edr/`, un directorio del día en el caché de SDR y archivos con ctime de hoy en
+`/data/ancillary/atmos`.
+
+**Duda abierta: cuánta antigüedad del CMCSST tolera ATMOS.** Lo que se sabe (2026-09-22): SSEC
+publica el análisis de un día en el directorio de ese día **después de las 17 UTC** (el del 22
+seguía sin estar a las 17:12 UTC; el del 21 ya estaba a las 15:18 UTC del 22). O sea que a las
+06 UTC de un día lo más nuevo suele ser el de **dos días antes**. La pasada del 22 a las 07:55 UTC
+salió con el del 21 (un día antes); con uno de 25 días, ATMOS falló. Las pasadas de la mañana del
+2026-09-23 lo deciden: si ATMOS sale bien, tolera dos días y el cron se queda así; si cae con
+`Unable to find CMCSST`, hay que dejar que baje lo que le falte (`--download`) o buscar su
+tolerancia en la configuración de CSPP ATMOS.
 
 ### 0.3 `recibe.sh` a mano en tahan
 

@@ -105,8 +105,16 @@ había usado:
   `/data/tmp`: heredaban el `pwd`, que desde cron sería el `$HOME` de `lanotadm` (el log del
   updater de ATMOS decía `work dir : /home/aguilars/LANOT_procesamiento_polar`).
 
-Probado en bucefalo con `PREFIX` temporal, un candado tomado y un `apptainer` simulado. Los pasos en
-tahan están en el plan, 0.1 y 0.2.
+Probado en bucefalo con `PREFIX` temporal, un candado tomado y un `apptainer` simulado.
+
+**Hecho en tahan el mismo día**: instalado en `/opt/lanot/polares` (commit `f8b9f6f`), los tres
+`update_*.sh` corridos a mano como `lanotadm` y **el cron de ancillary instalado** (plan, 0.2, con
+horas alineadas a las pasadas). Además, **stratus reenvía cada crudo a tahan**: su `recibe.sh`
+(`referencia/recepcion/`) lo copia al buzón de `/datawork` con nombre único y llama por `ssh` al
+`recibe.sh` de `/opt`. La llave de `lanotadm@stratus` no entraba porque `/home/lanotadm` en tahan
+tenía `g+w` (`sshd` con `StrictModes` la ignora; se arregló con `chmod g-w`). Pendiente: ver
+llegar la primera pasada por ese camino, y ATMOS en las pasadas de la mañana del 23 (el CMCSST,
+plan 0.2).
 
 ---
 
