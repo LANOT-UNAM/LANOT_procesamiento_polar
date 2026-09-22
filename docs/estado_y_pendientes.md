@@ -62,6 +62,9 @@ sistemas. Qué mirar en cada una:
 - **La segunda pasada de NOAA-20 del día**: que OMPS y HEAP ya no aborten por ambigüedad.
 - **Dos pasadas encimadas**: con un solo turno, la segunda sale con 75 y **nadie la recoge**,
   porque el barrido no está en cron. Si pasa, relanzarla a mano.
+- **Aislamiento** (instalado antes de la tanda, `489a1bb`): la línea `Manifiesto:` en el log de
+  RT-STPS, `state/rt-stps/<crudo>.rdr` con los RDR de esa pasada, y `/data/tmp` sin
+  `rt_stps_*` al terminar. Con dos pasadas seguidas, que cada una use su clave.
 - **Cron**: `cadena/cron.log` a las 18:17 CST, primera descarga automática de ATMOS.
 - **Mañana 07–09 UTC**: ATMOS en las pasadas de la mañana decide si alcanza un CMCSST de dos días
   (plan, 0.2).
