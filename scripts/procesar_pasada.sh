@@ -415,10 +415,18 @@ mkdir -p "$CADENA_LOG_BASE" 2>/dev/null || true
 ETIQUETA_LOG="${CLAVE_PEDIDA:-$(basename "${RAW:-sin_raw}")}"
 LOG="$CADENA_LOG_BASE/${SELLO}_${ETIQUETA_LOG}.log"
 
-# Todo lo que sigue va a la vez a la terminal y al log. Si el directorio de log
-# no se puede escribir se sigue sin log, que es preferible a no procesar.
+# Todo lo que sigue va al log, y además a la terminal si hay una. Sin terminal
+# —lanzado por recibe.sh o por el barrido— va SOLO al log: tee repetiría todo en
+# la salida heredada, y recibe.sh la mandaba a un archivo con este mismo nombre
+# (mismo sello, mismo crudo), así que dos escritores se pisaban y el log salía
+# con bloques repetidos y líneas cortadas (tahan, 2026-09-22). Si el directorio
+# de log no se puede escribir se sigue sin log, que es preferible a no procesar.
 if : > "$LOG" 2>/dev/null; then
-    exec > >(tee -a "$LOG") 2>&1
+    if [ -t 1 ]; then
+        exec > >(tee -a "$LOG") 2>&1
+    else
+        exec >> "$LOG" 2>&1
+    fi
 else
     LOG="(sin log: no se pudo escribir en $CADENA_LOG_BASE)"
 fi

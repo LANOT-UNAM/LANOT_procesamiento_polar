@@ -90,9 +90,11 @@ case "$CODIGO_CADENA" in
     0)
         echo "[$(marca)] SATÉLITE: $SATELITE -> procesar_pasada.sh" >> "$LOG_FILE"
 
-        # En segundo plano: quien llama no espera a que termine la pasada.
-        nohup "$SCRIPT_MODERNO" "$RAW_FILE" < /dev/null \
-              &> "${LOG_DIR}/$(date '+%Y%m%d_%H%M%S')_${FILENAME}.log" &
+        # En segundo plano: quien llama no espera a que termine la pasada. La
+        # pasada escribe su propio log en este mismo directorio; aquí solo cae
+        # lo que salga antes de que lo abra (un error de sintaxis, un script
+        # que no está), que de otro modo se perdería sin rastro.
+        nohup "$SCRIPT_MODERNO" "$RAW_FILE" < /dev/null >> "$LOG_FILE" 2>&1 &
 
         echo "[$(marca)] Proceso lanzado: PID=$!" >> "$LOG_FILE"
         ;;

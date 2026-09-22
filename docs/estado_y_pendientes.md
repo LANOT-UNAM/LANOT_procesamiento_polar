@@ -42,10 +42,29 @@ satélite llega por cada `chainN`**: NOAA-21 es `chain1`, NOAA-20 `chain2`, NPP 
 - Probado en bucefalo con crudos simulados de los dos esquemas (`recibe.sh` con un
   `procesar_pasada.sh` falso, y el barrido en `--dry-run` y en real). **Falta la prueba en
   tahan con crudos reales de cada JPSS.**
-- **NOAA-21 nunca ha pasado por RT-STPS aquí.** `config/jpss2.xml` existe pero no se ha
-  probado con datos de la antena; lo que se sabe de NOAA-21 viene de los gránulos de muestra de
-  CIMSS. Además, su primer crudo pesa el doble que uno de NOAA-20 de la misma duración
-  (2.4 GB, 11 884 líneas), y todavía no se sabe por qué.
+- **Primera pasada de NOAA-21, en tahan el mismo día** (`chain1-1_pass1`, 07:55 UTC, nocturna),
+  entrando por `recibe.sh` con el nombre suelto: clave `j02_d20260922_b20033`, 22 minutos.
+  - **RT-STPS con `jpss2.xml` funciona**: RDR de VIIRS, ATMS, CrIS y el diario suelto
+    (`RNSCA_j02_…`). Los RDR salen con órbita `b00001`, pero los SDR la llevan real (`b20033`),
+    porque la calcula CSPP con el TLE: la clave de pasada no se afecta.
+  - **SDR** 20/20 de ATMS y 10/10 de VIIRS con las LUTs de `j02`, y CrIS completo.
+  - **HEAP sale completo a la primera con datos propios**: las cinco familias, 16 de cada una,
+    `NUCAPS-EDR` incluido, con la traducción `j02` → `n21`.
+  - ACSPO 1, Fire 10 y P2G_L1 43 GeoTIFF + la vista DNB (sin RGB: es de noche). Flood, sin
+    productos por la misma razón.
+  - **ATMOS falla por falta de CMCSST** del día: `update_atmos_ancillary.sh` nunca se ha
+    corrido (plan, 0.2). Con él caen LSR y CRYO.
+  - **OMPS: el crudo no trae un solo paquete de OMPS** (`Packets Output=0` en los 16 APID). Lo
+    más probable es que sea por la noche: los sensores nadir miden luz solar retrodispersada, y
+    todas las pruebas de OMPS con NOAA-20 fueron vespertinas. Falta confirmarlo con una pasada
+    diurna de NOAA-21. Hoy `run_omps_edr.sh` sale en 1 y el resumen lo cuenta como error en
+    cada pasada nocturna; se resuelve junto con la clave truncada (plan, 0.6, punto 4).
+  - El crudo pesa el doble que uno de NOAA-20 de la misma duración (2.4 GB, 11 884 líneas), sin
+    que se note en los productos. Sigue sin explicación.
+  - **El log de la pasada salía con bloques repetidos y líneas cortadas**: `recibe.sh` redirigía
+    la salida de `procesar_pasada.sh` a un archivo con el mismo nombre que el log que ésta abre
+    (mismo sello, mismo crudo), y dos escritores se pisaban. Corregido: sin terminal,
+    `procesar_pasada.sh` escribe solo a su log, y `recibe.sh` manda lo demás a su log diario.
 - **La cadena vieja de stratus no se ajustó** y sigue con el esquema anterior. Por decisión de
   Alejandro, lo que se haga aquí será lo primero que pruebe las cadenas nuevas.
 
