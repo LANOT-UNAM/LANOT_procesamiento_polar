@@ -22,6 +22,104 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-09-22, noche: Skew-T en la cadena, el PR a satpy, y qué falta para jubilar la cadena vieja
+
+### Skew-T de NUCAPS, de punta a punta
+
+- **Imagen**: `polar2grid_v3.2-mapdrawer.def` compila MetaGráfica (`mg`, pin `MG_COMMIT`) y
+  LANOT_tools trae `skewt`. El pin de LANOT_tools va en `931ed29`, con guardas en `%post` y
+  `%test` para cada cosa que degrada en silencio. Recordatorio: `construir.sh` deja la imagen en
+  `/opt/contenedores`, y la cadena la lee de `/opt/containers` — **copiarla**.
+- **Sitios**: `config/sitios_skewt.tsv`, las 14 estaciones de radiosondeo del SMN que siguen
+  reportando (catálogo IGRA2 de NCEI), para poder comparar contra el globo.
+- **En la cadena**: `run_polar2grid_edr.sh` dibuja un Skew-T por sitio después de los mapas de
+  sondeo, sobre los `NUCAPS-EDR` que ya tiene en su staging. SVG en `vistas/sounder/skewt/`,
+  `<sat>_atms-cris_skewt_<omm>_<clave>_<AAAAMMDD_HHMMSS>.svg`. `skewt` sale con **3** cuando el
+  sitio cae fuera de la franja o NUCAPS rechazó el perfil: se cuenta aparte, no es error. Con las
+  tres pasadas del día salieron 21 de 42 combinaciones; eso es lo normal.
+- **La figura** (LANOT_tools): el logo vectorial del LANOT a la izquierda del título (una struct,
+  `logos/lanot_logo_struct.mg`, que el `.mg` generado incrusta), el satélite leído del atributo
+  `platform` (antes NOAA-21 salía "NOAA"), y **el nivel de superficie aparte**: NUCAPS cierra el
+  perfil con un nivel en la presión del suelo cuya temperatura arrastra la de la piel —sobre la
+  CDMX, 25 °C con 14 °C 20 hPa arriba—; ahora se dibuja la línea del suelo con T y Td como puntos,
+  y la parcela sale del primer nivel sobre él.
+- **El Lifted Index salía "n/d" en todas**: `Stability` declara `valid_range = [0, 1e6]`, netCDF4
+  lo aplica solo y borraba todo LI negativo. Corregido en `931ed29`; **falta recompilar** y
+  regenerar las de hoy (la CDMX de las 19:09 debe dar −3.81 K).
+- **kawak**: `jpss/sounder/` (al lado de `viirs/`, porque no es VIIRS) y `jpss/sounder/skewt/`.
+  Hoy se copió a mano; también las vistas de NOAA-21, que la cadena vieja no procesa. NPP y
+  NOAA-20 **no** se copian: se llaman igual en las dos cadenas y pisarían las de la vieja.
+
+### El PR a satpy: pytroll/satpy#3480
+
+Dave pidió el PR en el foro. Abierto el mismo día (`docs/pr_satpy_nucaps_cape_li.md`): los cinco
+parches de CAPE y Lifted Index portados a `main`, más `get_shape` y el enmascarado en un método
+aparte. CodeScene objetó el número de argumentos de ese método; corregido en un segundo commit.
+Falta la revisión. Cuando llegue a Polar2Grid, se quitan del `.def` esos cinco y los dos de #3450.
+
+### Condiciones para jubilar la cadena vieja
+
+La cadena vieja son dos ramas y se apagan por separado: **JPSS** (`cspp.sh` y compañía, en
+stratus) y **METOP** (`metop2.sh`, en tsom03). Aqua no entra en ninguna: ya no se procesa.
+
+**JPSS se apaga cuando se cumpla todo esto:**
+
+1. **Opera sola varios días** (criterio de la fase 0 del plan): ancillary renovado por cron, sin
+   intervención, la segunda pasada del día de un satélite con OMPS y HEAP, y ningún crudo JPSS
+   sin procesar al final del día. Hoy todavía hizo falta relanzar a mano la NOAA-20 de las 20:02.
+2. **Dos pasadas encimadas no se pierden.** Ya sea la cola con dos turnos (0.7), ya sea el barrido
+   en cron mientras tanto. Verificado con un par NPP / NOAA-20 real, incluidas las pruebas
+   pendientes de 0.6 (puntos 6 y 7: dos satélites en la misma ventana de Level 2, y los cachés
+   de ACSPO y Active Fire con dos corridas).
+3. **Cubre todo lo que publica la vieja, o se decide dejarlo.** Hoy la cadena nueva tiene su
+   equivalente de todo menos **AFAI** (índice de algas flotantes, `jpss/viirs/afai` en kawak), que
+   no produce. Hay que traerlo o decidir explícitamente que se deja. Las nubes cambian de
+   producto (JRR en vez de CLAVR-x): eso es un cambio de producto, y se anuncia.
+4. **Publica sola en kawak**, con las categorías de la página, sin pisar nada y a tiempo — hoy la
+   copia es manual. Y **la página muestra lo nuevo**: `noaa21`, `sounder/` y los nombres de nube
+   de JRR.
+5. **Si una pasada falla, alguien se entera.** El 22 de septiembre de 2025 un error de sintaxis en
+   la recepción perdió siete pasadas sin más rastro que un log. Un aviso cuando un crudo JPSS
+   llegue a `.fallido` (o a `fallidos/` con la cola), o cuando pase una ventana de pasadas sin
+   ninguna procesada.
+
+Cumplido eso: `copypolar.sh` deja de mandar JPSS a la cadena vieja de stratus y se desactiva
+`cspp.sh`. Conviene conservar su instalación un par de semanas como vuelta atrás.
+
+**METOP se apaga con la fase 4 del plan**: contenedor de Level 0 → Level 1 (AAPP y el
+metopizer), renderizado de AVHRR y sondeos por `run_heap_edr.sh` con IASI/AMSU/MHS.
+
+### Repartir las pasadas entre servidores, y el barrido
+
+**Para mandar pasadas a otro servidor** hacen falta, en este orden:
+
+1. **La cola** (0.7) con dos turnos en tahan: cada pasada espera un turno libre en vez de
+   rechazarse.
+2. **Las fases 1 y 2**: salidas, `state/`, estáticos y ancillary en `/datawork`. Sin eso, otro
+   servidor no sabría qué quedó hecho ni tendría de dónde leer.
+3. **Un segundo trabajador** (3a): stratus reinstalado con Rocky 9, Apptainer, los `.sif` y
+   `lanotadm` con el mismo uid. Y stratus **solo se puede reinstalar después de apagar la rama JPSS
+   vieja que corre en él** — por eso ese apagado va antes, solo con los dos turnos de tahan.
+
+**¿Eso evitaría el barrido?** No lo elimina, pero lo saca del camino normal. Lo que evita que una
+pasada encimada se quede esperando al barrido —lo que pasó hoy— es **la cola**, no el segundo
+servidor: con turnos, la pasada que llega con todo ocupado se toma en cuanto uno se libera, aun
+con un solo servidor. El segundo servidor da capacidad y relevo. Pero hay fallas que ninguna cola
+ve, y para ellas el barrido sigue siendo la red de seguridad (en el plan pasa a ser
+`trabajar.sh --barrer`):
+
+- **Una señal que nunca llega**: la copia o el `ssh` desde polaracq fallan, o la recepción tiene
+  un error como el de 2025. El crudo está en el buzón pero nadie lo encoló.
+- **Un servidor que muere a media pasada**: su boleto deja de latir, y quien lo regresa a la cola
+  es precisamente el barrido.
+- **Los reintentos** de una pasada que falló por algo pasajero.
+
+**Mientras llega la cola**, el barrido actual debería ir ya en cron (cada 15 min, con un
+`--dry-run` antes para que no reprocese la historia del buzón). Eso habría recogido la NOAA-20 de
+hoy sin intervención.
+
+---
+
 ## 2026-09-22, tarde: la órbita dejó de identificar la pasada
 
 Las pasadas de la tarde recorrieron solas los dos sistemas. En tahan:
@@ -292,12 +390,14 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    dos se publicaron casi sin cambios, desde `docs/respuesta_*.bbcode` (ver
    abajo por qué no desde el `.md`). CIMSS ya sabe que el fallo era nuestro y
    que puede dejar de buscarlo.
-2. **Recompilar `polar2grid_v3.2-mapdrawer.sif`.** Los parches de CAPE y Lifted
+2. ~~**Recompilar `polar2grid_v3.2-mapdrawer.sif`.**~~ **Hecho**: el `%test` de la imagen del
+   2026-09-22 lista los siete parches en su sitio. Los parches de CAPE y Lifted
    Index están escritos y probados pero **no están en ninguna imagen**. El
    mecanismo cambió: ya no son `sed` en el `.def` sino
    `contenedores/parches/aplicar_parches_satpy.py`, que `construir.sh` copia al
    directorio de compilación.
-3. **Verificar los permisos finales del bundle de HEAP.** La corrida buena se
+3. ~~**Verificar los permisos finales del bundle de HEAP.**~~ **Hecho**: el 2026-09-22 HEAP
+   corrió como `lanotadm` en tres pasadas y dio las cinco familias. La corrida buena se
    hizo con `a+rwX`; después se afinó a `go-w,g+w` y **desde entonces no ha
    vuelto a correr HEAP**. Debería bastar —el usuario está en el grupo
    `lanotadm`— pero está sin comprobar:
@@ -306,9 +406,10 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    paletas, y con eso: las CPT, las entradas de `product_map` y el bloque en
    `run_polar2grid_edr.sh`. El plan detallado está en
    `~/lanot/LANOT_tools/docs/plan_cape_lifted_index.md` — **sin commitear**, que
-   es otro repositorio.
-5. **Una pasada completa con los trece eslabones**, ya con HEAP dentro de
-   `procesar_pasada.sh`. Todavía no ha corrido ninguna así.
+   es otro repositorio. Ojo al medir los rangos: hasta `931ed29` el LI negativo se
+   perdía al leerlo con netCDF4 (el `valid_range` de `Stability`); con satpy no.
+5. ~~**Una pasada completa con los trece eslabones**~~. **Hecho el 2026-09-22**: NOAA-21 19:06 y
+   NOAA-20 20:02 salieron con todas las etapas en `ok`, HEAP incluido.
 6. **El PR a `pytroll/satpy`** con los cinco parches nuestros (`column_index`,
    `extra_fill_values`, la precedencia de `units` y las dos entradas del YAML).
    **Preparado el 2026-09-22**, después de que Dave lo pidiera en el foro: rama
@@ -316,7 +417,8 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    `docs/pr_satpy_nucaps_cape_li.md`. **Abierto el mismo día: pytroll/satpy#3480.**
    Falta la revisión; al llegar a Polar2Grid, quitar los cinco parches del `.def`.
 7. **Adoptar `lanotadm`**: `instalar.sh`, el `chown -R` de barrido y el cron.
-   Los pasos y el porqué están arriba, en la sección del 29.
+   **Casi todo hecho**: la cadena corre desde `/opt/lanot/polares` como `lanotadm` y el cron de
+   ancillary está instalado. **Falta el barrido en cron** (ver la sección del 22 en la noche).
 
 ### El foro de SSEC es phpBB: se pega BBCode, no Markdown
 
