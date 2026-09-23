@@ -5,14 +5,16 @@ From: lanot_base_rocky9.sif
 
 %labels
     Author Alejandro Aguilar Sierra - LANOT UNAM
-    Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view)
+    Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view, skewt) + MetaGráfica
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit 2df2fbc22b0bff84c1e3d65769ec804a120cbed6
+    LANOT_tools_commit 65e19a7b7ffcfe5cb41e9202cf76fd0a407c3000
+    MetaGrafica_commit 89dfe5e018588add00222aabe8660f92e8bc49b7
 
 %help
     Polar2Grid v3.2 con las herramientas de LANOT para adornar las vistas
-    (logos, instante, recortes).
+    (logos, instante, recortes) y para dibujar los Skew-T de los sondeos
+    NUCAPS (skewt, que compila su figura con mg de MetaGráfica).
 
     REQUISITO DE COMPILACIÓN: este .def toma recursos del HOST donde se
     construye. La máquina debe tener:
@@ -64,7 +66,12 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # 2df2fbc agrega 'cldtoppres' a product_map, que hace falta desde que
+    # 65e19a7 trae skewt (termodiagramas Skew-T de los NUCAPS-EDR de HEAP) y los
+    # logos vectoriales. Lo demás que entra con él no cambia las vistas de la
+    # cadena: el grosor de --layer ya era fracción del ancho con el pin anterior
+    # (f50b864), y las banderas de abajo siguen comprobándose.
+    #
+    # Antes iba en 2df2fbc, que agrega 'cldtoppres' a product_map, que hace falta desde que
     # run_polar2grid_edr.sh pide CldTopPres: con un pin anterior la vista de
     # presión sale bien coloreada —las CPT van montadas— pero rotulada
     # "NOAA-20 VIIRS", sin decir de qué es. Degrada en silencio, como los de
@@ -81,7 +88,17 @@ From: lanot_base_rocky9.sif
     # viaja DENTRO del .sif y que un pin viejo deja atrás en silencio. Las CPT
     # son la excepción de siempre: van montadas desde el host, así que ésas se
     # arreglan con git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=2df2fbc22b0bff84c1e3d65769ec804a120cbed6
+    LANOT_TOOLS_COMMIT=65e19a7b7ffcfe5cb41e9202cf76fd0a407c3000
+
+    # MetaGráfica: skewt no dibuja pixeles, escribe un .mg y llama a `mg` para
+    # compilarlo a SVG/PDF/EPS. Es un binario C++ fuera de pip, así que el venv
+    # de LANOT_tools no lo trae y se compila aquí, con el mismo trato que
+    # LANOT_tools: clon de GitHub y commit fijo, que también va en %labels. Hace
+    # falta uno del 2026-08-30 o posterior: antes, los `rule` no heredaban el
+    # estilo del bloque y las isobaras del Skew-T salían negras de 1 pt
+    # (LANOT_tools, docs/plan_skewt.md). Sin `mg`, skewt deja el .mg y avisa:
+    # degradaría en silencio, por eso se comprueba abajo.
+    MG_COMMIT=89dfe5e018588add00222aabe8660f92e8bc49b7
 
     # Lo que esta receta necesita además de la base: GDAL y el toolchain para
     # compilar las dependencias de pip de LANOT_tools, más git para clonarlo.
@@ -93,7 +110,7 @@ From: lanot_base_rocky9.sif
     # la imagen pasara de 1.7 a 2.3 GB. El paquete 'proj' base ya trae proj.db,
     # que es lo que necesitan las reproyecciones de la cadena.
     dnf install -y --setopt=install_weak_deps=False \
-                   git gcc gcc-c++ make cmake \
+                   git gcc gcc-c++ make cmake zlib-devel \
                    gdal gdal-devel python3-pip python3-devel
 
     # Descomprimir e Instalar Polar2Grid
@@ -138,6 +155,22 @@ From: lanot_base_rocky9.sif
     cd /opt
     rm -rf build_lanot
 
+    # Compilar e instalar MetaGráfica. Con g++ y no con el clang++ que pide su
+    # Makefile, porque g++ ya está para las ruedas de pip. Se instala a mano y
+    # no con `make install`: esa regla exige la página de manual, que se genera
+    # con pandoc, y aquí no hace falta. La biblioteca lib/*.mg va a la ruta que
+    # el binario trae horneada (MG_LIBDIR), por si alguna figura la incluye.
+    echo "--- Compilando MetaGráfica en $MG_COMMIT ---"
+    git clone https://github.com/asierra/Metagrafica.git build_mg
+    cd build_mg
+    git checkout "$MG_COMMIT"
+    make CXX=g++ -j"$(nproc)" bin/mg
+    install -s -m 755 bin/mg /usr/local/bin/mg
+    install -d /usr/local/share/metagrafica/lib
+    install -m 644 lib/*.mg /usr/local/share/metagrafica/lib/
+    cd /opt
+    rm -rf build_mg
+
     # pip guarda las ruedas descargadas y se quedaban dentro de la imagen:
     # 123 MB que no se usan en ningún momento en tiempo de ejecución.
     rm -rf /root/.cache/pip
@@ -147,7 +180,7 @@ From: lanot_base_rocky9.sif
     # verificación de más abajo corre DESPUÉS de esto a propósito: si el
     # recorte se lleva algo necesario, la compilación falla aquí y no en
     # producción.
-    dnf remove -y gcc gcc-c++ make cmake gdal-devel python3-devel git
+    dnf remove -y gcc gcc-c++ make cmake zlib-devel gdal-devel python3-devel git
     dnf clean all
     rm -rf /var/cache/dnf
 
@@ -183,6 +216,14 @@ From: lanot_base_rocky9.sif
     # vista vacia se sigue publicando en negro y nadie se entera. La tabla de
     # codigos vive en el epilogo del --help, asi que basta buscarla.
     geotiff2view --help | grep -q -- "0 imagen generada"
+
+    # Skew-T: skewt tiene que arrancar (netCDF4 en el venv) y `mg` tiene que
+    # compilar una figura, porque sin él skewt no falla, solo deja el .mg.
+    skewt --help > /dev/null
+    printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
+    mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
+    grep -q '<svg' /tmp/prueba_mg.svg
+    rm -f /tmp/prueba_mg.mg /tmp/prueba_mg.svg
 
     # Tampoco es bandera el mapa de nombres de metadata.py, que es lo ÚNICO de
     # la vista de sondeos que viaja dentro del .sif —las CPT van montadas desde
@@ -255,6 +296,16 @@ From: lanot_base_rocky9.sif
     # anterior a 2df2fbc la deja sin nombre en la etiqueta sin que nada falle.
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa20_viirs_CldTopPres_20260817_193624_wgs84_geo_750m.tif'); assert m.get('product')=='Cloud Top Pressure', 'product_map sin cldtoppres: pin viejo? -> %r' % m.get('product'); assert m.get('units')=='hPa'"
     echo "  OK --percentiles, --lat-south, --font-bg, --timestamp-pos, codigos, product_map"
+
+    # Ver la nota del %post: sin mg, skewt deja el .mg sin compilar y no falla.
+    echo "Skew-T:"
+    skewt --help > /dev/null
+    /opt/lanot-tools/venv/bin/python -c "import skewt, nucaps_sounding, thermo, netCDF4"
+    printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
+    mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
+    grep -q '<svg' /tmp/prueba_mg.svg
+    rm -f /tmp/prueba_mg.mg /tmp/prueba_mg.svg
+    echo "  OK skewt $(command -v skewt), mg $(command -v mg)"
 
     # Ver la nota del %post. Se comprueba con el MISMO script que los aplica,
     # para que no haya dos listas de parches que se puedan desincronizar.
