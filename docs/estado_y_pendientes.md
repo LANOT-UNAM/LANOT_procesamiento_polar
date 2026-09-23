@@ -41,10 +41,10 @@ tarde (19–21 UTC), en tahan:
   las pasadas del día, con `fallos: 0`, y visibles en kawak.
 - **`cadena/cron.log`**: las descargas de ancillary de las 06 y 18 UTC.
 
-Pendiente de desplegar, sin urgencia: **empujar LANOT_tools `931ed29`**, recompilar
-`polar2grid_v3.2-mapdrawer.sif` (el pin ya apunta ahí), copiarla a `/opt/containers` y regenerar los
-Skew-T del 22 con `--force` para que el Lifted Index salga con valor. La imagen en producción está
-en `bcabcd4`: hasta entonces los Skew-T nuevos siguen diciendo "LI n/d" cuando es negativo.
+**Desplegado la misma noche**: imagen con LANOT_tools `931ed29` en `/opt/containers`, los 21
+Skew-T del 22 regenerados (20 con LI; el que queda "n/d", CDMX 07:57, trae −999 de NUCAPS en CAPE
+y LI) y subidos a kawak **por el cron de publicación**, sin intervención (21:27, 21 copiados,
+0 fallos). Fue la primera prueba real de `publicar_kawak.sh`.
 
 ---
 
