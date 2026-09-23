@@ -19,7 +19,9 @@
 > para pegar, en **`docs/respuesta_polar2grid_nucaps.bbcode`**. **Publicada.** Dave contestó
 > (leído el 2026-09-22) que no terminaba de entender los arreglos y que un PR sería lo más
 > fácil. Abierto como [pytroll/satpy#3480](https://github.com/pytroll/satpy/pull/3480); el
-> cuerpo está en **`docs/pr_satpy_nucaps_cape_li.md`**.
+> cuerpo está en **`docs/pr_satpy_nucaps_cape_li.md`**. El enlace se le dejó a Dave en el
+> mismo hilo el 2026-09-22: *"Here it is: https://github.com/pytroll/satpy/pull/3480 —
+> thanks for taking a look."*
 >
 > Lo que sigue es el texto tal como se envió, sin retocar.
 
