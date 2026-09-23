@@ -250,6 +250,12 @@ From: lanot_base_rocky9.sif
     # anterior a 2df2fbc la deja sin nombre en la etiqueta sin que nada falle.
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa20_viirs_CldTopPres_20260817_193624_wgs84_geo_750m.tif'); assert m.get('product')=='Cloud Top Pressure', 'product_map sin cldtoppres: pin viejo? -> %r' % m.get('product'); assert m.get('units')=='hPa'"
 
+    # omps_a_geotiff.py (el GeoTIFF de ozono, hasta Polar2Grid 3.3) no viaja en
+    # la imagen —run_polar2grid_edr.sh lo monta desde el repositorio—, pero corre
+    # con el intérprete del bundle y usa estas tres bibliotecas de su runtime.
+    # Un bundle que dejara de traer alguna mataría solo al ozono, en silencio.
+    /opt/polar2grid/libexec/python_runtime/bin/python3 -c "import rasterio.features, netCDF4, yaml"
+
     # Verificación de los recursos que usan las herramientas
     test -x /opt/lanot-tools/venv/bin/python
     test -d /usr/local/share/lanot/colortables
@@ -310,6 +316,10 @@ From: lanot_base_rocky9.sif
     # anterior a 2df2fbc la deja sin nombre en la etiqueta sin que nada falle.
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa20_viirs_CldTopPres_20260817_193624_wgs84_geo_750m.tif'); assert m.get('product')=='Cloud Top Pressure', 'product_map sin cldtoppres: pin viejo? -> %r' % m.get('product'); assert m.get('units')=='hPa'"
     echo "  OK --percentiles, --lat-south, --font-bg, --timestamp-pos, codigos, product_map"
+
+    # Ver la nota del %post: omps_a_geotiff.py usa el runtime del bundle.
+    /opt/polar2grid/libexec/python_runtime/bin/python3 -c "import rasterio.features, netCDF4, yaml"
+    echo "  OK runtime de Polar2Grid para omps_a_geotiff.py"
 
     # Ver la nota del %post: sin mg, skewt deja el .mg sin compilar y no falla.
     echo "Skew-T:"

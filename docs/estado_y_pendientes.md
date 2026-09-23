@@ -4,8 +4,8 @@
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
-que faltaba de aquello. Del ozono queda pendiente solo la vista, que exige Polar2Grid 3.3
-(pendiente 8).
+que faltaba de aquello. Desde el 2026-09-22 el ozono tiene también su vista, sin esperar a
+Polar2Grid 3.3 (pendiente 8).
 
 El doceavo, **HEAP**, se escribió y se probó el 2026-08-15: sondeos NUCAPS de CrIS+ATMS,
 que van **más allá** de lo que hace el servidor viejo. **Corregido el 2026-08-17: HEAP no
@@ -1943,8 +1943,8 @@ Preguntas sin responder:
   soportados**: no es que no los pidamos. Si se quieren, hay que renderizarlos por otra
   vía o esperar a una versión que los incluya. En la lista por omisión aparece además un
   `VLST` (temperatura de superficie) que tampoco está disponible con estos archivos.
-- **OMPS** ya está cubierto (`run_omps_edr.sh`, 2026-08-13), pero su vista no: el lector
-  de ozono llega hasta Polar2Grid 3.3 y tenemos la 3.2. Ver el pendiente 8.
+- **OMPS** ya está cubierto (`run_omps_edr.sh`, 2026-08-13), y desde el 2026-09-22 también
+  su vista, con un convertidor propio en vez del lector de Polar2Grid 3.3. Ver el pendiente 8.
 
 Resuelto de paso: el renderizado de la SST salió de `run_acspo_edr.sh` y ahora es un
 bloque más de `run_polar2grid_edr.sh`, que queda como **renderizador único de Level 2**.
@@ -2175,7 +2175,7 @@ decidir sobre él quedó obsoleta. Lo único que sigue apuntando a esa imagen es
 
 ---
 
-### 8. OMPS — probado el 2026-08-13; falta la vista
+### 8. OMPS — probado el 2026-08-13; vista desde el 2026-09-22
 Los RDR **ya estaban llegando** a `level0` desde enero sin que nadie los procesara
 (`RNSCA-ROTCS*` y `RNSCA-RONPS*`, incluida la pasada de prueba `d20260811`). El camino
 completo hasta Level 2 ya corrió con datos reales:
@@ -2245,6 +2245,54 @@ publicar el ozono en NetCDF. Un renderizador propio es el último recurso: Satpy
 lector `omps_edr`, pero sus patrones son para los productos operativos de NASA/NOAA
 (`OMPS-NPP_NMTO3-L2*`, `TC_EDR_TO3*.h5`), no para los `V8TOZ-EDR_v4r5*.nc` de CSPP, así
 que habría que escribir el lector — y tirarlo el día que salga el 3.3.
+
+**Resuelto el 2026-09-22 sin esperar a la 3.3**, con la lección de flood: lo único que
+Polar2Grid haría por nosotros es pasar el swath a la rejilla, y eso no necesita lector.
+`scripts/omps_a_geotiff.py` lee los `V8TOZ-EDR_*.nc` de la pasada y escribe
+`<sat>_omps_ColumnAmountO3_<sello>_wgs84_geo_5km.tif` en `geotiff/omps`; de ahí en adelante
+es un producto más de `run_polar2grid_edr.sh` —sección "Ozono (OMPS)", `vestir` con
+geotiff2view y `omps_toz.cpt`, marcador y resumen—. Corre dentro de la imagen de Polar2Grid
+con el Python de su bundle (rasterio, netCDF4, yaml), montado desde el repositorio: se
+corrige sin recompilar y se borra al pasar a 3.3. Escribir el lector de Satpy habría costado
+más para tirarlo igual: el `omps_edr` que ya trae exige la órbita en el nombre del archivo,
+que los de CSPP no llevan.
+
+Lo que se midió en tahan sobre las nueve pasadas diurnas que había (agosto y septiembre,
+los tres satélites, 409 mil pixeles):
+
+- **El archivo es fácil.** NetCDF plano, CF-1.8: `Latitude`/`Longitude` 2D y
+  `ColumnAmountO3` en DU con `units`, `valid_range` y `_FillValue`. Los arreglos vienen
+  rellenados (30 × 240) y el dato real ocupa menos: 15 × 139 por gránulo en NOAA-20.
+- **El pixel cambia mucho entre satélites**: 177 columnas en NOAA-21, 139 en NOAA-20 y 35
+  en NPP; en NOAA-20 va de 18 km en nadir a 49 en el borde. Por eso no hay vecino más
+  cercano: ningún radio sirve para los tres. Cada pixel se pinta con **su huella**, las
+  cuatro esquinas que trae el archivo (`LatitudeCorners`/`LongitudeCorners`, en orden y
+  bien orientadas en los tres), rasterizada con `all_touched`. Sin esa bandera la vista
+  salía salpicada de puntos negros: celdas cuyo centro caía en la rendija entre dos huellas.
+- **`ErrorFlag = 7` se enmascara.** Junta exactamente los valores absurdos: 8 pixeles de
+  NPP, de 4 a 80 DU. Los demás códigos (0, 1, 4, 5) dan valores físicos. `QualityFlag` no
+  sirve para filtrar: vale 0 en todos.
+- **Rango de la paleta**: los datos fueron de 242 a 332 DU. `omps_toz.cpt` va de 220 a 380
+  en pasos de 10, fijo como los de sondeos, con techo holgado para el invierno.
+- **Arcos negros en los extremos** de algunas pasadas (NOAA-21 19:07): no son del
+  renderizado sino líneas de barrido con geolocalización y sin recuperación de ozono —5 en
+  el primer gránulo, 13 en los dos últimos—. Quedan como hueco, igual que en NUCAPS.
+- **Rápido**: 1 a 2.3 s por pasada el GeoTIFF, unos 6 s la sección con su vista.
+
+**Qué falta** para que esto llegue a operación:
+
+1. Empujar LANOT_tools (`3d9e6c0`: `omps_toz.cpt` y la entrada `columnamounto3` de
+   `product_map`), mover `LANOT_TOOLS_COMMIT` del `.def`, agregar al `%post` y al `%test`
+   la comprobación de esa entrada —como la de `cldtoppres`— y recompilar. Solo afecta al
+   pie de foto de la galería, que rotula por nombre de archivo: el JPG ya sale rotulado
+   "Total Ozone", porque el GeoTIFF lleva la etiqueta `product` y geotiff2view la lee
+   antes que el nombre.
+2. Instalar `omps_toz.cpt` en `/usr/local/share/lanot/colortables` de tahan, que es el
+   que se monta sobre el de la imagen. Sin ella la sección escribe el GeoTIFF y no la vista.
+3. Decidir si el ozono se publica en kawak: `publicar_kawak.sh` copia categorías fijas y no
+   se le agregó ninguna. La galería de `publicar_vistas.sh` sí lo lleva ya ("Ozono total").
+
+V8PRO, el perfil en 21 capas, sigue sin vista: no es un mapa.
 
 ### 9. Recorte y encuadre de las vistas
 En el `true_color` de la pasada de prueba, más de la mitad del cuadro es negro: la rejilla

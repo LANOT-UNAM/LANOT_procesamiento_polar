@@ -55,6 +55,7 @@ CATEGORIAS = [
     ("flood",   "Inundaciones"),
     ("lsr",     "Reflectancia de superficie"),
     ("sounder", "Sondeos hiperespectrales"),
+    ("omps",    "Ozono total"),
 ]
 
 # El sello que Polar2Grid pone en el nombre: {producto}_{AAAAMMDD}_{HHMMSS}_{rejilla}
