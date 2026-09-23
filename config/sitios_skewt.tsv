@@ -1,0 +1,26 @@
+# Sitios para los Skew-T de los sondeos NUCAPS: las estaciones de radiosondeo
+# del SMN con datos en 2026, para poder comparar el perfil del satélite contra
+# el del globo. Coordenadas del catálogo IGRA2 de NOAA/NCEI
+# (https://www.ncei.noaa.gov/pub/data/igra/igra2-station-list.txt), tomadas el
+# 2026-09-22; se dejaron fuera las que no reportan desde hace años (Chihuahua,
+# Torreón, Tampico, Isla Socorro…).
+#
+# skewt toma el FOR de NUCAPS más cercano (a ~40 km en la práctica, máx. 100)
+# y no dibuja los perfiles que el propio NUCAPS rechaza, así que no todas las
+# pasadas dan Skew-T de todos los sitios.
+#
+# omm	clave	lat	lon	nombre
+76256	empalme	27.9573	-110.7973	Empalme, Son.
+76394	monterrey	25.8667	-100.2333	Monterrey, N.L.
+76405	lapaz	24.1288	-110.3206	La Paz, B.C.S.
+76458	mazatlan	23.2173	-106.4111	Mazatlán, Sin.
+76526	zacatecas	22.7465	-102.5066	Zacatecas, Zac.
+76595	cancun	21.0290	-86.8521	Cancún, Q. Roo
+76612	guadalajara	20.7065	-103.3923	Guadalajara, Jal.
+76644	merida	20.9468	-89.6521	Mérida, Yuc.
+76654	manzanillo	19.0445	-104.3185	Manzanillo, Col.
+76679	cdmx	19.4037	-99.1966	Ciudad de México
+76692	veracruz	19.1430	-96.1113	Veracruz, Ver.
+76743	villahermosa	17.9810	-92.9215	Villahermosa, Tab.
+76805	acapulco	16.7629	-99.7494	Acapulco, Gro.
+76903	tapachula	14.8872	-92.2964	Tapachula, Chis.
