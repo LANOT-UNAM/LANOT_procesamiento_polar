@@ -2281,9 +2281,8 @@ los tres satélites, 409 mil pixeles):
 
 **Qué falta** para que esto llegue a operación:
 
-1. Empujar LANOT_tools (`3d9e6c0`: `omps_toz.cpt` y la entrada `columnamounto3` de
-   `product_map`), mover `LANOT_TOOLS_COMMIT` del `.def`, agregar al `%post` y al `%test`
-   la comprobación de esa entrada —como la de `cldtoppres`— y recompilar. Solo afecta al
+1. ~~Empujar LANOT_tools (`3d9e6c0`)~~ y ~~mover `LANOT_TOOLS_COMMIT` del `.def`, con la
+   comprobación de `columnamounto3` en `%post` y `%test`~~ (2026-09-23). **Falta recompilar.** Solo afecta al
    pie de foto de la galería, que rotula por nombre de archivo: el JPG ya sale rotulado
    "Total Ozone", porque el GeoTIFF lleva la etiqueta `product` y geotiff2view la lee
    antes que el nombre.
