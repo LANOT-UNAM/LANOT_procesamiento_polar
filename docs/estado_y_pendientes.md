@@ -22,6 +22,32 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## Al retomar el 2026-09-23: ¿funcionó la automatización?
+
+Primer día con todo en automático: recepción por stratus, cadena desde `/opt` como `lanotadm`,
+barrido y publicación en cron. Qué mirar después de las pasadas de la mañana (07–09 UTC) y de la
+tarde (19–21 UTC), en tahan:
+
+- **Cada crudo JPSS tiene su pasada**: `cadena/<fecha>_recibe.log` contra los logs de pasada de
+  `cadena/`, y el resumen de cada uno sin `fallo`. Las claves ya son por hora de inicio
+  (`j02_d20260923_tHHMMSS`).
+- **ATMOS en las de la mañana**: si sale bien, tolera un CMCSST de dos días; si cae con `Unable to
+  find CMCSST`, ver la duda abierta en `plan_operacion_datawork.md` (0.2).
+- **Skew-T**: en los logs de `polar2grid/` la sección `--- Skew-T ---`, y en el marcador de cada
+  pasada con sondeos la línea `skewt: N diagramas, …`. Archivos nuevos en `vistas/sounder/skewt/`.
+- **Barrido** (`cadena/barrido.log`): una línea cada 15 min. Si hubo dos pasadas encimadas, la
+  segunda tiene que aparecer recogida ahí, sin intervención.
+- **Publicación** (`cadena/publicar_kawak.log`): las vistas de NOAA-21, los sondeos y los Skew-T de
+  las pasadas del día, con `fallos: 0`, y visibles en kawak.
+- **`cadena/cron.log`**: las descargas de ancillary de las 06 y 18 UTC.
+
+Pendiente de desplegar, sin urgencia: **empujar LANOT_tools `931ed29`**, recompilar
+`polar2grid_v3.2-mapdrawer.sif` (el pin ya apunta ahí), copiarla a `/opt/containers` y regenerar los
+Skew-T del 22 con `--force` para que el Lifted Index salga con valor. La imagen en producción está
+en `bcabcd4`: hasta entonces los Skew-T nuevos siguen diciendo "LI n/d" cuando es negativo.
+
+---
+
 ## 2026-09-22, noche: Skew-T en la cadena, el PR a satpy, y qué falta para jubilar la cadena vieja
 
 ### Skew-T de NUCAPS, de punta a punta
