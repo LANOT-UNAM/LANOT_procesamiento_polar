@@ -2282,7 +2282,9 @@ los tres satélites, 409 mil pixeles):
 **Qué falta** para que esto llegue a operación:
 
 1. ~~Empujar LANOT_tools (`3d9e6c0`)~~ y ~~mover `LANOT_TOOLS_COMMIT` del `.def`, con la
-   comprobación de `columnamounto3` en `%post` y `%test`~~ (2026-09-23). **Falta recompilar.** Solo afecta al
+   comprobación de `columnamounto3` en `%post` y `%test`~~ (2026-09-23). **Recompilada e
+   instalada el 2026-09-23** (`apptainer test` en 0, `LANOT_tools_commit 3d9e6c07…`); la
+   galería rotula ya "Total Ozone". Solo afecta al
    pie de foto de la galería, que rotula por nombre de archivo: el JPG ya sale rotulado
    "Total Ozone", porque el GeoTIFF lleva la etiqueta `product` y geotiff2view la lee
    antes que el nombre.
