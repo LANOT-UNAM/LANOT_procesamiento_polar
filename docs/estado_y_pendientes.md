@@ -311,7 +311,9 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    `procesar_pasada.sh`. Todavía no ha corrido ninguna así.
 6. **El PR a `pytroll/satpy`** con los cinco parches nuestros (`column_index`,
    `extra_fill_values`, la precedencia de `units` y las dos entradas del YAML).
-   El entorno para probarlos está descrito en `contenedores/parches/README.md`.
+   **Preparado el 2026-09-22**, después de que Dave lo pidiera en el foro: rama
+   `nucaps-cape-lifted-index` en `~/lanot/satpy`, cuerpo y pasos para abrirlo en
+   `docs/pr_satpy_nucaps_cape_li.md`. Falta el fork, el push y abrirlo.
 7. **Adoptar `lanotadm`**: `instalar.sh`, el `chown -R` de barrido y el cron.
    Los pasos y el porqué están arriba, en la sección del 29.
 

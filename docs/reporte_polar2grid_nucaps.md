@@ -16,7 +16,9 @@
 >
 > La respuesta de seguimiento —con la medición del `H2O_MR` real y el ofrecimiento de abrir el
 > PR de CAPE/Lifted Index— está **al final de este archivo**, y ya convertida a BBCode, lista
-> para pegar, en **`docs/respuesta_polar2grid_nucaps.bbcode`**. **Pendiente de publicar.**
+> para pegar, en **`docs/respuesta_polar2grid_nucaps.bbcode`**. **Publicada.** Dave contestó
+> (leído el 2026-09-22) que no terminaba de entender los arreglos y que un PR sería lo más
+> fácil. El PR está preparado en **`docs/pr_satpy_nucaps_cape_li.md`**.
 >
 > Lo que sigue es el texto tal como se envió, sin retocar.
 
