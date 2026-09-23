@@ -2289,8 +2289,12 @@ los tres satélites, 409 mil pixeles):
    antes que el nombre.
 2. Instalar `omps_toz.cpt` en `/usr/local/share/lanot/colortables` de tahan, que es el
    que se monta sobre el de la imagen. Sin ella la sección escribe el GeoTIFF y no la vista.
-3. Decidir si el ozono se publica en kawak: `publicar_kawak.sh` copia categorías fijas y no
-   se le agregó ninguna. La galería de `publicar_vistas.sh` sí lo lleva ya ("Ozono total").
+3. ~~Decidir si el ozono se publica en kawak.~~ **Sí, desde el 2026-09-23**: va a
+   `jpss/omps/`, al lado de `viirs/` como `sounder/`, y de los **tres** satélites —la cadena
+   vieja no produce ozono, así que no hay nombre con que chocar—. Ya están ahí las vistas de
+   la prueba del 2026-09-22 (NOAA-20, NOAA-21 19:07 y NPP). Para que el cron siga solo falta
+   reinstalar (`sudo ./scripts/instalar.sh`), porque corre desde `/opt/lanot/polares`. La
+   galería de `publicar_vistas.sh` también lo lleva ("Ozono total").
 
 V8PRO, el perfil en 21 capas, sigue sin vista: no es un mapa.
 

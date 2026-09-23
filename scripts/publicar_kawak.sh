@@ -12,7 +12,9 @@
 #   - de las vistas de VIIRS, solo NOAA-21, que la cadena vieja no procesa;
 #   - de los sondeos, solo NOAA-21 en los mapas (los de NOAA-20 salen como
 #     j01_atms-cris_…, un nombre que falta corregir), y TODOS los Skew-T, que
-#     la cadena vieja no produce.
+#     la cadena vieja no produce;
+#   - del ozono, TODOS los satélites: la cadena vieja tampoco lo produce, así
+#     que no hay nombre con el cual chocar.
 #
 # Cuando la cadena vieja se apague (ver estado_y_pendientes.md, "Condiciones para
 # jubilar la cadena vieja"), esto se sustituye por la publicación de todo.
@@ -27,6 +29,7 @@
 #   vistas/lsr               → viirs/vegindex
 #   vistas/sounder           → sounder         (al lado de viirs/: no es VIIRS)
 #   vistas/sounder/skewt     → sounder/skewt
+#   vistas/omps              → omps            (al lado de viirs/: es OMPS)
 #
 # Solo mira lo de los últimos PUB_KAWAK_DIAS días, y copia con --update: un
 # archivo que ya está en kawak se reemplaza solo si el de aquí es más nuevo (un
@@ -49,7 +52,7 @@ LOG="${PUB_KAWAK_LOG:-/var/log/lanot/polares/cadena/publicar_kawak.log}"
 DRY_RUN=()
 case "${1:-}" in
     -n|--dry-run) DRY_RUN=(--dry-run) ;;
-    -h|--help)    sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)    sed -n '3,/^# ===/{/^# ===/!p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     "")           ;;
     *)            echo "ERROR: Argumento no reconocido: $1" >&2; exit 1 ;;
 esac
@@ -102,6 +105,7 @@ copia atmos         viirs/clouds    'noaa21_*' '*AOD550*'
 copia lsr           viirs/vegindex  'noaa21_*'
 copia sounder       sounder         'noaa21_*'
 copia sounder/skewt sounder/skewt   '*.svg'
+copia omps          omps            '*.jpg'
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Copiados: $copiados · fallos: $fallos"
 [ "$fallos" -eq 0 ]
