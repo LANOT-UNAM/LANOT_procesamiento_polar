@@ -53,6 +53,7 @@
 #   P2G_GRID        Rejilla a usar    (def. wgs84_geo_750m)
 #   P2G_GRID_375    Rejilla incendios (def. wgs84_geo_375m)
 #   P2G_GRID_5KM    Rejilla sondeos   (def. wgs84_geo_5km)
+#   P2G_SITIOS_SKEWT Sitios de Skew-T (def. <repo>/config/sitios_skewt.tsv)
 #   P2G_WORK_BASE   Raíz de staging   (def. /data/tmp)
 #   P2G_COLORTABLES Paletas del host  (def. /usr/local/share/lanot/colortables)
 #   P2G_LOG_BASE    Raíz de logs      (def. /var/log/lanot/polares)
@@ -94,6 +95,9 @@ HOST_LSR_IMG_OUT="$VISTAS/lsr"
 HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 HOST_FIRE_IMG_OUT="$VISTAS/fire"
 HOST_SOUNDER_IMG_OUT="$VISTAS/sounder"
+# Los Skew-T son vista de los sondeos, pero no mapa: van en su propia carpeta y
+# en SVG, que es lo que produce skewt.
+HOST_SKEWT_OUT="$VISTAS/sounder/skewt"
 HOST_FLOOD_IMG_OUT="$VISTAS/flood"
 
 # El contenedor trae la rejilla de fábrica, no las nuestras: hay que pasarle
@@ -503,6 +507,9 @@ if [ ! -f "$GRID_CONFIG" ]; then
     exit 1
 fi
 GRID_CONFIG=$(realpath "$GRID_CONFIG")
+# Dónde se dibuja un Skew-T: las estaciones de radiosondeo del SMN, para poder
+# comparar contra el globo. Se lee en el host; al contenedor solo van lat y lon.
+SITIOS_SKEWT="${P2G_SITIOS_SKEWT:-$SCRIPT_DIR/../config/sitios_skewt.tsv}"
 
 # ==============================================================================
 # STAGING DE LA PASADA
@@ -520,7 +527,7 @@ mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" "$STAGING
          "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
          "$HOST_SOUNDER_TIF_OUT" \
          "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" "$HOST_FIRE_IMG_OUT" \
-         "$HOST_SOUNDER_IMG_OUT" \
+         "$HOST_SOUNDER_IMG_OUT" "$HOST_SKEWT_OUT" \
          "$HOST_FLOOD_TIF_IN" "$HOST_FLOOD_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
@@ -562,6 +569,7 @@ BINDS_P2G=(
     --bind "$HOST_ACSPO_IMG_OUT:/output_acspo_img"
     --bind "$HOST_FIRE_IMG_OUT:/output_fire_img"
     --bind "$HOST_SOUNDER_IMG_OUT:/output_sounder_img"
+    --bind "$HOST_SKEWT_OUT:/output_skewt"
     --bind "$HOST_FLOOD_IMG_OUT:/output_flood_img"
     --bind "$HOST_WORK:/work"
 )
@@ -901,6 +909,51 @@ vestir "Vistas de incendios" "$HOST_FIRE_TIF_OUT" /output_fire_tif /output_fire_
 # se puede leer. El -s 1 final es el que gana.
 vestir "Vistas de sondeos" "$HOST_SOUNDER_TIF_OUT" /output_sounder_tif /output_sounder_img \
        geotiff2view . 1 '' '-s 1'
+
+# Skew-T: el perfil vertical de los sondeos en cada estación de sitios_skewt.tsv.
+# No es un GeoTIFF que vestir sino una figura por sitio: skewt (LANOT_tools) toma
+# el FOR de NUCAPS más cercano en TODOS los gránulos de la pasada y la compila
+# con mg a SVG, con el logo del LANOT junto al título.
+#
+# Que un sitio no salga es lo normal: fuera de la franja de la pasada, o con el
+# perfil rechazado por NUCAPS (nubes), skewt sale con 3 y no escribe nada. Eso se
+# cuenta aparte y no es error; cualquier otro código sí. Con las tres pasadas del
+# 2026-09-22 salieron 21 de 42 combinaciones.
+#
+# El nombre lleva el satélite como Polar2Grid, la estación (número OMM y clave) y
+# la hora del primer gránulo de NUCAPS, que es la misma de los mapas de sondeo.
+SKEWT_SIN=0
+SKEWT_ERR=0
+if [ "$SOUNDER_COUNT" -gt 0 ] && [ -f "$SITIOS_SKEWT" ]; then
+    echo "--- Skew-T ---" >> "$LOG_FILE"
+    mapfile -t NUCAPS_PASADA < <(find "$STAGING_SOUNDER" -maxdepth 1 -name 'NUCAPS-EDR*.nc' \
+                                      -printf '/input_sounder/%f\n' | sort)
+    s=$(basename "${NUCAPS_PASADA[0]}" | grep -oE '_s[0-9]{14}' | head -1 || true)
+    s="${s#_s}"
+    case "$SAT" in
+        j01) SAT_NOMBRE="NOAA-20" ;;
+        j02) SAT_NOMBRE="NOAA-21" ;;
+        *)   SAT_NOMBRE="$SAT_VISTA" ;;
+    esac
+    while IFS=$'\t' read -r omm clave lat lon nombre; do
+        [[ "$omm" =~ ^[0-9]+$ ]] || continue
+        codigo=0
+        # < /dev/null: si no, apptainer se come el resto de la tabla de sitios,
+        # que es la entrada estándar de este while.
+        en_contenedor_uno skewt "${NUCAPS_PASADA[@]}" --lat "$lat" --lon "$lon" \
+            --title "$SAT_NOMBRE · $nombre ($omm)" \
+            -o "/output_skewt/${SAT_VISTA}_atms-cris_skewt_${omm}_${clave}_${s:0:8}_${s:8:6}.svg" \
+            < /dev/null || codigo=$?
+        case "$codigo" in
+            0) ;;
+            3) SKEWT_SIN=$((SKEWT_SIN + 1)) ;;
+            *) SKEWT_ERR=$((SKEWT_ERR + 1))
+               echo "  ⚠ Skew-T de $nombre falló (código $codigo)" | tee -a "$LOG_FILE" ;;
+        esac
+    done < "$SITIOS_SKEWT"
+elif [ "$SOUNDER_COUNT" -gt 0 ]; then
+    echo "  ⚠ Sin tabla de sitios ($SITIOS_SKEWT): no se dibujan Skew-T" | tee -a "$LOG_FILE"
+fi
 # Flood ya viene como imagen: cspp_viirs_flood2tif.sh le pega la paleta flood.ct
 # con add_colormap.py, así que solo hay que vestirlo. Es el único usuario que le
 # queda a la rama de mapdrawer desde que se retiraron los RGB de superficie.
@@ -950,6 +1003,7 @@ JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
 JPG_FIRE=$(contar_nuevos  "$HOST_FIRE_IMG_OUT"  '*.jpg')
 JPG_SOUNDER=$(contar_nuevos "$HOST_SOUNDER_IMG_OUT" '*.jpg')
 JPG_FLOOD=$(contar_nuevos "$HOST_FLOOD_IMG_OUT" '*.jpg')
+SVG_SKEWT=$(contar_nuevos "$HOST_SKEWT_OUT" '*.svg')
 
 TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE + TIF_SOUNDER))
 JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_SOUNDER + JPG_FLOOD))
@@ -973,12 +1027,13 @@ fi
     echo "sst:         $TIF_SST geotiff, $JPG_SST vistas"
     echo "fire:        $TIF_FIRE geotiff, $JPG_FIRE vistas"
     echo "sondeos:     $TIF_SOUNDER geotiff, $JPG_SOUNDER vistas"
+    echo "skewt:       $SVG_SKEWT diagramas, $SKEWT_SIN sitios sin sondeo, $SKEWT_ERR con error"
     echo "flood:       $JPG_FLOOD vistas (el geotiff lo hace run_flood_edr.sh)"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE, sondeos $TIF_SOUNDER) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, sondeos $JPG_SOUNDER, flood $JPG_FLOOD) en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE, sondeos $TIF_SOUNDER) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, sondeos $JPG_SOUNDER, flood $JPG_FLOOD) y $SVG_SKEWT Skew-T en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"
