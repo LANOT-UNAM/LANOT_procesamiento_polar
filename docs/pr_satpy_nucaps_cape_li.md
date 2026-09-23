@@ -1,4 +1,5 @@
-> **Estado: preparado, sin abrir.** PR a `pytroll/satpy` que David Hoese pidió en el
+> **Estado: abierto el 2026-09-22 como [pytroll/satpy#3480](https://github.com/pytroll/satpy/pull/3480).**
+> PR a `pytroll/satpy` que David Hoese pidió en el
 > [tema 60122](https://forums.ssec.wisc.edu/viewtopic.php?t=60122) del foro de SSEC
 > (*"a pull request may be the easiest way for me to see what you mean"*), en respuesta al
 > ofrecimiento de `respuesta_polar2grid_nucaps.bbcode`.

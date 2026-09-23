@@ -313,7 +313,8 @@ tiempo dos veces por deducir el sistema de un servidor en lugar de medirlo.
    `extra_fill_values`, la precedencia de `units` y las dos entradas del YAML).
    **Preparado el 2026-09-22**, después de que Dave lo pidiera en el foro: rama
    `nucaps-cape-lifted-index` en `~/lanot/satpy`, cuerpo y pasos para abrirlo en
-   `docs/pr_satpy_nucaps_cape_li.md`. Falta el fork, el push y abrirlo.
+   `docs/pr_satpy_nucaps_cape_li.md`. **Abierto el mismo día: pytroll/satpy#3480.**
+   Falta la revisión; al llegar a Polar2Grid, quitar los cinco parches del `.def`.
 7. **Adoptar `lanotadm`**: `instalar.sh`, el `chown -R` de barrido y el cron.
    Los pasos y el porqué están arriba, en la sección del 29.
 
