@@ -31,7 +31,7 @@
 #   LSR_OUT        Salida            (def. /data/output/jpss/level2/lsr)
 #   LSR_STATE_DIR  Marcadores .done  (def. /data/output/jpss/state/cspp-lsr)
 #   LSR_CONTAINER  Imagen .sif       (def. /opt/containers/cspp_lsr_edr_v2.0.sif)
-#   LSR_WORK_BASE  Raíz de staging   (def. /data/tmp)
+#   LSR_WORK_BASE  Raíz de staging y trabajo (def. /data/tmp)
 #   LSR_LOG_BASE   Raíz de logs      (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -227,6 +227,7 @@ done
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 START_EPOCH=$(date '+%s')
 STAGING_DIR="${WORK_BASE}/lsr_staging_${JOB_ID}"
+WORK_DIR="${WORK_BASE}/lsr_work_${JOB_ID}"
 
 # ==============================================================================
 # SELECCIÓN DE LA PASADA
@@ -286,8 +287,12 @@ fi
 # STAGING DE LA PASADA
 # ==============================================================================
 
-mkdir -p "$STAGING_DIR" "$OUTPUT_LSR_DIR" "$LOG_DIR" "$STATE_DIR"
+mkdir -p "$STAGING_DIR" "$WORK_DIR" "$OUTPUT_LSR_DIR" "$LOG_DIR" "$STATE_DIR"
+# El directorio de trabajo se borra solo si la etapa terminó bien (EXITO=1, al
+# final): si falla, queda para depurar, como en los demás run_*.sh.
+EXITO=0
 limpiar() {
+    [ "$EXITO" -eq 1 ] && rm -rf "$WORK_DIR"
     if [ "$KEEP" -eq 1 ]; then
         echo "--keep-staging: se conserva $STAGING_DIR"
         rm -f "${REF_FILE:-}"
@@ -329,14 +334,22 @@ echo "  Hilos:    $CORES"                                    | tee -a "$LOG_FILE
 
 REF_FILE=$(mktemp -t lsr_edr_ref_XXXXXX)
 
+# --pwd /work: el driver crea su directorio de trabajo (work_lsr_<sello>_1) en
+# el directorio actual, y no tiene opción para ponerlo en otro lado. Sin esto
+# hereda el pwd de quien lo lanza, que desde procesar_pasada.sh es / —de solo
+# lectura dentro del contenedor—: 'Read-only file system: /work_lsr_…' en las
+# quince pasadas del 2026-09-23 y 24, las primeras en automático. Va al lado del
+# staging, no dentro, por la misma razón que en los otros EDR.
 EXIT_CODE=0
 apptainer exec \
     --env LC_ALL=C \
     --env CSPP_VIIRS_LSR_V2_HOME=/opt/cspp-surf_refl \
     -B "${STAGING_DIR}":/input_data \
     -B "${OUTPUT_LSR_DIR}":/output_data \
+    -B "${WORK_DIR}":/work \
     -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
     -B "${INPUT_ATMOS_DIR}":"${INPUT_ATMOS_DIR}" \
+    --pwd /work \
     "${SIF_IMAGE}" \
     /opt/cspp-surf_refl/run_cspp_lsr_v2.sh -o /output_data -p "${CORES}" /input_data \
     >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
@@ -346,6 +359,7 @@ DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ ERROR: CSPP LSR falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
     echo "   Revisa el log: $LOG_FILE"                                 | tee -a "$LOG_FILE"
+    echo "   El directorio de trabajo se conserva: $WORK_DIR"          | tee -a "$LOG_FILE"
     exit $EXIT_CODE
 fi
 
@@ -371,5 +385,6 @@ fi
     echo "log:       $LOG_FILE"
 } > "$MARKER"
 
+EXITO=1
 echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE en $OUTPUT_LSR_DIR ($DURACION)" | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER" | tee -a "$LOG_FILE"
