@@ -66,6 +66,14 @@ Probado con `apptainer` y `procesar_pasada.sh` simulados; **falta verlo en tahan
   ATMOS debe aparecer el segundo intento y, si el 06Z o el 18Z todavía no se publicaron, en
   `barrido.log` una línea `↻` una hora después.
 
+**Desplegado y verificado esa misma tarde** (`d5723c0`). Se limpió a mano la pasada parcial —sus
+24 productos y los marcadores de ATMOS y CRYO— y un barrido con `REINTENTO_HORAS=48` retomó
+**16 pasadas, las 16 completas**, en 1h 50m: las 15 sin LSR más las dos de esa tarde procesadas
+antes de instalar. Las tres de ATMOS quedaron en 72/72, 96/96 y 96/96, las tres **al primer
+intento**, porque para entonces el cron ya había bajado esos ciclos: el reintento descargando
+sigue sin verse en producción, y eso es lo que falta confirmar con la primera pasada después de
+las 09 UTC.
+
 ---
 
 ## Al retomar el 2026-09-23: ¿funcionó la automatización?
