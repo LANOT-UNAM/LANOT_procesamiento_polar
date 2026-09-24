@@ -257,6 +257,11 @@ salió con el del 21 (un día antes); con uno de 25 días, ATMOS falló. Las pas
 `Unable to find CMCSST`, hay que dejar que baje lo que le falte (`--download`) o buscar su
 tolerancia en la configuración de CSPP ATMOS.
 
+**Contestada el 2026-09-24**: tolera el de dos días; todas las pasadas de la mañana salieron
+con él. Lo que sí faltó fue **GFS** en las pasadas de después de las 09 y las 21 UTC, que no se
+arregla con el cron: `atmos-anc` no baja f012. `run_atmos_edr.sh` reintenta ahora descargando,
+y el barrido retoma la pasada si ni así (ver `estado_y_pendientes.md`, 2026-09-24).
+
 ### 0.3 `recibe.sh` a mano en tahan
 
 Como `lanotadm`, con un crudo JPSS que no tenga marcador vigente en `state/rt-stps`:

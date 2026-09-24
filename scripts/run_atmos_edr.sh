@@ -14,16 +14,18 @@
 # GMTCO), tal como las deja run_sdr.sh. Se enlazan en un directorio de staging
 # para procesar una pasada a la vez, aunque level1 tenga varias acumuladas.
 #
-# Ancillary dinámico: por omisión NO se descarga (bandera -l), porque en
-# operación la descarga la hace update_atmos_ancillary.sh desde cron. Si el
-# caché no tiene lo del día, la corrida falla; usa --download para bajarlo al
-# vuelo. El caché es EXCLUSIVO de ATMOS: ~6 GB diarios sueltos en la raíz, sin
+# Ancillary dinámico: primero solo el caché (bandera -l), que precarga
+# update_atmos_ancillary.sh desde cron. Si la corrida queda incompleta por falta
+# de ancillary, se descarta y se repite dejando que CSPP baje lo que falte; si
+# aun así falta, la etapa falla SIN marcador y sin productos a medias, para que
+# barrer_pendientes.sh la retome. --download se salta el primer intento. El
+# caché es EXCLUSIVO de ATMOS: ~6 GB diarios sueltos en la raíz, sin
 # subdirectorios, podados por delete_old_anc.sh. No compartirlo con el de CSPP
 # SDR, que sí usa subdirectorios por día (2026_01_02_002/).
 #
 # Uso:
 #   ./run_atmos_edr.sh                 # la pasada más reciente pendiente
-#   ./run_atmos_edr.sh --download      # permite bajar ancillary al vuelo
+#   ./run_atmos_edr.sh --download      # descarga sin probar antes el caché
 #   ./run_atmos_edr.sh --force         # reprocesa aunque ya tenga marcador
 #
 # Variables de entorno (para pruebas o rutas alternas):
@@ -68,7 +70,7 @@ Opciones:
   -f, --force     Ignora el marcador de procesado
   -p, --pasada    Pasada concreta en vez de la más reciente: la clave completa
                   (j01_d20260813_t191402) o cualquier trozo que la identifique
-      --download  Quita '-l': CSPP baja el ancillary que falte (requiere red)
+      --download  Descarga desde el primer intento, sin probar antes el caché
   -h, --help      Muestra esta ayuda
 
 Pasadas disponibles en $HOST_SDR_IN:
@@ -218,56 +220,109 @@ echo "  Hilos:   $CORES"                                           | tee -a "$LO
 # EJECUCIÓN
 # ==============================================================================
 
-if [ "$DOWNLOAD" -eq 1 ]; then
-    FLAG_LOCAL=""
-    echo "  Ancillary: se descargará lo que falte (--download)" | tee -a "$LOG_FILE"
-else
-    FLAG_LOCAL="-l"
-    echo "  Ancillary: solo caché local (precargado por cron)"  | tee -a "$LOG_FILE"
-fi
-
 # Referencia para contar solo lo generado en esta corrida. No sirve el mtime del
 # log (se escribe durante toda la ejecución, así que queda más nuevo que los
 # productos) ni el del directorio de salida.
 REF_FILE=$(mktemp -t atmos_edr_ref_XXXXXX)
 trap "rm -f $REF_FILE" EXIT
 
+# Un intento de viirs_atmos.sh sobre la pasada. $1 es la bandera de ancillary:
+# -l (solo el caché) o vacía (CSPP baja lo que falte).
+correr_atmos() {
+    local flag_local="$1"
+    apptainer exec \
+        --bind "$STAGING_DIR:/input_sdr" \
+        --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
+        --bind "$HOST_EDR_OUT:/output_edr" \
+        --bind "$HOST_STATIC:/opt/CSPP_ATMOS_1_0/anc/static" \
+        --bind "$HOST_CACHE:/opt/CSPP_ATMOS_1_0/anc/cache" \
+        --bind "$HOST_WORK:/work" \
+        "$SIF_ATMOS" /bin/bash -c "
+            export CSPP_VIIRS_ATMOS_HOME=/opt/CSPP_ATMOS_1_0
+            export CSPP_DYNAMIC_ANCIL_DIR=\$CSPP_VIIRS_ATMOS_HOME/anc/cache
+            export PATH=\$CSPP_VIIRS_ATMOS_HOME/bin:\$PATH
+            export HDF5_USE_FILE_LOCKING=FALSE
+
+            if [ ! -d \"/opt/CSPP_ATMOS_1_0/anc/static/Config\" ]; then
+                echo 'FATAL: El contenedor no ve la carpeta Config.'
+                exit 1
+            fi
+
+            echo '--- Ejecutando algoritmos Enterprise ---'
+            viirs_atmos.sh -v $flag_local -W /work -p $CORES /input_sdr
+            RC=\$?
+
+            # El código de salida debe ser el de los algoritmos, no el del traslado:
+            # de lo contrario un fallo de proceso queda enmascarado (y al revés).
+            if [ \$RC -ne 0 ]; then
+                echo \"--- viirs_atmos.sh terminó con código \$RC ---\"
+                exit \$RC
+            fi
+
+            echo '--- Trasladando resultados (NetCDF) a Lustre ---'
+            # find en vez de 'mv /work/*.nc': no falla cuando no hay nada que mover,
+            # y así el diagnóstico lo da el conteo de productos, no un glob sin
+            # expandir. Tampoco se silencia stderr: si mv falla, queda en el log.
+            find /work -maxdepth 1 -name '*.nc' -exec mv -t /output_edr/ {} +
+        " >> "$LOG_FILE" 2>&1
+}
+
+# ¿Quedó incompleta la corrida por falta de ancillary? Mira solo el tramo del
+# log de este intento (desde la línea $1). CSPP termina en 0 aunque falte, y
+# remata con "completed M products of N": si M < N y hay un "Failed to find
+# files" (GFS) o un "Unable to find" (CMCSST), es eso.
+#
+# No basta con "no hubo productos". Una pasada que cruza la hora saca los
+# gránulos de antes y pierde los de después: NOAA-21 del 2026-09-24 a las
+# 08:58 UTC salió con 24 de 96, marcador escrito y etapa en ok.
+falto_ancillary() {
+    local desde="$1" tramo m n
+    tramo="$(tail -n +"$desde" "$LOG_FILE")"
+    m="$(echo "$tramo" | grep -oE 'completed [0-9]+ products of [0-9]+' | tail -1 | awk '{print $2}')"
+    n="$(echo "$tramo" | grep -oE 'completed [0-9]+ products of [0-9]+' | tail -1 | awk '{print $5}')"
+    [ -n "$m" ] && [ -n "$n" ] && [ "$m" -lt "$n" ] || return 1
+    echo "$tramo" | grep -qE 'Failed to find files|Unable to find'
+}
+
+# Deja la pasada como si el intento no hubiera ocurrido: fuera los .nc que
+# escribió y los temporales de CSPP, pero no el staging, que va dentro de /work.
+# Un parcial en la salida no sirve: el reintento lo duplicaría, y sin reintento
+# engañaría a LSR, CRYO y al renderizado con una pasada a medias.
+descartar_intento() {
+    find "$HOST_EDR_OUT" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" -delete 2>/dev/null || true
+    find "$HOST_WORK" -mindepth 1 -maxdepth 1 ! -name "$(basename "$STAGING_DIR")" \
+         -exec rm -rf {} + 2>/dev/null || true
+}
+
+# Ancillary: primero solo el caché, que precarga el cron; si falta algo, un
+# segundo intento dejando que CSPP lo baje. El caso de todos los días: una
+# pasada después de las 09 o las 21 UTC pide el GFS válido a las 12 o a las 24,
+# y atmos-anc solo baja f003–f009 de cada ciclo, así que la única pareja es la
+# del ciclo 06Z (o 18Z), que se publica hacia las 09:30 (21:30) y el cron no
+# trae hasta las 12:17 (00:17). Si ni así está, la etapa falla sin marcador y
+# barrer_pendientes.sh vuelve sobre la pasada más tarde.
+if [ "$DOWNLOAD" -eq 1 ]; then
+    FLAGS=("")
+    echo "  Ancillary: se descargará lo que falte (--download)" | tee -a "$LOG_FILE"
+else
+    FLAGS=("-l" "")
+    echo "  Ancillary: caché local (precargado por cron); si falta, se descarga" | tee -a "$LOG_FILE"
+fi
+
 EXIT_CODE=0
-apptainer exec \
-    --bind "$STAGING_DIR:/input_sdr" \
-    --bind "$HOST_SDR_IN:$HOST_SDR_IN" \
-    --bind "$HOST_EDR_OUT:/output_edr" \
-    --bind "$HOST_STATIC:/opt/CSPP_ATMOS_1_0/anc/static" \
-    --bind "$HOST_CACHE:/opt/CSPP_ATMOS_1_0/anc/cache" \
-    --bind "$HOST_WORK:/work" \
-    "$SIF_ATMOS" /bin/bash -c "
-        export CSPP_VIIRS_ATMOS_HOME=/opt/CSPP_ATMOS_1_0
-        export CSPP_DYNAMIC_ANCIL_DIR=\$CSPP_VIIRS_ATMOS_HOME/anc/cache
-        export PATH=\$CSPP_VIIRS_ATMOS_HOME/bin:\$PATH
-        export HDF5_USE_FILE_LOCKING=FALSE
-
-        if [ ! -d \"/opt/CSPP_ATMOS_1_0/anc/static/Config\" ]; then
-            echo 'FATAL: El contenedor no ve la carpeta Config.'
-            exit 1
-        fi
-
-        echo '--- Ejecutando algoritmos Enterprise ---'
-        viirs_atmos.sh -v $FLAG_LOCAL -W /work -p $CORES /input_sdr
-        RC=\$?
-
-        # El código de salida debe ser el de los algoritmos, no el del traslado:
-        # de lo contrario un fallo de proceso queda enmascarado (y al revés).
-        if [ \$RC -ne 0 ]; then
-            echo \"--- viirs_atmos.sh terminó con código \$RC ---\"
-            exit \$RC
-        fi
-
-        echo '--- Trasladando resultados (NetCDF) a Lustre ---'
-        # find en vez de 'mv /work/*.nc': no falla cuando no hay nada que mover,
-        # y así el diagnóstico lo da el conteo de productos, no un glob sin
-        # expandir. Tampoco se silencia stderr: si mv falla, queda en el log.
-        find /work -maxdepth 1 -name '*.nc' -exec mv -t /output_edr/ {} +
-    " >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
+INCOMPLETA=0
+for FLAG_LOCAL in "${FLAGS[@]}"; do
+    if [ "$FLAG_LOCAL" != "${FLAGS[0]}" ]; then
+        echo "⚠  Faltó ancillary en el caché; se descarta el intento y se reintenta descargando" | tee -a "$LOG_FILE"
+        descartar_intento
+    fi
+    DESDE=$(( $(wc -l < "$LOG_FILE") + 1 ))
+    EXIT_CODE=0
+    correr_atmos "$FLAG_LOCAL" || EXIT_CODE=$?
+    INCOMPLETA=0
+    [ "$EXIT_CODE" -ne 0 ] || ! falto_ancillary "$DESDE" || INCOMPLETA=1
+    [ "$INCOMPLETA" -eq 1 ] || break
+done
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -276,6 +331,15 @@ if [ $EXIT_CODE -ne 0 ]; then
     echo "   Revisa el log: $LOG_FILE"                                   | tee -a "$LOG_FILE"
     echo "   El directorio de trabajo se conserva: $HOST_WORK"           | tee -a "$LOG_FILE"
     exit $EXIT_CODE
+fi
+
+if [ "$INCOMPLETA" -eq 1 ]; then
+    descartar_intento
+    echo "❌ ERROR: falta ancillary dinámico para la pasada $CLAVE, aun descargando." | tee -a "$LOG_FILE"
+    echo "   Lo más probable: el ciclo del GFS que la cubre todavía no se publica."   | tee -a "$LOG_FILE"
+    echo "   Se descartó lo parcial; barrer_pendientes.sh la reintenta más tarde."    | tee -a "$LOG_FILE"
+    echo "   grep -E 'products of|LookForFiles|Unable to find' $LOG_FILE"             | tee -a "$LOG_FILE"
+    exit 1
 fi
 
 # ==============================================================================

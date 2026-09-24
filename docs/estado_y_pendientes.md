@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-09-22**
+**Última actualización: 2026-09-24**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -19,6 +19,52 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## 2026-09-24: los dos primeros días en automático
+
+**Funcionó lo que se quería probar**: los 15 crudos JPSS del 23 y el 24 tienen su pasada, el
+barrido recogió solo una que llegó encimada (NOAA-20, 19:38 UTC del 24), la publicación en kawak
+va con `fallos: 0`, salen Skew-T en cada pasada con sondeos y el cron de ancillary corre cada 6 h.
+**La duda del CMCSST (plan, 0.2) queda contestada**: ATMOS salió bien todas las mañanas con el
+de dos días antes. Pero hubo dos fallas sistemáticas, las dos corregidas el mismo día:
+
+- **LSR falló en las 15 pasadas**: `Read-only file system: '/work_lsr_…'`. El driver crea su
+  directorio de trabajo en el `pwd`, sin opción para moverlo, y desde el `cd /` de
+  `procesar_pasada.sh` (`3a1b4c8`) el `pwd` es la raíz del contenedor. Era el único `run_*.sh`
+  sin `--pwd`: ahora trabaja en `/data/tmp/lsr_work_<job>`, al lado del staging.
+- **ATMOS no sacó nada en dos pasadas y la mitad de otra**, y una de ellas quedó marcada `ok`.
+  Para un gránulo de las "09z" CSPP pide GFS válido a las 09 y a las 12: `t06z f003/f006` o
+  `t00z f009/f012`. `atmos-anc` baja **solo f003–f009** de cada ciclo —probado con `-t` y una hora
+  futura: no trae f012—, así que la única pareja es el ciclo 06Z, que se publica hacia las
+  09:30 UTC y el cron no trae hasta las 12:17. Lo mismo a las 21 con el 18Z. Resultado:
+  NOAA-21 09:17 del 23, `0 of 72`; NPP 21:05 del 23, `0 of 96`; y NOAA-21 08:58 del 24,
+  **`24 of 96` con marcador**, porque solo los gránulos anteriores a las 09 tenían GFS.
+  Con ATMOS caen también CRYO y LSR.
+
+**La corrección** tiene tres partes:
+
+1. `run_atmos_edr.sh` lee el `completed M products of N` de cada intento. Si `M < N` y el log
+   dice que faltó ancillary, descarta lo producido y **reintenta descargando**. Si aun así
+   falta, borra el parcial y sale en 1 sin marcador. Un parcial ya no se da por bueno.
+2. `barrer_pendientes.sh` tiene una segunda tarea: las pasadas de las últimas 24 h con marcador
+   de `p2g_l1` y sin ATMOS, LSR o CRYO se retoman con `procesar_pasada.sh --clave`, una por tic,
+   con al menos 60 min entre intentos y tres intentos antes de rendirse
+   (`state/reintentos/<clave>.fallido`).
+3. `procesar_pasada.sh` pasa `--force` a `p2g_edr` cuando ATMOS, LSR o CRYO acaban de producir.
+   Sin eso, al retomar una pasada el renderizado diría "ya estaba", porque ya tenía marcador de la
+   primera vuelta.
+
+Probado con `apptainer` y `procesar_pasada.sh` simulados; **falta verlo en tahan**. Al desplegar:
+
+- El barrido va a retomar solo las pasadas de las últimas 24 h, que son todas sin LSR, una cada
+  15 min. Las del 23 quedan fuera de la ventana: `REINTENTO_HORAS=48` en una corrida a mano.
+- La de NOAA-21 del 24 a las 08:58 (`j02_d20260924_t085827`) tiene marcador de ATMOS con 24 de
+  96 productos: **borrar el marcador y sus `JRR-*`** para que el barrido la retome completa.
+- La prueba de fuego es la próxima pasada que caiga después de las 09 o las 21 UTC: en su log de
+  ATMOS debe aparecer el segundo intento y, si el 06Z o el 18Z todavía no se publicaron, en
+  `barrido.log` una línea `↻` una hora después.
 
 ---
 

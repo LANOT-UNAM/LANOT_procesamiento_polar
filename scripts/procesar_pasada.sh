@@ -579,8 +579,33 @@ ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
     "$(tarea lsr  run_lsr_edr.sh  "$CLAVE")" \
     "$(tarea cryo run_cryo_edr.sh "$CLAVE")"
 
-ejecutar_nivel "Nivel 4 — renderizado de Level 2" \
-    "$(tarea p2g_edr run_polar2grid_edr.sh "$CLAVE")"
+# El renderizado se rehace si alguna de sus entradas tardías acaba de salir.
+# Pasa al retomar una pasada con --clave —el barrido lo hace cuando ATMOS falló
+# por un GFS que aún no se publicaba—: p2g_edr ya tiene marcador de la primera
+# vuelta, cuando rindió sin ATMOS, y sin esto diría "ya estaba" y las vistas de
+# ATMOS, LSR y CRYO no saldrían nunca.
+produjo() {
+    local i
+    for i in "${!RES_ETAPA[@]}"; do
+        [ "${RES_ETAPA[$i]}" = "$1" ] || continue
+        case "${RES_MARCADOR[$i]}" in
+            sin-cambio|sin-datos|dry-run) return 1 ;;
+        esac
+        [ "${RES_CODIGO[$i]}" -eq 0 ]
+        return
+    done
+    return 1
+}
+
+TAREA_P2G_EDR="$(tarea p2g_edr run_polar2grid_edr.sh "$CLAVE")"
+if [ "$FORCE" -eq 0 ] && [ -f "$(marcador_de p2g_edr)" ] \
+   && { produjo atmos || produjo lsr || produjo cryo; }; then
+    echo ""
+    echo "  p2g_edr ya tiene marcador, pero ATMOS, LSR o CRYO acaban de producir: se re-renderiza"
+    TAREA_P2G_EDR="$TAREA_P2G_EDR$(printf '\t--force')"
+fi
+
+ejecutar_nivel "Nivel 4 — renderizado de Level 2" "$TAREA_P2G_EDR"
 
 # ==============================================================================
 # RESUMEN
