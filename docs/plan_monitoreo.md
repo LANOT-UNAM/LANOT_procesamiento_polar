@@ -117,6 +117,7 @@ Un archivo por **cadena, servidor y día**, con un objeto JSON por línea:
 | `log` | texto | ruta del log con el detalle |
 | `mensaje` | texto | una línea legible por humanos |
 | `detalle` | objeto | lo propio de cada cadena y etapa, sin esquema fijo |
+| `prioridad` | vocabulario cerrado | solo en los eventos de alerta: `critica`, `alta`, `media`, `info` |
 
 La regla es que **todo lo que se quiera filtrar o agregar va en un campo de primer nivel**, y lo
 demás en `detalle`. Un campo nuevo se puede agregar en cualquier momento; lo que no se hace es
@@ -135,6 +136,8 @@ cambiar el significado de uno existente.
 | `reintento` | se va a volver a intentar algo que falló |
 | `rendido` | se dejó de intentar |
 | `publicado` | el producto quedó visible para los usuarios |
+| `alerta` | una regla de vigilancia se cumplió: se abre o se actualiza una alerta (ver "Alertas") |
+| `resuelta` | la condición de una alerta dejó de cumplirse |
 
 Con `recibido` y `publicado` se puede medir la **latencia de punta a punta**, desde que llega el
 insumo hasta que el producto es visible. Es probablemente la cifra que más le importa al LANOT, y
@@ -170,26 +173,37 @@ Para que exista `parcial`, cada etapa tiene que saber cuánto esperaba. ATMOS ya
 `completed M products of N`); los demás EDR no (ver `estado_y_pendientes.md`, 2026-09-24).
 Mientras no lo sepan, reportan `ok` con `productos` y sin `esperados`.
 
-**Fase 2. Consultar y alertar.** Un script `scripts/vigilar.sh`, en cron cada hora, que lee los
-eventos de las últimas 48 h y avisa si:
+**Fase 2. Consultar y alertar.** Un script `scripts/vigilar.sh`, en cron cada 15 minutos, que
+lee los eventos de las últimas 48 h, evalúa las reglas de la sección "Alertas" y deja el
+resultado en dos lugares:
 
-- una etapa tiene `fallo` o `parcial` en **tres unidades seguidas** (el caso de LSR);
-- **no hubo ningún `recibido`** en más de N horas en una franja donde debería haber pasadas
-  (la antena, stratus o la recepción caídos);
-- hay un `rendido` nuevo;
-- la latencia de `recibido` a `publicado` de una pasada pasa de un umbral.
+- un **evento por cada alerta que se abre, cambia de prioridad o se resuelve**, con
+  `origen: vigilar`, para que quede la historia de qué se avisó y cuándo;
+- una **foto del estado actual**, `<EVENTOS_DIR>/estado/<cadena>.json`, con las alertas abiertas,
+  lo último que se recibió y lo último que se publicó. Es lo que lee la página de estado.
 
-El aviso **no puede ir al buzón de cron de `lanotadm`**: ahí se ahogaría (ver "El correo de
-cron en kawak"). Opciones, de la más simple a la más completa:
+Cuando llegue el módulo del clúster, las reglas pasan a su motor de alertas y `vigilar.sh` se
+retira. El contrato de eventos y la foto de estado se quedan.
 
-- un **buzón aparte**, solo para alertas: otro usuario local o un `MAILTO` a una dirección que
-  alguien sí lea;
-- un **archivo de estado publicado en kawak**, una página que muestre qué está en alerta;
-- un **mensaje a un canal de chat** del equipo, si existe uno.
+### Dónde se ven: la página de estado de la intranet
 
-En todos los casos el aviso se escribe también como evento (`origen: vigilar`), para que quede
-constancia de qué se avisó y cuándo. Cuando llegue el
-módulo del clúster, las reglas pasan a su motor de alertas y `vigilar.sh` se retira.
+Las alertas **no van al buzón de cron de `lanotadm`**, donde se ahogarían (ver "El correo de cron
+en kawak"). Van a la **página de estado de la intranet**, que se está diseñando para el **nuevo
+servidor de publicaciones**. Este plan no diseña la página, pero sí le fija lo que necesita:
+
+- **Lee, no calcula.** La página muestra la foto de estado de cada cadena y los eventos; las
+  reglas viven en `vigilar.sh` (y después en el motor del clúster). Así la página no tiene que
+  saber qué significa "tres fallos seguidos" en cada cadena.
+- **Una vista por cadena**, con:
+  - las alertas abiertas, ordenadas por prioridad;
+  - lo último recibido y lo último publicado, con su hora;
+  - las últimas unidades de trabajo (pasadas, escenas), con el resultado de cada etapa. Es la
+    tabla del resumen de `procesar_pasada.sh`, pero sin tener que abrir un log.
+- **Enlace al log** de cada evento que lo tenga (`log`), para ir del síntoma al detalle.
+- **Historia**: una alerta resuelta sigue consultable, con cuándo se abrió y cuándo se cerró.
+
+Mientras el servidor nuevo no exista, la foto de estado se consulta con `jq`, y las alertas
+`critica` necesitan un aviso activo provisional (ver "Alertas").
 
 **Consultas de ejemplo**, para mostrar que el formato alcanza sin más infraestructura:
 
@@ -211,6 +225,52 @@ pasada.** Hoy `recibe.sh` conoce el crudo (`chain1-10_pass10_…`) y `procesar_p
 la clave de la pasada (`j02_d20260924_t200952`). Para la latencia, los eventos de
 `procesar_pasada.sh` deben llevar **los dos** en `detalle` (`crudo` y `pasada`), y
 `publicar_kawak.sh` debe decir qué pasadas publicó. Esto se precisa al implementar.
+
+## Alertas
+
+### Niveles de prioridad
+
+No todo es urgente. La prioridad se asigna con **una sola pregunta: ¿qué se pierde si nadie la
+atiende hasta el siguiente día hábil?** Lo que no se puede recuperar después va primero. La
+antena no retransmite: un sobrevuelo que no se recibió está perdido para siempre, mientras que
+una pasada que se recibió se puede reprocesar cuando sea.
+
+| Prioridad | Qué se pierde si espera | Atención | Cómo avisa |
+|---|---|---|---|
+| **`critica`** | datos que no se pueden recuperar, o la cadena entera | en horas, también fuera de horario | página **y** aviso activo |
+| **`alta`** | un producto, de forma sistemática, en todas las unidades | el mismo día hábil | página, destacada |
+| **`media`** | una unidad aislada, o calidad o latencia | cuando se pueda, en la semana | página |
+| **`info`** | nada: es normal pero conviene saberlo | no requiere acción | página, en la historia |
+
+Ejemplos de la cadena polar:
+
+| Prioridad | Regla |
+|---|---|
+| `critica` | ningún `recibido` en una franja donde debería haber pasadas (antena, stratus o recepción caídos): cada sobrevuelo perdido es irrecuperable |
+| `critica` | disco de `/data` o `/datawork` por arriba de un umbral: en cuanto se llene, se empiezan a perder crudos |
+| `critica` | RT-STPS o SDR con `fallo` en dos pasadas seguidas: sin Level 1 no sale nada |
+| `alta` | la misma etapa con `fallo` o `parcial` en tres pasadas seguidas (el caso de LSR del 2026-09-23 y 24) |
+| `alta` | un `rendido`: el barrido dejó de intentar, así que ya nadie lo va a arreglar solo |
+| `alta` | ancillary sin refrescarse en más de 24 h: la calibración empieza a degradarse |
+| `media` | una etapa con `fallo` o `parcial` en una sola pasada, que el barrido está reintentando |
+| `media` | latencia de `recibido` a `publicado` por arriba de un umbral |
+| `info` | un `reintento` que terminó bien; `sin_datos` fuera de lo habitual |
+
+### Cómo se comporta una alerta
+
+- **La prioridad es de la regla, no del evento.** Un `fallo` suelto es `media`; el mismo `fallo`
+  por tercera vez seguida dispara otra regla, que es `alta`.
+- **Una alerta es un estado, no un mensaje.** Se abre cuando la regla se cumple y queda abierta
+  mientras se siga cumpliendo; `vigilar.sh` no la vuelve a emitir cada 15 minutos. Se cierra
+  sola (`resuelta`) cuando la condición deja de cumplirse, por ejemplo cuando LSR vuelve a
+  salir bien. La identifica la regla más lo que la hace única (cadena, etapa): `jpss/lsr/tres_seguidas`.
+- **Escala, pero no baja sola.** Si una `media` persiste o se repite, puede subir a `alta` (lo
+  dice cada regla). Bajar de prioridad requiere que la condición se resuelva.
+- **Se puede dar por vista**, sin cerrarla: la página debe distinguir "abierta y nadie la ha
+  visto" de "abierta y alguien la está atendiendo". Cómo se registra eso lo decide la página.
+- **Aviso activo solo para `critica`.** Todo lo demás se ve en la página cuando alguien la abre.
+  Mientras no haya página, el aviso provisional de `critica` va a **un buzón o una dirección
+  solo para alertas**, nunca al buzón de cron.
 
 ## Hacia el clúster
 
@@ -242,6 +302,9 @@ conteste lo mismo:
    reglas de alerta.
 6. **¿En qué servidores corre, y qué ve cada uno?** Para decidir `EVENTOS_DIR`.
 7. **¿Qué necesita en `detalle`** que no quepa en los campos comunes?
+8. **¿Qué es `critica` para esa cadena?** Con la misma pregunta: qué datos se pierden sin
+   remedio si nadie atiende hasta el día siguiente. En GOES, por ejemplo, depende de si lo que
+   no se procesó se puede volver a bajar de otra fuente.
 
 Si alguna cadena necesita un valor de `resultado` que no está en la lista, se agrega a la lista
 común. No se inventa por separado.
@@ -250,8 +313,10 @@ común. No se inventa por separado.
 
 - **`EVENTOS_DIR`**: ¿`/datawork/eventos`, visible por NFS desde todos los servidores? ¿Lo ven
   también los de GOES y GeoNetCast?
-- **Canal de alertas**: el buzón de cron de `lanotadm` está descartado (ver arriba). ¿Buzón
-  aparte, página en kawak o chat?
+- **Página de estado**: la diseña el proyecto del nuevo servidor de publicaciones. Falta acordar
+  con ese diseño la foto de estado (`estado/<cadena>.json`) y cómo se registra que una alerta
+  "ya se vio".
+- **Aviso activo de `critica`**: ¿a qué buzón o dirección, y quién lo recibe fuera de horario?
 - **El ruido de cron en kawak** es tarea del plan de GOES, pero afecta a todos: mientras cada
   ejecución mande correo, ese canal no sirve para nada. Lo habitual es que cada tarea mande su
   salida a un log y que cron solo envíe correo cuando algo falla.
