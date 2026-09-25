@@ -74,6 +74,19 @@ intento**, porque para entonces el cron ya había bajado esos ciclos: el reinten
 sigue sin verse en producción, y eso es lo que falta confirmar con la primera pasada después de
 las 09 UTC.
 
+### Lo que queda de estos dos días
+
+- **Alerta de etapas que fallan seguido.** LSR falló en quince pasadas y el resumen de cada una
+  lo decía; nadie lo vio hasta revisar a mano. Hace falta un aviso cuando una etapa falla en tres
+  o más pasadas seguidas. Falta decidir por dónde llega.
+- **"Más de 0 productos" no es éxito, en ningún EDR.** ATMOS ya exige `M = N`; CRYO, ACSPO, FIRE,
+  OMPS y HEAP siguen dando por buena una corrida parcial. CRYO lo hizo el 24 sobre el ATMOS a
+  medias (17 SDR, marcador escrito). Hay que ver en tahan qué dice cada driver al terminar
+  —OMPS escribe `products of N`; de los otros no se sabe— y, donde no haya esa línea, comparar
+  gránulos de salida contra los de entrada.
+- **Hecho**: `--pwd` en ACSPO y ATMOS, los dos únicos que heredaban `/`. Funcionaban porque sus
+  drivers escriben en `-W`, pero es la misma trampa que tumbó a LSR.
+
 ---
 
 ## Al retomar el 2026-09-23: ¿funcionó la automatización?

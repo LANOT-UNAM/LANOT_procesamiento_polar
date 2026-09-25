@@ -211,6 +211,10 @@ trap 'rm -rf "$STAGING_DIR" "$WORK_DIR" "$REF_FILE"' EXIT
 
 echo ">>> Iniciando ACSPO v3.0..." | tee -a "$LOG_FILE"
 
+# --pwd /work_data aunque el driver ya reciba -w: la cadena corre desde / —de
+# solo lectura dentro del contenedor—, y cualquier temporal que un paso escriba
+# en el directorio actual mataría la etapa. Así cayó LSR en las quince pasadas
+# del 2026-09-23 y 24.
 EXIT_CODE=0
 apptainer exec \
     --env LC_ALL=C --env CSPP_ACSPO_HOME=/opt/acspo_sst_v3 \
@@ -222,6 +226,7 @@ apptainer exec \
     -B "/data/ancillary/acspo_wisdom":"/opt/acspo_sst_v3/viirs/input/sst_wisdom" \
     -B "/data/ancillary/acspo_histogram":"/opt/acspo_sst_v3/viirs/input/sst_histogram" \
     -B "${WORK_DIR}/dynamic":"/opt/acspo_sst_v3/viirs/input/anc/dynamic" \
+    --pwd /work_data \
     "${SIF_ACSPO}" \
     /opt/acspo_sst_v3/run_acspo_viirs_v3.sh -p "${CORES}" -w /work_data -o /output_data \
         -d /opt/acspo_sst_v3/viirs/input/anc/ancil_download -m gds /input_sdr \

@@ -228,6 +228,8 @@ trap "rm -f $REF_FILE" EXIT
 
 # Un intento de viirs_atmos.sh sobre la pasada. $1 es la bandera de ancillary:
 # -l (solo el caché) o vacía (CSPP baja lo que falte).
+# --pwd /work aunque el driver ya reciba -W: la cadena corre desde / —de solo
+# lectura dentro del contenedor—, que es como cayó LSR el 2026-09-23 y 24.
 correr_atmos() {
     local flag_local="$1"
     apptainer exec \
@@ -237,6 +239,7 @@ correr_atmos() {
         --bind "$HOST_STATIC:/opt/CSPP_ATMOS_1_0/anc/static" \
         --bind "$HOST_CACHE:/opt/CSPP_ATMOS_1_0/anc/cache" \
         --bind "$HOST_WORK:/work" \
+        --pwd /work \
         "$SIF_ATMOS" /bin/bash -c "
             export CSPP_VIIRS_ATMOS_HOME=/opt/CSPP_ATMOS_1_0
             export CSPP_DYNAMIC_ANCIL_DIR=\$CSPP_VIIRS_ATMOS_HOME/anc/cache
