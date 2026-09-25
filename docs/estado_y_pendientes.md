@@ -78,7 +78,9 @@ las 09 UTC.
 
 - **Alerta de etapas que fallan seguido.** LSR falló en quince pasadas y el resumen de cada una
   lo decía; nadie lo vio hasta revisar a mano. Hace falta un aviso cuando una etapa falla en tres
-  o más pasadas seguidas. Falta decidir por dónde llega.
+  o más pasadas seguidas. Se decidió hacerlo dentro de un plan de monitoreo común con GOES y
+  quizá GeoNetCast: **`docs/plan_monitoreo.md`** (eventos en JSON Lines con un esquema compartido;
+  la alerta es la primera consulta sobre ellos).
 - **"Más de 0 productos" no es éxito, en ningún EDR.** ATMOS ya exige `M = N`; CRYO, ACSPO, FIRE,
   OMPS y HEAP siguen dando por buena una corrida parcial. CRYO lo hizo el 24 sobre el ATMOS a
   medias (17 SDR, marcador escrito). Hay que ver en tahan qué dice cada driver al terminar
