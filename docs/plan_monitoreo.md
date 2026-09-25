@@ -20,11 +20,40 @@ consultar**, y una regla que avise cuando un patrón se repite.
 Hoy el monitoreo de todas las cadenas es manual:
 
 - **Logs de texto** por etapa, rotados (en la polar, `/var/log/lanot/polares/<etapa>/`, 30 días).
-- **Correo local de cron** al buzón de `lanotadm`, rotado cada mes. *Pendiente: en otra sesión se
-  documenta cómo se guardan esos logs y cómo se rotan los buzones.* La cadena polar ni siquiera
-  usa este canal: su crontab lleva `MAILTO=""`.
+- **Correo local de cron** al buzón de `lanotadm`, archivado cada mes (ver abajo). La cadena
+  polar ni siquiera usa este canal: su crontab en tahan lleva `MAILTO=""`.
 - **Marcadores de estado** (`.done`), que dicen si algo está hecho pero no guardan historia: se
   sobrescriben al reprocesar, y una etapa que falla no deja ninguno.
+
+### El correo de cron en kawak, medido el 2026-09-24
+
+En kawak corre el cron de `lanotadm` de GOES (ABI, GLM, SUVI), de las vistas polares viejas
+(`polar2jpeg.sh`, `crea_vistas_viirs.sh`, `crea_vistas_metop.sh`) y de SEMAR. **Cada ejecución
+manda un correo, haya salido bien o mal**, porque ninguna tarea redirige su salida. El día
+primero de cada mes, `~/bin/archivamail.sh` mueve el buzón entero (`movemail`) a
+`~/archcron/<año>/<AAAAMM>`.
+
+- **Volumen**: 128 628 mensajes en los primeros 24 días de septiembre, unos **5 400 al día**, y
+  el buzón ya ocupa 700 MB. Los archivos mensuales pasaron de unos 340 MB a principios de 2026 a
+  **970 MB** en agosto. Hay archivo desde 2024.
+- **Quién lo llena**: `procesa_glm.sh`, que corre cada minuto, manda 34 350 correos en el mes. Le
+  siguen una decena de tareas que corren cada 5 o 10 minutos, con 3 000 a 7 000 cada una.
+- **Qué hay adentro**: varias tareas traen texto con forma de error (`Traceback`, `Error`,
+  `No such file`, `Permission denied`) **en todas sus ejecuciones**: el convertidor de GLM
+  (6 870 de 6 870), `abi_FT.py`, `GLM2png_a1.sh` y `crea_png_vientos_a1.sh` (3 435 de 3 435
+  cada una). Esto no se revisó a fondo: pueden ser fallos reales crónicos o avisos inofensivos
+  que contienen la palabra. En cualquier caso, un error nuevo **no se distingue** de los miles
+  que ya estaban.
+- **El correo no trae el código de salida**, solo la salida de la tarea. Por eso no se puede saber
+  si una ejecución falló sin interpretar el texto.
+- De paso: `archivamail.sh` pregunta por `$$DESTDIR` (el PID del proceso seguido de `DESTDIR`)
+  en vez de `$DESTDIR`. La prueba nunca se cumple y siempre ejecuta `mkdir -p`, que no hace daño.
+  Y el mensaje de enero sale con el año nuevo, porque imprime `$YEAR` en vez de `$YEARPREV`.
+
+**Conclusión: el buzón de cron no sirve como canal de alertas tal como está.** Una alerta
+escrita ahí queda enterrada entre 5 400 mensajes diarios. Y el archivo, 1 GB mensual en formato
+mbox, es historia que en la práctica no se puede consultar. Sirve como punto de partida para el
+plan de GOES (qué tareas fallan de forma crónica), no como sistema de monitoreo.
 
 ## Qué se monitorea: tres capas distintas
 
@@ -150,8 +179,16 @@ eventos de las últimas 48 h y avisa si:
 - hay un `rendido` nuevo;
 - la latencia de `recibido` a `publicado` de una pasada pasa de un umbral.
 
-El aviso sale por el canal que ya existe, **el correo local de cron**, y se escribe también como
-evento (`origen: vigilar`), para que quede constancia de qué se avisó y cuándo. Cuando llegue el
+El aviso **no puede ir al buzón de cron de `lanotadm`**: ahí se ahogaría (ver "El correo de
+cron en kawak"). Opciones, de la más simple a la más completa:
+
+- un **buzón aparte**, solo para alertas: otro usuario local o un `MAILTO` a una dirección que
+  alguien sí lea;
+- un **archivo de estado publicado en kawak**, una página que muestre qué está en alerta;
+- un **mensaje a un canal de chat** del equipo, si existe uno.
+
+En todos los casos el aviso se escribe también como evento (`origen: vigilar`), para que quede
+constancia de qué se avisó y cuándo. Cuando llegue el
 módulo del clúster, las reglas pasan a su motor de alertas y `vigilar.sh` se retira.
 
 **Consultas de ejemplo**, para mostrar que el formato alcanza sin más infraestructura:
@@ -213,8 +250,11 @@ común. No se inventa por separado.
 
 - **`EVENTOS_DIR`**: ¿`/datawork/eventos`, visible por NFS desde todos los servidores? ¿Lo ven
   también los de GOES y GeoNetCast?
-- **Logs y buzones actuales**: cómo se guardan y cómo se rotan (se ve en otra sesión). De ahí
-  sale si el correo de cron sirve como canal de alerta provisional, o si hace falta otro.
+- **Canal de alertas**: el buzón de cron de `lanotadm` está descartado (ver arriba). ¿Buzón
+  aparte, página en kawak o chat?
+- **El ruido de cron en kawak** es tarea del plan de GOES, pero afecta a todos: mientras cada
+  ejecución mande correo, ese canal no sirve para nada. Lo habitual es que cada tarea mande su
+  salida a un log y que cron solo envíe correo cuando algo falla.
 - **¿Quién consulta?** Si son solo los desarrolladores, `jq` alcanza por un buen rato. Si son
   operadores u otras áreas, el tablero se justifica antes.
 - **¿Hay ya algo en el LANOT** (Grafana, Zabbix, Nagios, ELK) monitoreando servidores? Si lo
