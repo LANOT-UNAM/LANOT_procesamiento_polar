@@ -29,10 +29,11 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 1. **Rótulo del 165 GHz, sin urgencia.** Empujar LANOT_tools (`5868a3c`) y esta cadena, y
    recompilar `polar2grid_v3.2-mapdrawer.sif` con el pin nuevo. No hace falta `install.sh`
    de LANOT_tools ni reinstalar la cadena. Hasta entonces las vistas salen "165 GHz".
-2. **Informe breve que justifique pasar del sistema viejo al nuevo.** Lo pidió Alejandro el
-   mismo día. Material ya reunido aquí: qué cubre cada cadena ("Condiciones para jubilar la
-   cadena vieja"), los quicklooks de ATMS/CrIS/OMPS que nadie usa, y lo que la nueva agrega
-   (NOAA-21, sondeos y Skew-T, ozono, microondas de MiRS con NPP incluido).
+2. ~~Informe breve que justifique pasar del sistema viejo al nuevo.~~ **Escrito**:
+   `docs/informe_transicion_jpss.md`, una página para la junta del lunes 2026-09-28. Se
+   convierte con `pandoc informe_transicion_jpss.md -o informe.pdf --pdf-engine=xelatex
+   -V geometry:margin=2cm -V papersize=letter -V fontsize=10pt -V mainfont="DejaVu Sans"`;
+   con otros márgenes o letra más grande se pasa a dos páginas.
 3. **Idioma de los rótulos**, en la junta del lunes 2026-09-28 (ver abajo).
 4. **La página de kawak** tiene que mostrar `jpss/atms/`.
 
