@@ -71,7 +71,12 @@ su fila en `tarballs.tsv` y sus directorios en `preparar_servidor.sh`. **Falta, 
    `j02_d20260926_t082036` y `npp_d20260926_t071801`; en la de NPP HEAP no corre, sin CrIS,
    y MiRS sí). En `publicar_kawak.sh`, `vistas/mirs` → `kawak:/var/www/html/polar/jpss/atms`,
    de los tres satélites: no choca con nada de la cadena vieja. La carpeta ya existe en
-   kawak; **falta que la página la muestre**. El renderizado de producción se verificó con la
+   kawak; **falta que la página la muestre**.
+
+   El rótulo del 165 GHz pasó de "165 GHz" a **"Convective Ice (165 GHz)"**, que dice qué se
+   busca sin esconder qué se midió. En inglés, como todo `product_map`: **si los rótulos van
+   en español se decide en la junta del lunes 2026-09-28**, y en ese caso se cambian todos
+   de una vez. El renderizado de producción se verificó con la
    imagen recompilada (`7fc4022`) sobre la pasada de NOAA-21.
 
    Tropiezo de ese día: correr a mano los `run_*.sh` de operación con el usuario propio deja
