@@ -66,8 +66,19 @@ su fila en `tarballs.tsv` y sus directorios en `preparar_servidor.sh`. **Falta, 
    empujar LANOT_tools, `git pull` + `sudo ./install.sh` de LANOT_tools en tahan (los CPT
    van montados desde el host), recompilar `polar2grid_v3.2-mapdrawer.sif` (sin eso los
    JPG salen rotulados "NOAA-21 ATMS" sin producto) y reinstalar esta cadena.
-3. Engancharlo en `procesar_pasada.sh` después de SDR, en paralelo a HEAP, y en
-   `publicar_kawak.sh` (¿`jpss/atms/`?).
+3. ~~Engancharlo.~~ **Hecho el mismo día**: etapa `mirs` en el nivel 2 de
+   `procesar_pasada.sh`, con su pasada por traslape sobre `GATMO` (probado en seco sobre
+   `j02_d20260926_t082036` y `npp_d20260926_t071801`; en la de NPP HEAP no corre, sin CrIS,
+   y MiRS sí). En `publicar_kawak.sh`, `vistas/mirs` → `kawak:/var/www/html/polar/jpss/atms`,
+   de los tres satélites: no choca con nada de la cadena vieja. La carpeta ya existe en
+   kawak; **falta que la página la muestre**. El renderizado de producción se verificó con la
+   imagen recompilada (`7fc4022`) sobre la pasada de NOAA-21.
+
+   Tropiezo de ese día: correr a mano los `run_*.sh` de operación con el usuario propio deja
+   directorios nuevos en 755 y de su grupo —umask 022—, y `lanotadm` ya no puede escribir en
+   ellos. Pasó con `geotiff/mirs` y `vistas/mirs`; se corrigió con `chgrp lanotadm` +
+   `chmod 775`, y los dos quedaron en `preparar_servidor.sh`. Tampoco se puede reescribir un
+   marcador de `lanotadm` (644): un `--force` a mano muere al final, sin daño pero sin resumen.
 4. Después, evaluar el SND como segunda fuente de Skew-T: cubre NPP, que HEAP 3.0 dejó.
 
 Quedó en tahan `/data/tmp/mirs_prueba` (bundle extraído, el `apptainer` sustituto y las

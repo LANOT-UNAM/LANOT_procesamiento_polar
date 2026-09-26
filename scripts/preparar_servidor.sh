@@ -88,6 +88,7 @@ DIRS_775=(
     /data/output/jpss/geotiff/acspo
     /data/output/jpss/geotiff/fire
     /data/output/jpss/geotiff/flood
+    /data/output/jpss/geotiff/mirs
     /data/output/jpss/vistas/dnb
     /data/output/jpss/vistas/rgb
     /data/output/jpss/vistas/atmos
@@ -95,6 +96,7 @@ DIRS_775=(
     /data/output/jpss/vistas/acspo
     /data/output/jpss/vistas/fire
     /data/output/jpss/vistas/flood
+    /data/output/jpss/vistas/mirs
     /data/output/jpss/state/rt-stps
     /data/output/jpss/state/cspp-sdr
     /data/output/jpss/state/cspp-atmos

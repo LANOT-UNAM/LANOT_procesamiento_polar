@@ -76,7 +76,7 @@ RAW (CCSDS de antena)
             ├─ ATMS  SATMS*, TATMS*, GATMO*
             │    └─ cspp_mirs_v4.0.sif ─────────► Level 2 mirs (NPR-MIRS-{IMG,SND}*.nc)
             │         [lluvia, agua precipitable, Tb con corrección de limbo; perfiles en SND.
-            │          Los tres satélites, NPP incluido. Aún sin enganchar en procesar_pasada.sh]
+            │          Los tres satélites, NPP incluido; en el nivel 2 de procesar_pasada.sh]
             │
             ├─ CrIS + ATMS  SCRIF*/GCRSO*  +  TATMS*/GATMO*
             │    └─ cspp_heap_v3.0.sif ──────► Level 2 sounder (NUCAPS-{ALL-HR,OLR}*.nc)

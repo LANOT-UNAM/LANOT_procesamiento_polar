@@ -14,7 +14,10 @@
 #     j01_atms-cris_…, un nombre que falta corregir), y TODOS los Skew-T, que
 #     la cadena vieja no produce;
 #   - del ozono, TODOS los satélites: la cadena vieja tampoco lo produce, así
-#     que no hay nombre con el cual chocar.
+#     que no hay nombre con el cual chocar;
+#   - de las microondas de ATMS (MiRS), TODOS, por lo mismo. Los quicklooks de
+#     ATMS de la cadena vieja van a otro árbol (polar/npp-jpss1/atms) y se
+#     llaman SATMS_*, así que tampoco chocan.
 #
 # Cuando la cadena vieja se apague (ver estado_y_pendientes.md, "Condiciones para
 # jubilar la cadena vieja"), esto se sustituye por la publicación de todo.
@@ -30,6 +33,7 @@
 #   vistas/sounder           → sounder         (al lado de viirs/: no es VIIRS)
 #   vistas/sounder/skewt     → sounder/skewt
 #   vistas/omps              → omps            (al lado de viirs/: es OMPS)
+#   vistas/mirs              → atms            (al lado de viirs/: es ATMS)
 #
 # Solo mira lo de los últimos PUB_KAWAK_DIAS días, y copia con --update: un
 # archivo que ya está en kawak se reemplaza solo si el de aquí es más nuevo (un
@@ -106,6 +110,7 @@ copia lsr           viirs/vegindex  'noaa21_*'
 copia sounder       sounder         'noaa21_*'
 copia sounder/skewt sounder/skewt   '*.svg'
 copia omps          omps            '*.jpg'
+copia mirs          atms            '*.jpg'
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Copiados: $copiados · fallos: $fallos"
 [ "$fallos" -eq 0 ]

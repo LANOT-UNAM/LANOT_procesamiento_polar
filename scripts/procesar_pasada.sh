@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# procesar_pasada.sh — encadena los doce run_*.sh de una pasada.
+# procesar_pasada.sh — encadena los trece run_*.sh de una pasada.
 #
 # Hasta ahora el encadenamiento era un humano: ningún run_*.sh invoca a otro y
 # las dependencias solo existían como mensajes de error dirigidos al operador.
@@ -14,7 +14,7 @@
 #
 #   RT-STPS(raw)
 #     └─ nivel 1: SDR de cada RDR que RT-STPS haya producido
-#          ├─ nivel 2: ATMOS · ACSPO · FIRE · FLOOD · OMPS · HEAP · P2G_L1
+#          ├─ nivel 2: ATMOS · ACSPO · FIRE · FLOOD · OMPS · HEAP · MIRS · P2G_L1
 #          │     └─ nivel 3: LSR · CRYO            (necesitan ATMOS)
 #          │          └─ nivel 4: P2G_EDR          (rinde todo lo anterior)
 #
@@ -56,6 +56,7 @@ LEVEL1_VIIRS="${SDR_LEVEL1_VIIRS:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/v
 # de esos instrumentos corresponde a la de VIIRS (ver pasada_que_traslapa).
 LEVEL1_OMPS="${OMPS_SDR_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/omps}"
 LEVEL1_CRIS="${HEAP_CRIS_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/cris}"
+LEVEL1_ATMS="${MIRS_SDR_IN:-${SDR_OUTPUT_BASE:-/data/output/jpss/level1}/atms}"
 
 # Marcadores: cada etapa escribe el suyo, y de ahí sale el resumen. Se leen las
 # mismas variables que usan los run_*.sh para que un ambiente de prueba que las
@@ -68,6 +69,7 @@ DIR_FIRE="${FIRE_STATE_DIR:-$ESTADO/cspp-active-fire}"
 DIR_FLOOD="${FLOOD_STATE_DIR:-$ESTADO/cspp-flood}"
 DIR_OMPS="${OMPS_STATE_DIR:-$ESTADO/cspp-omps}"
 DIR_HEAP="${HEAP_STATE_DIR:-$ESTADO/cspp-heap}"
+DIR_MIRS="${MIRS_STATE_DIR:-$ESTADO/cspp-mirs}"
 DIR_LSR="${LSR_STATE_DIR:-$ESTADO/cspp-lsr}"
 DIR_CRYO="${CRYO_STATE_DIR:-$ESTADO/cspp-cryo}"
 DIR_P2G_L1="${L1G_STATE_DIR:-$ESTADO/polar2grid_l1}"
@@ -272,6 +274,7 @@ marcador_de() {
         flood)    echo "$DIR_FLOOD/$CLAVE.done"              ;;
         omps)     echo "$DIR_OMPS/$CLAVE_OMPS.done"         ;;
         heap)     echo "$DIR_HEAP/$CLAVE_HEAP.done"         ;;
+        mirs)     echo "$DIR_MIRS/$CLAVE_MIRS.done"         ;;
         lsr)      echo "$DIR_LSR/$CLAVE.done"                ;;
         cryo)     echo "$DIR_CRYO/$CLAVE.done"               ;;
         p2g_l1)   echo "$DIR_P2G_L1/$CLAVE.done"             ;;
@@ -433,6 +436,7 @@ echo "  Log:      $LOG"
 CLAVE=""
 CLAVE_OMPS=""
 CLAVE_HEAP=""
+CLAVE_MIRS=""
 
 # ==============================================================================
 # RT-STPS Y SDR  (solo si se entró por un RAW)
@@ -530,6 +534,7 @@ echo "  Pasada:      $CLAVE"
 if [ "$DRY_RUN" -eq 1 ] && [ -z "$CLAVE_PEDIDA" ]; then
     CLAVE_OMPS="j01_dAAAAMMDD_tHHMMSS"
     CLAVE_HEAP="j01_dAAAAMMDD_tHHMMSS"
+    CLAVE_MIRS="j01_dAAAAMMDD_tHHMMSS"
 else
     echo "  Ventana:     $VENTANA_INI – $VENTANA_FIN"
     if CLAVE_OMPS="$(pasada_que_traslapa "$LEVEL1_OMPS" GOTCO "$SAT" "$VENTANA_INI" "$VENTANA_FIN")"; then
@@ -543,6 +548,12 @@ else
     else
         SIN_DATOS[heap]="sin SDR de CrIS en la ventana"
         echo "  Clave HEAP:  —  ${SIN_DATOS[heap]}"
+    fi
+    if CLAVE_MIRS="$(pasada_que_traslapa "$LEVEL1_ATMS" GATMO "$SAT" "$VENTANA_INI" "$VENTANA_FIN")"; then
+        echo "  Clave MIRS:  $CLAVE_MIRS  (la fija ATMS)"
+    else
+        SIN_DATOS[mirs]="sin SDR de ATMS en la ventana"
+        echo "  Clave MIRS:  —  ${SIN_DATOS[mirs]}"
     fi
 fi
 
@@ -562,6 +573,7 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
     "$(tarea flood  run_flood_edr.sh       "$CLAVE")" \
     "$(tarea omps   run_omps_edr.sh        "$CLAVE_OMPS")" \
     "$(tarea heap   run_heap_edr.sh        "$CLAVE_HEAP")" \
+    "$(tarea mirs   run_mirs_edr.sh        "$CLAVE_MIRS")" \
     "$(tarea p2g_l1 run_polar2grid_l1.sh   "$CLAVE")"
 
 # HEAP vuelve a la cadena el 2026-08-29. Estuvo fuera doce días porque no
@@ -574,6 +586,9 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
 # Probado de punta a punta sobre j01_d20260829_b45492: 14 NUCAPS-EDR en 1m 57s,
 # y el renderizado entrega los cuatro sondeos con su vista. Va en el nivel 2
 # porque solo necesita SDR; el nivel 4 (p2g_edr) es el que los consume.
+#
+# MiRS entra el 2026-09-26, en el mismo nivel y por lo mismo: solo come SDR de
+# ATMS. A diferencia de HEAP, cubre NPP. Pide 8 procesos y tarda ~1m 45s.
 
 ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
     "$(tarea lsr  run_lsr_edr.sh  "$CLAVE")" \
