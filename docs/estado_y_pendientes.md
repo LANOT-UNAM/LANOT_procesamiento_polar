@@ -53,10 +53,19 @@ su fila en `tarballs.tsv` y sus directorios en `preparar_servidor.sh`. **Falta, 
    (867 MB) pasa su `%test`, y `run_mirs_edr.sh` desde `/opt/lanot/polares` con ella sobre
    `j02_d20260926_t082141` tardó 1m 47s y dio IMG y SND **idénticos** a los de la prueba
    (BT, RR, TPW, CLW, TSkin, geolocalización, PTemp, PVapor). `/data/ancillary/mirs` sigue vacío.
-2. La sección `mirs` en `run_polar2grid_edr.sh`: GeoTIFF de todo lo que da el lector, vista
-   de lluvia, agua precipitable y 88 GHz. CPT y entradas en `product_map` de LANOT_tools
-   (y pin nuevo en el `.def` de Polar2Grid). Como reprocesar duplica (`_c…`), pasarle solo
-   el IMG más reciente de la pasada.
+2. ~~La sección `mirs` en `run_polar2grid_edr.sh`.~~ **Escrita y probada el mismo día** en
+   tahan, hacia `/data/tmp` y con los CPT y el `metadata.py` nuevos montados encima de la
+   imagen, sobre `j02_d20260926_t082036` y `npp_d20260926_t085610`: seis GeoTIFF por pasada
+   (`rain_rate tpw clw tskin btemp_88v btemp_165h`, a 5 km) y vista de lluvia, agua
+   precipitable y **165 GHz**. Iba a ser 88 GHz y no se lee: ATMS lo mide solo en vertical,
+   sin la horizontal no se quita el fondo frío del mar, y el Golfo despejado salió a
+   210-230 K, del color de la convección. A 165 el vapor tapa la superficie y solo colorea el
+   hielo; los núcleos llegaron a 151 K. Las dos pasadas traían un ciclón al suroeste de
+   Manzanillo, con la espiral en las tres vistas. Las paletas y el `product_map` están en
+   LANOT_tools `7fc4022`, ya fijado como pin en el `.def` de Polar2Grid. **Para producción**:
+   empujar LANOT_tools, `git pull` + `sudo ./install.sh` de LANOT_tools en tahan (los CPT
+   van montados desde el host), recompilar `polar2grid_v3.2-mapdrawer.sif` (sin eso los
+   JPG salen rotulados "NOAA-21 ATMS" sin producto) y reinstalar esta cadena.
 3. Engancharlo en `procesar_pasada.sh` después de SDR, en paralelo a HEAP, y en
    `publicar_kawak.sh` (¿`jpss/atms/`?).
 4. Después, evaluar el SND como segunda fuente de Skew-T: cubre NPP, que HEAP 3.0 dejó.

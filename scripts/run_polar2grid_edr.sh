@@ -3,14 +3,14 @@
 # LANOT - UNAM | Visualización de productos Nivel 2 con Polar2Grid v3.2
 # ==============================================================================
 #
-# Level 2 (atmosphere, LSR, ACSPO, Active Fire, sondeos, ozono) → GeoTIFF de datos + vistas
+# Level 2 (atmosphere, LSR, ACSPO, Active Fire, sondeos, ozono, microondas) → GeoTIFF de datos + vistas
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue renderizada con éxito, avisa y no hace nada. Una pasada se
 # identifica por satélite, fecha y hora de inicio (p. ej. j01_d20260811_t194733;
 # ver pasadas.sh).
 #
-# Cada conjunto (ATMOS, LSR, ACSPO, FIRE, SOUNDER, OMPS) es independiente: si uno
+# Cada conjunto (ATMOS, LSR, ACSPO, FIRE, SOUNDER, OMPS, MIRS) es independiente: si uno
 # falla, se reporta y los otros siguen. Basta con que alguno produzca imágenes
 # para dar la pasada por renderizada.
 #
@@ -45,6 +45,7 @@
 #   P2G_FIRE_IN     Entrada incendios (def. /data/output/jpss/level2/fires)
 #   P2G_SOUNDER_IN  Entrada sondeos   (def. /data/output/jpss/level2/sounder)
 #   P2G_OMPS_IN     Entrada ozono     (def. /data/output/jpss/level2/omps)
+#   P2G_MIRS_IN     Entrada MiRS      (def. /data/output/jpss/level2/mirs)
 #   P2G_FLOOD_TIF   GeoTIFF de flood  (def. /data/output/jpss/geotiff/flood)
 #   P2G_GEOTIFF     Raíz de GeoTIFF   (def. /data/output/jpss/geotiff)
 #   P2G_VISTAS      Raíz de vistas    (def. /data/output/jpss/vistas)
@@ -81,6 +82,10 @@ HOST_SOUNDER_IN="${P2G_SOUNDER_IN:-/data/output/jpss/level2/sounder}"
 # cuyo GeoTIFF no sale de Polar2Grid sino de omps_a_geotiff.py, porque el lector
 # de OMPS llega hasta la 3.3. Ver la nota del bloque de renderizado.
 HOST_OMPS_IN="${P2G_OMPS_IN:-/data/output/jpss/level2/omps}"
+# Microondas de ATMS, CSPP MiRS. Como los sondeos, no es VIIRS: se empareja por la
+# ventana de la pasada y va a la rejilla de 5 km (el pixel de ATMS mide de 16 km en
+# nadir a más de 50 en la orilla).
+HOST_MIRS_IN="${P2G_MIRS_IN:-/data/output/jpss/level2/mirs}"
 # Flood es el caso raro: su GeoTIFF NO lo hace Polar2Grid sino el convertidor
 # del propio bundle de CSPP, en run_flood_edr.sh, porque el lector
 # viirs_edr_flood es para el formato HDF de la v1.x. Aquí solo se viste.
@@ -94,6 +99,7 @@ HOST_ACSPO_TIF_OUT="$GEOTIFF/acspo"
 HOST_FIRE_TIF_OUT="$GEOTIFF/fire"
 HOST_SOUNDER_TIF_OUT="$GEOTIFF/sounder"
 HOST_OMPS_TIF_OUT="$GEOTIFF/omps"
+HOST_MIRS_TIF_OUT="$GEOTIFF/mirs"
 
 VISTAS="${P2G_VISTAS:-/data/output/jpss/vistas}"
 HOST_IMG_OUT="$VISTAS/atmos"
@@ -102,6 +108,7 @@ HOST_ACSPO_IMG_OUT="$VISTAS/acspo"
 HOST_FIRE_IMG_OUT="$VISTAS/fire"
 HOST_SOUNDER_IMG_OUT="$VISTAS/sounder"
 HOST_OMPS_IMG_OUT="$VISTAS/omps"
+HOST_MIRS_IMG_OUT="$VISTAS/mirs"
 # Los Skew-T son vista de los sondeos, pero no mapa: van en su propia carpeta y
 # en SVG, que es lo que produce skewt.
 HOST_SKEWT_OUT="$VISTAS/sounder/skewt"
@@ -178,6 +185,11 @@ PALETAS=(
     # Ozono total. Rango fijo por la misma razón que los sondeos: ver el
     # encabezado del CPT.
     "ColumnAmountO3:omps_toz.cpt"
+    # Microondas de MiRS, rango fijo por lo mismo. _tpw_ con guiones bajos para
+    # que el token no case dentro de otra palabra.
+    "rain_rate:mirs_rain_rate.cpt"
+    "_tpw_:mirs_tpw.cpt"
+    "btemp_165h:mirs_btemp_165.cpt"
 )
 
 # Las paletas viven dentro de la imagen: install.sh las copia al compilar. Si
@@ -532,13 +544,14 @@ STAGING_ACSPO="${HOST_WORK}/acspo_links"
 STAGING_FIRE="${HOST_WORK}/fire_links"
 STAGING_SOUNDER="${HOST_WORK}/sounder_links"
 STAGING_OMPS="${HOST_WORK}/omps_links"
+STAGING_MIRS="${HOST_WORK}/mirs_links"
 
 mkdir -p "$STAGING_SDR" "$STAGING_EDR" "$STAGING_LSR" "$STAGING_ACSPO" "$STAGING_FIRE" \
-         "$STAGING_SOUNDER" "$STAGING_OMPS" \
+         "$STAGING_SOUNDER" "$STAGING_OMPS" "$STAGING_MIRS" \
          "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
-         "$HOST_SOUNDER_TIF_OUT" "$HOST_OMPS_TIF_OUT" \
+         "$HOST_SOUNDER_TIF_OUT" "$HOST_OMPS_TIF_OUT" "$HOST_MIRS_TIF_OUT" \
          "$HOST_IMG_OUT" "$HOST_LSR_IMG_OUT" "$HOST_ACSPO_IMG_OUT" "$HOST_FIRE_IMG_OUT" \
-         "$HOST_SOUNDER_IMG_OUT" "$HOST_SKEWT_OUT" "$HOST_OMPS_IMG_OUT" \
+         "$HOST_SOUNDER_IMG_OUT" "$HOST_SKEWT_OUT" "$HOST_OMPS_IMG_OUT" "$HOST_MIRS_IMG_OUT" \
          "$HOST_FLOOD_TIF_IN" "$HOST_FLOOD_IMG_OUT" \
          "$LOG_DIR" "$STATE_DIR"
 trap 'rm -rf "$HOST_WORK"' EXIT
@@ -556,11 +569,15 @@ BIND_SOUNDER=()
 # Lo mismo con el ozono: un servidor sin OMPS procesado no tiene level2/omps.
 BIND_OMPS=()
 [ -d "$HOST_OMPS_IN" ] && BIND_OMPS=(--bind "$HOST_OMPS_IN:$HOST_OMPS_IN")
+# Y con MiRS, el eslabón más nuevo.
+BIND_MIRS=()
+[ -d "$HOST_MIRS_IN" ] && BIND_MIRS=(--bind "$HOST_MIRS_IN:$HOST_MIRS_IN")
 
 BINDS_P2G=(
     "${BIND_CPT[@]}"
     "${BIND_SOUNDER[@]}"
     "${BIND_OMPS[@]}"
+    "${BIND_MIRS[@]}"
     --bind "$STAGING_SDR:/input_sdr"
     --bind "$STAGING_EDR:/input_edr"
     --bind "$STAGING_LSR:/input_lsr"
@@ -568,6 +585,7 @@ BINDS_P2G=(
     --bind "$STAGING_FIRE:/input_fire"
     --bind "$STAGING_SOUNDER:/input_sounder"
     --bind "$STAGING_OMPS:/input_omps"
+    --bind "$STAGING_MIRS:/input_mirs"
     --bind "$HOST_SDR_IN:$HOST_SDR_IN"
     --bind "$HOST_EDR_IN:$HOST_EDR_IN"
     --bind "$HOST_LSR_IN:$HOST_LSR_IN"
@@ -583,6 +601,7 @@ BINDS_P2G=(
     --bind "$HOST_FIRE_TIF_OUT:/output_fire_tif"
     --bind "$HOST_SOUNDER_TIF_OUT:/output_sounder_tif"
     --bind "$HOST_OMPS_TIF_OUT:/output_omps_tif"
+    --bind "$HOST_MIRS_TIF_OUT:/output_mirs_tif"
     --bind "$HOST_FLOOD_TIF_IN:/output_flood_tif"
     --bind "$HOST_IMG_OUT:/output_img"
     --bind "$HOST_LSR_IMG_OUT:/output_lsr_img"
@@ -590,6 +609,7 @@ BINDS_P2G=(
     --bind "$HOST_FIRE_IMG_OUT:/output_fire_img"
     --bind "$HOST_SOUNDER_IMG_OUT:/output_sounder_img"
     --bind "$HOST_OMPS_IMG_OUT:/output_omps_img"
+    --bind "$HOST_MIRS_IMG_OUT:/output_mirs_img"
     --bind "$HOST_SKEWT_OUT:/output_skewt"
     --bind "$HOST_FLOOD_IMG_OUT:/output_flood_img"
     --bind "$HOST_WORK:/work"
@@ -619,6 +639,7 @@ ACSPO_COUNT=0
 FIRE_COUNT=0
 SOUNDER_COUNT=0
 OMPS_COUNT=0
+MIRS_COUNT=0
 [ -d "$HOST_EDR_IN" ] && EDR_COUNT=$(enlazar_en_ventana "$STAGING_EDR" "$HOST_EDR_IN" "JRR-")
 [ -d "$HOST_LSR_IN" ] && LSR_COUNT=$(enlazar_en_ventana "$STAGING_LSR" "$HOST_LSR_IN" "SurfRefl_")
 # Los .nc de ACSPO empiezan con el sello temporal, no con un prefijo de producto
@@ -641,6 +662,10 @@ OMPS_COUNT=0
 # los sondeos, por ventana y no por órbita: el mismo sobrevuelo es b45236 en
 # VIIRS y b45237 en OMPS.
 [ -d "$HOST_OMPS_IN" ] && OMPS_COUNT=$(enlazar_en_ventana "$STAGING_OMPS" "$HOST_OMPS_IN" "V8TOZ-EDR")
+# Solo el IMG, que es el que lee el lector mirs; el SND son perfiles. Uno por
+# pasada: MiRS agrega los gránulos, y si se reprocesó, enlazar_en_ventana se
+# queda con el más reciente (el nombre lleva _c<creación>, como los JRR-*).
+[ -d "$HOST_MIRS_IN" ] && MIRS_COUNT=$(enlazar_en_ventana "$STAGING_MIRS" "$HOST_MIRS_IN" "NPR-MIRS-IMG")
 
 LOG_FILE="$LOG_DIR/p2g_${TIMESTAMP}_${CLAVE}.log"
 
@@ -651,6 +676,7 @@ echo "  ACSPO:    $ACSPO_COUNT productos en la ventana"  | tee -a "$LOG_FILE"
 echo "  FIRE:     $FIRE_COUNT productos en la ventana"   | tee -a "$LOG_FILE"
 echo "  SONDEOS:  $SOUNDER_COUNT productos en la ventana" | tee -a "$LOG_FILE"
 echo "  OZONO:    $OMPS_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
+echo "  MIRS:     $MIRS_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 
 REF_FILE=$(mktemp -t p2g_ref_XXXXXX)
 trap 'rm -rf "$HOST_WORK" "$REF_FILE"' EXIT
@@ -849,6 +875,30 @@ else
     echo "  ⚠ Sin ozono para esta pasada: se omite ese renderizado (de noche no hay)" | tee -a "$LOG_FILE"
 fi
 
+if [ "$MIRS_COUNT" -gt 0 ]; then
+    # Microondas de ATMS (CSPP MiRS). El lector mirs aplica la corrección de
+    # limbo a las temperaturas de brillo: sin ella la orilla del barrido sale
+    # más fría por el ángulo y no por la atmósfera.
+    #
+    # -p obligatorio, como en los sondeos: por omisión saldrían también nieve,
+    # hielo marino y tamaño de grano, que en México no dicen nada. De los 22
+    # canales, los dos de dispersión por hielo: 165 GHz, que da la vista, y
+    # 88 GHz, que queda como dato. El de 88 se probó con vista y no se lee: ATMS
+    # solo lo mide en polarización vertical, y sin la horizontal el mar
+    # despejado sale tan frío como la convección (el Golfo, a 210-230 K el
+    # 2026-09-26). A 165 GHz el vapor tapa la superficie y solo el hielo enfría.
+    #
+    # Sin --method: se deja el ewa del lector, que es con lo que se probó
+    # (tahan, 2026-09-26).
+    MIRS_DATOS="rain_rate tpw clw tskin btemp_88v btemp_165h"
+    P2G_MIRS_DATOS="--grid-configs /config/grid.yaml -g $GRID_5KM --dtype float32 --no-enhance"
+
+    en_contenedor "Microondas (MiRS)" \
+        "cd /output_mirs_tif && polar2grid.sh -v -r mirs -w geotiff -p $MIRS_DATOS $P2G_MIRS_DATOS -f /input_mirs/NPR-MIRS-IMG*.nc"
+else
+    echo "  ⚠ Sin productos de MiRS para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
+fi
+
 # --- Etapa 2: vistas decoradas a partir de los GeoTIFF recién escritos ---
 # Los productos llegan sin paleta, así que recolorea geotiff2view. Un producto
 # sin CPT no genera vista y no es error.
@@ -959,6 +1009,10 @@ vestir "Vistas de sondeos" "$HOST_SOUNDER_TIF_OUT" /output_sounder_tif /output_s
 # El ozono va en la misma rejilla de 5 km que los sondeos, y por lo mismo sin -s 0.5.
 vestir "Vistas de ozono" "$HOST_OMPS_TIF_OUT" /output_omps_tif /output_omps_img \
        geotiff2view . 1 '' '-s 1'
+# Microondas: vista solo de lluvia, agua precipitable y 165 GHz. clw, tskin y
+# 88 GHz quedan como dato. También a 5 km y sin -s 0.5.
+vestir "Vistas de microondas" "$HOST_MIRS_TIF_OUT" /output_mirs_tif /output_mirs_img \
+       geotiff2view 'rain_rate|_tpw_|btemp_165h' 1 '' '-s 1'
 
 # Skew-T: el perfil vertical de los sondeos en cada estación de sitios_skewt.tsv.
 # No es un GeoTIFF que vestir sino una figura por sitio: skewt (LANOT_tools) toma
@@ -1039,7 +1093,7 @@ contar_nuevos() {
 # productos. Lo que dice ya quedó en $LOG_FILE, así que se descarta para no
 # ensuciar el árbol de salida.
 find "$HOST_TIF_OUT" "$HOST_LSR_TIF_OUT" "$HOST_ACSPO_TIF_OUT" "$HOST_FIRE_TIF_OUT" \
-     "$HOST_SOUNDER_TIF_OUT" \
+     "$HOST_SOUNDER_TIF_OUT" "$HOST_MIRS_TIF_OUT" \
      -maxdepth 1 -name '*.log' -delete 2>/dev/null || true
 
 TIF_ATMOS=$(contar_nuevos "$HOST_TIF_OUT"       '*.tif')
@@ -1048,17 +1102,19 @@ TIF_SST=$(contar_nuevos   "$HOST_ACSPO_TIF_OUT" '*.tif')
 TIF_FIRE=$(contar_nuevos  "$HOST_FIRE_TIF_OUT"  '*.tif')
 TIF_SOUNDER=$(contar_nuevos "$HOST_SOUNDER_TIF_OUT" '*.tif')
 TIF_OMPS=$(contar_nuevos  "$HOST_OMPS_TIF_OUT"  '*.tif')
+TIF_MIRS=$(contar_nuevos  "$HOST_MIRS_TIF_OUT"  '*.tif')
 JPG_ATMOS=$(contar_nuevos "$HOST_IMG_OUT"       '*.jpg')
 JPG_LSR=$(contar_nuevos   "$HOST_LSR_IMG_OUT"   '*.jpg')
 JPG_SST=$(contar_nuevos   "$HOST_ACSPO_IMG_OUT" '*.jpg')
 JPG_FIRE=$(contar_nuevos  "$HOST_FIRE_IMG_OUT"  '*.jpg')
 JPG_SOUNDER=$(contar_nuevos "$HOST_SOUNDER_IMG_OUT" '*.jpg')
 JPG_OMPS=$(contar_nuevos  "$HOST_OMPS_IMG_OUT"  '*.jpg')
+JPG_MIRS=$(contar_nuevos  "$HOST_MIRS_IMG_OUT"  '*.jpg')
 JPG_FLOOD=$(contar_nuevos "$HOST_FLOOD_IMG_OUT" '*.jpg')
 SVG_SKEWT=$(contar_nuevos "$HOST_SKEWT_OUT" '*.svg')
 
-TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE + TIF_SOUNDER + TIF_OMPS))
-JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_SOUNDER + JPG_OMPS + JPG_FLOOD))
+TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE + TIF_SOUNDER + TIF_OMPS + TIF_MIRS))
+JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_SOUNDER + JPG_OMPS + JPG_MIRS + JPG_FLOOD))
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
@@ -1080,13 +1136,14 @@ fi
     echo "fire:        $TIF_FIRE geotiff, $JPG_FIRE vistas"
     echo "sondeos:     $TIF_SOUNDER geotiff, $JPG_SOUNDER vistas"
     echo "ozono:       $TIF_OMPS geotiff, $JPG_OMPS vistas"
+    echo "mirs:        $TIF_MIRS geotiff, $JPG_MIRS vistas"
     echo "skewt:       $SVG_SKEWT diagramas, $SKEWT_SIN sitios sin sondeo, $SKEWT_ERR con error"
     echo "flood:       $JPG_FLOOD vistas (el geotiff lo hace run_flood_edr.sh)"
     echo "duracion:    $DURACION"
     echo "log:         $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE, sondeos $TIF_SOUNDER, ozono $TIF_OMPS) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, sondeos $JPG_SOUNDER, ozono $JPG_OMPS, flood $JPG_FLOOD) y $SVG_SKEWT Skew-T en $DURACION" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: pasada $CLAVE — $TIF_TOTAL geotiff (atmos $TIF_ATMOS, lsr $TIF_LSR, sst $TIF_SST, fire $TIF_FIRE, sondeos $TIF_SOUNDER, ozono $TIF_OMPS, mirs $TIF_MIRS) y $JPG_TOTAL vistas (atmos $JPG_ATMOS, lsr $JPG_LSR, sst $JPG_SST, fire $JPG_FIRE, sondeos $JPG_SOUNDER, ozono $JPG_OMPS, mirs $JPG_MIRS, flood $JPG_FLOOD) y $SVG_SKEWT Skew-T en $DURACION" | tee -a "$LOG_FILE"
 echo "   GeoTIFF:  $GEOTIFF"  | tee -a "$LOG_FILE"
 echo "   Vistas:   $VISTAS"   | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER"   | tee -a "$LOG_FILE"
