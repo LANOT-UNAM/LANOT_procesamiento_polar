@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-09-24**
+**Última actualización: 2026-09-26**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -170,9 +170,24 @@ stratus) y **METOP** (`metop2.sh`, en tsom03). Aqua no entra en ninguna: ya no s
    equivalente de todo menos **AFAI** (índice de algas flotantes, `jpss/viirs/afai` en kawak), que
    no produce. Hay que traerlo o decidir explícitamente que se deja. Las nubes cambian de
    producto (JRR en vez de CLAVR-x): eso es un cambio de producto, y se anuncia.
+
+   **Los quicklooks de ATMS, CrIS y OMPS se dejan, decidido el 2026-09-26.** Son lo que kawak
+   sirve en `polar/npp-jpss1/{atms,cris,omps}` —symlinks a `/dataservice/npp-jpss1/<sensor>/vistas`—
+   y no los hacemos: los genera `ql_sdr.sh` del bundle de CSPP SDR, que `cspp.sh` llama al
+   terminar cada sensor. Son Level 1 en la geometría del barrido: los 22 canales de ATMS en
+   temperatura de brillo, tres ventanas de CrIS (solo NOAA-20) y 13 canales del Nadir Mapper
+   más 7 del Nadir Profiler de OMPS en radiancia (los del Profiler son una quincena de puntos
+   sueltos: no se ve nada). Lo nuevo no los reemplaza uno a uno, porque es Level 2 —mapas de
+   NUCAPS, Skew-T, ozono total—; lo único que se pierde de verdad es ATMS por canal. **Nadie los
+   usa**: en los `access.log` de kawak del 2025-08-01 al 2026-09-26, de unos 8 300 accesos a esas
+   carpetas, ~4 700 son rastreadores (GPTBot sobre todo), ~3 500 un escáner de vulnerabilidades
+   y lo humano son cuatro direcciones —dos de la UNAM, una de LANOT y una doméstica— que abrieron
+   **5 PNG en catorce meses**, todas entrando por el listado de Apache y ninguna desde una página
+   del sitio. `nucaps/` está vacío desde 2022. Al apagar se pueden retirar los symlinks.
 4. **Publica sola en kawak**, con las categorías de la página, sin pisar nada y a tiempo — hoy la
    copia es manual. Y **la página muestra lo nuevo**: `noaa21`, `sounder/` y los nombres de nube
-   de JRR.
+   de JRR. Los mapas de sondeo de NOAA-20 existen en tahan pero no se publican, porque salen
+   como `j01_atms-cris_…` y no `noaa20_…`: hay que corregir ese nombre antes de publicarlos.
 5. **Si una pasada falla, alguien se entera.** El 22 de septiembre de 2025 un error de sintaxis en
    la recepción perdió siete pasadas sin más rastro que un log. Un aviso cuando un crudo JPSS
    llegue a `.fallido` (o a `fallidos/` con la cola), o cuando pase una ventana de pasadas sin
