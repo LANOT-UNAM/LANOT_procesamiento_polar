@@ -36,6 +36,14 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
    con otros márgenes o letra más grande se pasa a dos páginas.
 3. **Idioma de los rótulos**, en la junta del lunes 2026-09-28 (ver abajo).
 4. **La página de kawak** tiene que mostrar `jpss/atms/`.
+5. **`--lat-south` le corta el norte a las pasadas cortas.** `make_south_room`
+   (`mapdrawer.py` de LANOT_tools) hace sitio para la barra de color conservando el tamaño:
+   recorta filas del norte y las pega vacías al sur. Una pasada que termina al norte de
+   11°N pierde su parte norte sin aviso — la NOAA-20 de las 09:20 del 26 (6 gránulos, borde
+   sur en 16.3°N) perdió 110 de 304 filas, todo lo de arriba de ~26°N. Afecta a todas las
+   vistas (VIIRS, sondeos, ozono, MiRS); las pasadas completas bajan más al sur y no lo
+   sufren. Arreglo: agrandar el lienzo hacia el sur en vez de recortar; luego pin y
+   recompilación. Imágenes de la prueba en tahan, `/data/tmp/mirs_prueba/cmp/`.
 
 Salió de revisar qué se pierde al jubilar los quicklooks de ATMS (ver "Condiciones para
 jubilar la cadena vieja", punto 3). En vez de reproducir 22 canales en bruto que nadie mira,
