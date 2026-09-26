@@ -24,6 +24,18 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ## 2026-09-26: MiRS, para que ATMS tenga productos propios
 
+**Al retomar:**
+
+1. **Rótulo del 165 GHz, sin urgencia.** Empujar LANOT_tools (`5868a3c`) y esta cadena, y
+   recompilar `polar2grid_v3.2-mapdrawer.sif` con el pin nuevo. No hace falta `install.sh`
+   de LANOT_tools ni reinstalar la cadena. Hasta entonces las vistas salen "165 GHz".
+2. **Informe breve que justifique pasar del sistema viejo al nuevo.** Lo pidió Alejandro el
+   mismo día. Material ya reunido aquí: qué cubre cada cadena ("Condiciones para jubilar la
+   cadena vieja"), los quicklooks de ATMS/CrIS/OMPS que nadie usa, y lo que la nueva agrega
+   (NOAA-21, sondeos y Skew-T, ozono, microondas de MiRS con NPP incluido).
+3. **Idioma de los rótulos**, en la junta del lunes 2026-09-28 (ver abajo).
+4. **La página de kawak** tiene que mostrar `jpss/atms/`.
+
 Salió de revisar qué se pierde al jubilar los quicklooks de ATMS (ver "Condiciones para
 jubilar la cadena vieja", punto 3). En vez de reproducir 22 canales en bruto que nadie mira,
 **CSPP MiRS v4.0** (MiRS v11r9, de NOAA/STAR): lluvia, agua precipitable, agua líquida de
