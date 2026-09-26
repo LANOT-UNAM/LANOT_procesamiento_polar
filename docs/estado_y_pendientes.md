@@ -49,8 +49,10 @@ vacíos. Polar2Grid 3.2 la lee sin avisos con el lector `mirs` (`rain_rate`, `tp
 **Escrito**: `contenedores/cspp_mirs_v4.0.def` (sin compilar), `scripts/run_mirs_edr.sh`,
 su fila en `tarballs.tsv` y sus directorios en `preparar_servidor.sh`. **Falta, en orden:**
 
-1. Compilar el `.sif` (`./contenedores/construir.sh cspp_mirs_v4.0`), `apptainer test` y
-   copiarlo a `/opt/containers`; reinstalar y `sudo ./scripts/preparar_servidor.sh --solo 1`.
+1. ~~Compilar el `.sif`, instalar y crear los directorios.~~ **Hecho el mismo día**: la imagen
+   (867 MB) pasa su `%test`, y `run_mirs_edr.sh` desde `/opt/lanot/polares` con ella sobre
+   `j02_d20260926_t082141` tardó 1m 47s y dio IMG y SND **idénticos** a los de la prueba
+   (BT, RR, TPW, CLW, TSkin, geolocalización, PTemp, PVapor). `/data/ancillary/mirs` sigue vacío.
 2. La sección `mirs` en `run_polar2grid_edr.sh`: GeoTIFF de todo lo que da el lector, vista
    de lluvia, agua precipitable y 88 GHz. CPT y entradas en `product_map` de LANOT_tools
    (y pin nuevo en el `.def` de Polar2Grid). Como reprocesar duplica (`_c…`), pasarle solo
