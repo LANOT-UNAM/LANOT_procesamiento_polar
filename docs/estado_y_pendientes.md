@@ -22,6 +22,48 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-09-26: MiRS, para que ATMS tenga productos propios
+
+Salió de revisar qué se pierde al jubilar los quicklooks de ATMS (ver "Condiciones para
+jubilar la cadena vieja", punto 3). En vez de reproducir 22 canales en bruto que nadie mira,
+**CSPP MiRS v4.0** (MiRS v11r9, de NOAA/STAR): lluvia, agua precipitable, agua líquida de
+nube y las 22 temperaturas de brillo con corrección de limbo en el `NPR-MIRS-IMG`, y
+perfiles de temperatura y humedad en el `NPR-MIRS-SND`. Soporta NPP, NOAA-20 y NOAA-21, y
+también AMSU-A/MHS de Metop-B/C, que servirá en la fase de METOP.
+
+**Probado en tahan**, primero a mano y luego con `run_mirs_edr.sh` y un `apptainer`
+sustituto (base rocky8 con el bundle montado `:ro` en `/opt/cspp_mirs`, que es lo que dará
+el `.sif`):
+
+| Pasada | Gránulos | Tiempo (`-p 8`) | Salida |
+|---|---|---|---|
+| `j02_d20260926_t082141` | 20 | 1m 46s, 5.6 GB de RAM | IMG 6 MB + SND 66 MB |
+| `npp_d20260926_t085934` | 20 | 1m 42s | IMG + SND |
+
+La de NOAA-21: 58 % de recuperaciones óptimas y 0 % malas; agua precipitable de 5 a 85 mm
+(mediana 47), lluvia en 2166 píxeles (máx. 9.7 mm/h), 88 GHz hasta 215 K. Traía un ciclón
+frente a la costa del Pacífico, con el ojo a la vista en 88 GHz. `WindSp` e `IWP` vienen
+vacíos. Polar2Grid 3.2 la lee sin avisos con el lector `mirs` (`rain_rate`, `tpw`, `clw`,
+`btemp_88v`, `btemp_165h`) a `wgs84_geo_5km`.
+
+**Escrito**: `contenedores/cspp_mirs_v4.0.def` (sin compilar), `scripts/run_mirs_edr.sh`,
+su fila en `tarballs.tsv` y sus directorios en `preparar_servidor.sh`. **Falta, en orden:**
+
+1. Compilar el `.sif` (`./contenedores/construir.sh cspp_mirs_v4.0`), `apptainer test` y
+   copiarlo a `/opt/containers`; reinstalar y `sudo ./scripts/preparar_servidor.sh --solo 1`.
+2. La sección `mirs` en `run_polar2grid_edr.sh`: GeoTIFF de todo lo que da el lector, vista
+   de lluvia, agua precipitable y 88 GHz. CPT y entradas en `product_map` de LANOT_tools
+   (y pin nuevo en el `.def` de Polar2Grid). Como reprocesar duplica (`_c…`), pasarle solo
+   el IMG más reciente de la pasada.
+3. Engancharlo en `procesar_pasada.sh` después de SDR, en paralelo a HEAP, y en
+   `publicar_kawak.sh` (¿`jpss/atms/`?).
+4. Después, evaluar el SND como segunda fuente de Skew-T: cubre NPP, que HEAP 3.0 dejó.
+
+Quedó en tahan `/data/tmp/mirs_prueba` (bundle extraído, el `apptainer` sustituto y las
+salidas de las dos pasadas): sirve para comparar contra el `.sif` y luego se borra.
+
+---
+
 ## 2026-09-24: los dos primeros días en automático
 
 **Funcionó lo que se quería probar**: los 15 crudos JPSS del 23 y el 24 tienen su pasada, el

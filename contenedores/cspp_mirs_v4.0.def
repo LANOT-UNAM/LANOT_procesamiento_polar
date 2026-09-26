@@ -1,0 +1,94 @@
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky8.sif
+
+%labels
+    Base lanot_base_rocky8.sif
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP MiRS Version 4.0 - MiRS v11r9 sobre ATMS (Rocky 8)
+    Version 4.0-LANOT
+
+%help
+    CSPP MiRS v4.0 (NOAA MiRS v11r9): recuperaciones de microondas a partir de
+    los SDR de ATMS de NPP, NOAA-20 y NOAA-21. Lluvia, agua precipitable, agua
+    líquida de nube, temperatura de piel y las 22 temperaturas de brillo con
+    corrección de limbo (IMG), más perfiles de temperatura y humedad (SND).
+    También acepta AMSU-A/MHS de Metop-B/C, que es lo que se usará en la fase
+    de METOP.
+
+    Plataforma del manual: Rocky 8.8 (probado también en 9.3). Se usa la base 8
+    porque es la que el manual pide y con la que se probó en tahan el 2026-09-26.
+
+    Entradas (manual §1.5): SATMS* + TATMS* + GATMO*, de UN solo satélite por
+    directorio. Salidas: NPR-MIRS-IMG_v11r9_*.nc y NPR-MIRS-SND_v11r9_*.nc
+
+    Todo el bundle, estático incluido, va dentro de la imagen: MiRS no escribe
+    en su árbol de instalación (verificado montándolo de solo lectura). Lo único
+    que debe ser escribible por fuera es el caché de ancillary (-d), que el
+    driver EXIGE aunque con --noSFR no descargue nada: por omisión cae en
+    $CSPP_MIRS_HOME/anc/cache, dentro de la imagen, y muere. Ver run_mirs_edr.sh.
+
+    Verificación tras compilar:  apptainer test cspp_mirs_v4.0.sif
+
+%files
+    # Software y estático, en un solo tarball
+    CSPP_MIRS_V4.0.tar.gz /opt/
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    cd /opt
+    echo "--- Descomprimiendo CSPP MiRS v4.0 ---"
+    tar -zxf CSPP_MIRS_V4.0.tar.gz
+    rm -f CSPP_MIRS_V4.0.tar.gz
+
+    # El manual (§2.2) indica que la extracción crea CSPP_MIRS_4_0
+    REAL_FOLDER="CSPP_MIRS_4_0"
+
+    if [ ! -d "$REAL_FOLDER" ]; then
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Los manuales de MiRS v11r9 (dos PDF) no hacen falta para correr
+    rm -rf "$REAL_FOLDER/doc"
+
+    # Enlace genérico, para que los scripts no dependan del nombre exacto que
+    # produzca el tarball de la siguiente versión
+    ln -s "$REAL_FOLDER" cspp_mirs
+
+    # Puntos de montaje genéricos: el script del contenedor no ve rutas del host.
+    # /anc es el caché de ancillary que el driver exige escribible.
+    mkdir -p /input /work /anc
+
+%environment
+    export CSPP_MIRS_HOME=/opt/cspp_mirs
+    export PATH=$CSPP_MIRS_HOME/bin:$PATH
+
+%test
+    # apptainer test cspp_mirs_v4.0.sif
+    #
+    # Cada orden va sola, no encadenada con &&: 'set -e' no aborta cuando falla
+    # el lado izquierdo de un &&, así que una prueba encadenada imprimiría el
+    # error y seguiría de largo dando la impresión de que todo está bien.
+    set -e
+
+    test -d /opt/cspp_mirs
+    echo "  OK /opt/cspp_mirs -> $(readlink /opt/cspp_mirs)"
+
+    # Lo mismo que el driver revisa antes de procesar (cspp_mirs.py, main)
+    for sub in SemiStaticData StaticData templates; do
+        test -d "/opt/cspp_mirs/anc/static/ancillary_data/$sub"
+        echo "  OK anc/static/ancillary_data/$sub"
+    done
+
+    test -x /opt/cspp_mirs/libexec/python_runtime/bin/python3
+    echo "  OK python_runtime"
+
+    # Sin argumentos sale en 3; con --help imprime las opciones y sale en 0
+    run_mirs.bash --help > /dev/null
+    echo "  OK run_mirs.bash"
