@@ -33,7 +33,10 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
    `docs/informe_transicion_jpss.md`, una página para la junta del lunes 2026-09-28. Se
    convierte con `pandoc informe_transicion_jpss.md -o informe.pdf --pdf-engine=xelatex
    -V geometry:margin=2cm -V papersize=letter -V fontsize=10pt -V mainfont="DejaVu Sans"`;
-   con otros márgenes o letra más grande se pasa a dos páginas.
+   con otros márgenes o letra más grande se pasa a dos páginas. Para mostrar en la junta,
+   `docs/figuras/comparacion_atms_165ghz.png`: el quicklook viejo del canal 17 contra la
+   vista nueva de 165 GHz, la misma pasada de NOAA-20 (26-sep, 09:20 UTC). La nueva va sin
+   `--lat-south` por el pendiente 5, así que la barra tapa un poco la orilla sur.
 3. **Idioma de los rótulos**, en la junta del lunes 2026-09-28 (ver abajo).
 4. **La página de kawak** tiene que mostrar `jpss/atms/`.
 5. **`--lat-south` le corta el norte a las pasadas cortas.** `make_south_room`
