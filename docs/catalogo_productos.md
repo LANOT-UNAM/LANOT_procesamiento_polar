@@ -130,7 +130,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: SCRIF (radiancias, resolución espectral completa), GCRSO (geolocalización)
 - **Formato**: HDF5
 - **Resolución**: swath: FOR de ~50 km (9 FOV de 14 km)
-- **Notas**: Calibrar un gránulo requiere ±4 vecinos. Mismo aviso que ATMS sobre la agregación. Sin NPP: RT-STPS no produce RDR de CrIS de NPP (no hay RCRIS de npp en level0; causa sin averiguar).
+- **Notas**: Calibrar un gránulo requiere ±4 vecinos. Mismo aviso que ATMS sobre la agregación.
 
 <details><summary>Para operación</summary>
 

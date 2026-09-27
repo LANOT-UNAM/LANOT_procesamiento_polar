@@ -34,10 +34,6 @@ los renderizadores, `PALETAS`, `product_map` y las rutas de los scripts.
 Las variables, unidades, patrones de nombre y satélites se confirmaron el mismo día en tahan,
 con `ncdump -h` y listados de `/data/output/jpss`. Salió más de lo que se buscaba:
 
-- **CrIS de NPP no existe desde el crudo.** `level1/cris` solo tiene `j01` y `j02`, y en
-  `level0` no hay ni un `RCRIS` de NPP: sí están sus `RVIRS`, `RATMS`, `ROTCS` y `RONPS`.
-  Hoy no afecta a nada, porque HEAP 3.0 no admite NPP. Pero habría que averiguar si falta la
-  entrada de CrIS en `config/npp.xml` o si ese flujo no llega.
 - **`AFIMG_*.txt` es un producto**: la lista de incendios en texto (lat, lon, T4, FRP,
   confianza), que CSPP Active Fire deja junto al `.nc`. Entró al catálogo. Los
   `NOAA_AFIMG_*.log` del mismo directorio son logs.
