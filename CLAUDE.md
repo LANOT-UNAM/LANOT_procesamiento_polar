@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Qué es este repositorio
 
-Infraestructura como código para la cadena operativa de satélites polares JPSS (Suomi-NPP, NOAA-20, NOAA-21) del LANOT-UNAM. **No contiene software científico ni datos**: solo recetas Apptainer (`contenedores/*.def`), scripts de orquestación en Bash (`scripts/`), plantillas XML de RT-STPS (`config/`) y documentación (`docs/`).
+Infraestructura como código para el procesamiento de **todos los satélites polares** que recibe el LANOT-UNAM. Hoy cubre JPSS (Suomi-NPP, NOAA-20, NOAA-21); **METOP-B/C entra aquí mismo** —decidido el 2026-09-26: comparte recepción, `cadenas.tsv`, HEAP, MiRS y el `.sif` de Polar2Grid, así que no se separa salvo que aparezca una buena razón—. Aqua queda fuera. **No contiene software científico ni datos**: solo recetas Apptainer (`contenedores/*.def`), scripts de orquestación en Bash (`scripts/`), plantillas XML de RT-STPS (`config/`) y documentación (`docs/`).
 
 No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compilan a partir de tarballs oficiales de CIMSS/SSEC —RT-STPS incluido: es de la NASA, pero el DRL está congelado y lo distribuye CSPP con su parche— que **no están versionados** (`.gitignore` excluye `*.tar.gz`, `*.sif`, `*.h5`, `*.nc`, `*.tif`, `*.log`). El sistema real corre en el servidor `tahan`; en esta máquina de desarrollo las rutas `/opt/containers` y `/var/log/lanot/...` no existen, así que los scripts no se pueden ejecutar de verdad — se editan y se validan con `bash -n`.
 
