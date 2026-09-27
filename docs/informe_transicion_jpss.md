@@ -51,3 +51,29 @@ la lluvia y el hielo convectivo.
 4. **Publicación completa.** Hoy kawak recibe de la nueva solo lo que la vieja no hace; al
    apagar se publica todo y la página muestra las secciones nuevas (sondeos, ozono, ATMS).
 5. **Avisos de falla** cuando una etapa falla varias veces seguidas (monitoreo común con GOES).
+
+## Anexo: recomendaciones para el histórico de AFAI
+
+La reconstrucción histórica de AFAI (`/opt/lanot_shared/scripts/viirs_afai_*.sh` en tahan)
+usa el contenedor de Polar2Grid de la cadena nueva y **copias** de dos de sus scripts,
+`run_atmos_edr.sh` y `run_polar2grid_edr.sh`, tomadas a mediados de agosto. Desde entonces
+esos scripts recibieron correcciones que al histórico también le sirven:
+
+1. **Actualizar las copias desde el repositorio** cada vez que cambie `main`, y anotar en el
+   encabezado de la copia de qué commit viene. Hoy corresponden a los del 14 y 15 de agosto.
+2. **Revisar que ninguna pasada mezcle dos sobrevuelos.** Los directorios de pasada se nombran
+   por órbita (`j01_d20260609_b44336`), pero CSPP a veces le pone el mismo número a dos pasadas
+   seguidas del mismo satélite. Desde el 22 de septiembre la cadena nueva separa las pasadas
+   por tiempo (un hueco de más de 20 minutos entre gránulos es otra pasada). Conviene aplicar
+   el mismo criterio en la extracción y revisar lo ya procesado.
+3. **No dar por buena una pasada de ATMOS incompleta.** La versión copiada acepta cualquier
+   corrida que produzca algo; la actual exige los productos de todos los gránulos. Sin eso, una
+   máscara de nubes puede cubrir solo parte de la pasada sin que nadie se entere.
+4. **Revisar los fallos de GeoTIFF del 19 de septiembre.** De 12 pasadas evaluadas, ninguna
+   salió bien y 10 fallaron; el error visible es al leer M10 (`Chunks do not add up to shape`).
+   Ese mismo día el extractor reportó 24 de 25 gránulos incompletos en una de las fechas, así
+   que la causa probable son gránulos truncados que llegan a Polar2Grid. Si se confirma, basta
+   con no pasarle los que el extractor ya marca como incompletos.
+
+Por nuestra parte, avisaremos cuando cambie la forma de invocar esos dos scripts o el
+contenedor de Polar2Grid.
