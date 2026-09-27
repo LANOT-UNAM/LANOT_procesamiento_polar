@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-09-26**
+**Última actualización: 2026-09-27**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -19,6 +19,30 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+
+---
+
+## 2026-09-27: catálogo de productos
+
+`docs/catalogo_productos.tsv` describe los 45 productos de Level 1 en adelante (Level 0
+queda fuera: nadie lo usa fuera de la cadena). Es para dos públicos: el externo, que quiere
+saber qué hay, en qué formato y con qué unidades, y el interno, que necesita saber de dónde
+sale cada cosa. El TSV es la fuente y `docs/catalogo_productos.md` se genera con
+`scripts/generar_catalogo.py`. Con `--verificar`, el script lo contrasta contra los `-p` de
+los renderizadores, `PALETAS`, `product_map` y las rutas de los scripts.
+
+Pendiente:
+
+- **Los `?` del catálogo**: ocho productos tienen algún dato sin confirmar contra un archivo
+  real (la lista completa de `JRR-*`, las variables de ACSPO y su patrón de nombre, las
+  unidades de `surf_refl` y `clw`, entre otros). Se resuelven en tahan con `ncdump -h` y
+  `gdalinfo` sobre una pasada de NOAA-21 y otra de NPP. La columna `satelites` se confirma
+  igual.
+- **Segunda etapa: inventario por pasada.** Un script en tahan que recorra
+  `/data/output/jpss`, compare cada pasada contra el catálogo y diga qué productos salieron y
+  cuáles faltan. Cuando exista, el TSV se muda a `config/`, porque la operación ya dependería
+  de él. LANOT_tools ya emite Items de STAC (`stac_item.py`); cada fila del catálogo sería una
+  Collection, y para eso se pensaron los `id`.
 
 ---
 
