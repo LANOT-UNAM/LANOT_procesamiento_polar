@@ -31,13 +31,24 @@ sale cada cosa. El TSV es la fuente y `docs/catalogo_productos.md` se genera con
 `scripts/generar_catalogo.py`. Con `--verificar`, el script lo contrasta contra los `-p` de
 los renderizadores, `PALETAS`, `product_map` y las rutas de los scripts.
 
+Las variables, unidades, patrones de nombre y satélites se confirmaron el mismo día en tahan,
+con `ncdump -h` y listados de `/data/output/jpss`. Salió más de lo que se buscaba:
+
+- **CrIS de NPP no existe desde el crudo.** `level1/cris` solo tiene `j01` y `j02`, y en
+  `level0` no hay ni un `RCRIS` de NPP: sí están sus `RVIRS`, `RATMS`, `ROTCS` y `RONPS`.
+  Hoy no afecta a nada, porque HEAP 3.0 no admite NPP. Pero habría que averiguar si falta la
+  entrada de CrIS en `config/npp.xml` o si ese flujo no llega.
+- **`AFIMG_*.txt` es un producto**: la lista de incendios en texto (lat, lon, T4, FRP,
+  confianza), que CSPP Active Fire deja junto al `.nc`. Entró al catálogo. Los
+  `NOAA_AFIMG_*.log` del mismo directorio son logs.
+- **Restos de corridas viejas en `geotiff/`**: `lsr_rgb/` (los RGB de superficie retirados
+  el 2026-08-14) y los `adaptive`/`histogram`/`hncc_dnb` de NOAA-20 en `dnb/`. Se pueden
+  borrar; ya no se producen.
+- **`gdalinfo -stats` escribe un `.aux.xml` junto al GeoTIFF.** Para consultar un GeoTIFF
+  del árbol de productos, usar `gdalinfo` sin `-stats`.
+
 Pendiente:
 
-- **Los `?` del catálogo**: ocho productos tienen algún dato sin confirmar contra un archivo
-  real (la lista completa de `JRR-*`, las variables de ACSPO y su patrón de nombre, las
-  unidades de `surf_refl` y `clw`, entre otros). Se resuelven en tahan con `ncdump -h` y
-  `gdalinfo` sobre una pasada de NOAA-21 y otra de NPP. La columna `satelites` se confirma
-  igual.
 - **Segunda etapa: inventario por pasada.** Un script en tahan que recorra
   `/data/output/jpss`, compare cada pasada contra el catálogo y diga qué productos salieron y
   cuáles faltan. Cuando exista, el TSV se muda a `config/`, porque la operación ya dependería

@@ -19,7 +19,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 |---|---|---|---|---|
 | [VIIRS SDR: radiancias calibradas y geolocalización](#l1-viirs-sdr) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
 | [ATMS SDR: microondas](#l1-atms-sdr) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
-| [CrIS SDR: infrarrojo hiperespectral](#l1-cris-sdr) | CrIS | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
+| [CrIS SDR: infrarrojo hiperespectral](#l1-cris-sdr) | CrIS | NOAA-20, NOAA-21 | HDF5 | no |
 | [OMPS Nadir Mapper SDR](#l1-omps-nm-sdr) | OMPS NM | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
 | [OMPS Nadir Profiler SDR](#l1-omps-np-sdr) | OMPS NP | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
 
@@ -30,8 +30,9 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 | [Atmósfera y nubes (VIIRS Enterprise)](#l2-atmos) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Reflectancia de superficie e índices de vegetación](#l2-lsr) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Criósfera: hielo marino](#l2-cryo) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
-| [Temperatura superficial del mar (ACSPO)](#l2-acspo) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
+| [Temperatura superficial del mar (ACSPO)](#l2-acspo) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4, GHRSST L2P | no |
 | [Incendios activos](#l2-fires) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
+| [Incendios activos: lista en texto](#l2-fires-txt) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | texto (CSV con comentarios #) | no |
 | [Inundaciones](#l2-flood) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Microondas de ATMS (MiRS)](#l2-mirs) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Sondeos NUCAPS (CrIS + ATMS)](#l2-sounder) | CrIS+ATMS | NOAA-20, NOAA-21 | NetCDF4 | no |
@@ -88,14 +89,14 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l1-viirs-sdr` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: SVM01–SVM16 (bandas M), SVI01–SVI05 (bandas I), SVDNB (Day/Night Band); geolocalización GMTCO, GITCO, GDNBO
+- **Contenido**: SVM01–SVM16 (bandas M), SVI01–SVI05 (bandas I), SVDNB (Day/Night Band); geolocalización con corrección de terreno GMTCO, GITCO, GDNBO y sin ella GMODO, GIMGO; IVCDB (auxiliar del DNB)
 - **Formato**: HDF5
 - **Resolución**: swath: 750 m (M, DNB), 375 m (I)
 - **Notas**: Gránulos de ~85 s. Un gránulo truncado deja sin calibrar a sus vecinos (±1): huecos horizontales normales en pasadas con dropout. Aquí sat va como npp|j01|j02.
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level1/viirs/` · patrón `SV*_{sat}_d*_t*_e*_b*_c*_cspp_dev.h5, G*TCO*, GDNBO*`
+- Ruta: `level1/viirs/` · patrón `SV*_{sat}_d*_t*_e*_b*_c*_cspp_dev.h5, G*O_*.h5, IVCDB_*.h5`
 - Origen: CSPP SDR 4.1.1 → run_sdr.sh --sensor viirs
 - Depende de: RDR de RT-STPS
 
@@ -124,12 +125,12 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 #### CrIS SDR: infrarrojo hiperespectral
 
-`l1-cris-sdr` · CrIS · Suomi-NPP, NOAA-20, NOAA-21
+`l1-cris-sdr` · CrIS · NOAA-20, NOAA-21
 
 - **Contenido**: SCRIF (radiancias, resolución espectral completa), GCRSO (geolocalización)
 - **Formato**: HDF5
 - **Resolución**: swath: FOR de ~50 km (9 FOV de 14 km)
-- **Notas**: Calibrar un gránulo requiere ±4 vecinos. Mismo aviso que ATMS sobre la agregación.
+- **Notas**: Calibrar un gránulo requiere ±4 vecinos. Mismo aviso que ATMS sobre la agregación. Sin NPP: RT-STPS no produce RDR de CrIS de NPP (no hay RCRIS de npp en level0; causa sin averiguar).
 
 <details><summary>Para operación</summary>
 
@@ -185,14 +186,14 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l2-atmos` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: JRR-CloudMask, JRR-CloudHeight, JRR-CloudPhase, JRR-CloudCoverLayers, JRR-AOD, JRR-ADP, JRR-VolcanicAsh, JRR-CloudDCOMP, JRR-CloudNCOMP, NWP_GFS-INTP (lista completa ?)
+- **Contenido**: JRR-CloudMask (CloudMask, CloudProbability, máscaras de humo, polvo y fuego); JRR-CloudHeight (CldTopTemp [K], CldTopPres [hPa], CldTopHght [m], CldTopEmss); JRR-CloudBase (CldBaseHght [m], CldBasePres [hPa]); JRR-CloudPhase (CloudPhase, CloudType, categóricos); JRR-CloudCoverLayers (Total_Cloud_Fraction [1], CloudLayer, Layer_Frac [%]); JRR-CloudDCOMP y JRR-CloudNCOMP, microfísica diurna y nocturna (CloudMicroEffRad [µm], CloudMicroIWP y CloudMicroLWP [g/m²], CloudMicroVisOD); JRR-AOD (AOD550 [1], AOD_channel, AngsExp1/2); JRR-ADP (banderas de humo, polvo y ceniza, SAAI, DSDI); JRR-VolcanicAsh (AshTopHeight [m], AshMassLoading [t/km²], AshConfidence). Más NWP_GFS-INTP y NWP_GFS-GRID: el GFS interpolado a cada gránulo, que es entrada, no producto
 - **Formato**: NetCDF4
 - **Resolución**: swath 750 m
-- **Notas**: Un archivo por gránulo y producto. Reprocesar agrega versiones (campo _c del nombre): usar la más reciente por gránulo.
+- **Notas**: Un archivo por gránulo y producto. Reprocesar agrega versiones (campo _c del nombre): usar la más reciente por gránulo. Aquí sat va como npp|j01|n21.
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/atmosphere/` · patrón `JRR-<producto>_v3r2_{sat}_s*_e*_c*.nc`
+- Ruta: `level2/atmosphere/` · patrón `JRR-<producto>_v3r2_{sat}_s*_e*_c*.nc (CloudCoverLayers es v2r0); NOAA20_VIIRS_750M_*_NWP_GFS-*.nc`
 - Origen: CSPP ATMOS 1.0 → run_atmos_edr.sh
 - Depende de: l1-viirs-sdr + GFS
 
@@ -223,14 +224,14 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l2-cryo` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: JRR-IceAge (IceAge, IceThickness), JRR-IceConcentration (IceConc, IceSrfTemp) [?]
+- **Contenido**: JRR-IceAge (IceAge, categórico 1–8 de hielo nuevo a viejo; IceThickness [m]); JRR-IceConcentration (IceConc [%], IceSrfTemp [K]); con SummaryQC de calidad
 - **Formato**: NetCDF4
 - **Resolución**: swath 750 m
 - **Notas**: Sin GeoTIFF ni vista: Polar2Grid 3.2 no tiene lector.
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/cryosphere/` · patrón `JRR-IceAge_*.nc, JRR-IceConcentration_*.nc`
+- Ruta: `level2/cryosphere/` · patrón `JRR-IceAge_v3r2_{sat}_*.nc, JRR-IceConcentration_v3r3_{sat}_*.nc`
 - Origen: CSPP Cryosphere 1.0 → run_cryo_edr.sh
 - Depende de: l1-viirs-sdr + l2-atmos (CloudMask, CloudHeight)
 
@@ -242,13 +243,14 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l2-acspo` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: sea_surface_temperature [K] y campos de calidad (?)
-- **Formato**: NetCDF4
+- **Contenido**: sea_surface_temperature [K] (sub-skin), sses_bias y sses_standard_deviation [K], quality_level, l2p_flags, dt_analysis [K], wind_speed [m/s], sea_ice_fraction [1]
+- **Formato**: NetCDF4, GHRSST L2P
 - **Resolución**: swath 750 m
+- **Notas**: Formato estándar de GHRSST: filtrar por quality_level (5 es el mejor).
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/acspo/` · patrón `*ACSPO*.nc (?)`
+- Ruta: `level2/acspo/` · patrón `<AAAAMMDDhhmmss>-CSPP-L2P_GHRSST-SSTsubskin-VIIRS_<NPP|N20|N21>-ACSPO_V2.80-v02.0-fv01.0.nc`
 - Origen: CSPP ACSPO 3.0 → run_acspo_edr.sh
 - Depende de: l1-viirs-sdr + GFS/CMCSST
 
@@ -260,14 +262,33 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l2-fires` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: detecciones puntuales: posición, confianza, T4 [K], FRP [MW] (?)
+- **Contenido**: grupo Fire Pixels: una fila por incendio con FP_latitude, FP_longitude, FP_T4 [K], FP_power (FRP) [MW], FP_confidence, ángulos [°]; grupo Fire Mask: fire_mask en la malla de 375 m
 - **Formato**: NetCDF4
 - **Resolución**: puntos, 375 m
-- **Notas**: Aquí sat va como npp|j01|j02.
+- **Notas**: NetCDF con grupos. Aquí sat va como npp|j01|j02. Los NOAA_AFIMG_*.log del mismo directorio son logs, no producto.
 
 <details><summary>Para operación</summary>
 
 - Ruta: `level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*.nc`
+- Origen: CSPP Active Fire 2.1 → run_active_fire_edr.sh
+- Depende de: l1-viirs-sdr (bandas I)
+
+</details>
+
+<a id="l2-fires-txt"></a>
+
+#### Incendios activos: lista en texto
+
+`l2-fires-txt` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
+
+- **Contenido**: una línea por incendio: latitud y longitud [°], T4 [K], tamaño del pixel a lo largo y ancho del barrido [km], confianza (7 baja, 8 nominal, 9 alta), FRP [MW]
+- **Formato**: texto (CSV con comentarios #)
+- **Resolución**: puntos, 375 m
+- **Notas**: El formato más fácil de usar para quien solo quiere los puntos de calor.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*_cspp_dev.txt`
 - Origen: CSPP Active Fire 2.1 → run_active_fire_edr.sh
 - Depende de: l1-viirs-sdr (bandas I)
 
@@ -282,7 +303,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: WaterDetection (clases de agua, nube, nieve, sin dato)
 - **Formato**: NetCDF4
 - **Resolución**: swath 375 m
-- **Notas**: Solo gránulos diurnos: una pasada nocturna termina bien y sin productos. Aquí sat va como n20|n21 (NPP ?).
+- **Notas**: Solo gránulos diurnos: una pasada nocturna termina bien y sin productos. Aquí sat va como npp|n20|n21.
 
 <details><summary>Para operación</summary>
 
@@ -298,14 +319,14 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l2-mirs` · ATMS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: IMG: tasa de lluvia [mm/h], agua precipitable [mm], agua líquida de nube, temperatura de piel [K], 22 temperaturas de brillo con corrección de limbo [K]; SND: perfiles de temperatura y humedad
+- **Contenido**: IMG: RR tasa de lluvia [mm/h], TPW agua precipitable [mm], CLW agua líquida de nube [mm], TSkin temperatura de piel [K], BT 22 canales [K] con corrección de limbo, emisividad, hielo marino, nieve; SND: perfiles de temperatura y humedad
 - **Formato**: NetCDF4
 - **Resolución**: swath: 16–50 km
-- **Notas**: Un par IMG/SND por pasada.
+- **Notas**: Un par IMG/SND por pasada. Aquí sat va como npp|n20|n21.
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/mirs/` · patrón `NPR-MIRS-IMG_*.nc, NPR-MIRS-SND_*.nc`
+- Ruta: `level2/mirs/` · patrón `NPR-MIRS-IMG_v11r9_{sat}_*.nc, NPR-MIRS-SND_v11r9_{sat}_*.nc`
 - Origen: CSPP MiRS 4.0 → run_mirs_edr.sh
 - Depende de: l1-atms-sdr
 
@@ -317,14 +338,14 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `l2-sounder` · CrIS+ATMS · NOAA-20, NOAA-21
 
-- **Contenido**: NUCAPS-EDR: perfiles de temperatura, humedad, ozono y gases traza en 100 niveles, CAPE, CIN, LI; NUCAPS-CCR-AR: radiancias limpiadas de nube; NUCAPS-OLR: onda larga saliente
+- **Contenido**: NUCAPS-EDR: perfiles de temperatura, humedad, ozono y gases traza en 100 niveles, CAPE, CIN, LI; NUCAPS-CCR y NUCAPS-CCR-AR: radiancias de CrIS limpiadas de nube; NUCAPS-OLR: onda larga saliente
 - **Formato**: NetCDF4
 - **Resolución**: FOR de CrIS, ~50 km
 - **Notas**: Sin NPP: HEAP 3.0 retiró su soporte. NUCAPS-ALL-HR también cae aquí pero es intermedio, no producto.
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/sounder/` · patrón `NUCAPS-EDR_*.nc, NUCAPS-CCR-AR_*.nc, NUCAPS-OLR_*.nc`
+- Ruta: `level2/sounder/` · patrón `NUCAPS-{EDR,CCR,CCR-AR,OLR}_v3r2_{sat}_*.nc`
 - Origen: CSPP HEAP 3.0 → run_heap_edr.sh
 - Depende de: l1-cris-sdr + l1-atms-sdr + GFS
 
@@ -357,7 +378,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `gt-viirs-mbands` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: M01–M11 reflectancia [%], M12–M16 temperatura de brillo [K]; ángulos solar y satelital [°]; radiancias
+- **Contenido**: M01–M11 reflectancia [%], M12–M16 temperatura de brillo [K]; radiancias (m01_rad…m16_rad); ángulos solar y satelital [°]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_750m
 - **Notas**: Dato, sin vista.
@@ -376,7 +397,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `gt-viirs-ibands` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: I01–I03 reflectancia [%], I04–I05 temperatura de brillo [K]; ángulos [°]; radiancias
+- **Contenido**: I01–I03 reflectancia [%], I04–I05 temperatura de brillo [K]; radiancias (i01_rad…i05_rad); ángulos [°]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_375m
 - **Notas**: Dato, sin vista.
@@ -395,10 +416,10 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `gt-viirs-dnb` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: dynamic_dnb (adimensional, rango ?); ángulos solar, satelital y lunar [°]
+- **Contenido**: dynamic_dnb, adimensional y no acotado a 0–1 (una pasada de NOAA-20 dio 0 a 37 con media 0.34); ángulos solar, satelital y lunar [°]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_750m
-- **Notas**: La vista estira por percentiles. Los ángulos no llevan vista.
+- **Notas**: La vista estira por percentiles. Los ángulos no llevan vista. Los adaptive/histogram/hncc_dnb de NOAA-20 que hay en tahan son de corridas viejas: ya no se producen.
 
 <details><summary>Para operación</summary>
 
@@ -639,7 +660,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `gt-lsr-surfrefl` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: surf_refl I01–I03, M01–M05, M07, M08, M10, M11 [?]
+- **Contenido**: surf_refl I01–I03, M01–M05, M07, M08, M10, M11 [%] (el NetCDF la trae como fracción; Polar2Grid la entrega en %)
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_750m
 - **Notas**: Dato, sin vista.
@@ -785,11 +806,11 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: Temperature_853mb [K]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_5km
-- **Notas**: El nivel del archivo es el del producto (853/707/497 mb); se habla de 850/700/500 hPa.
+- **Notas**: El nivel del archivo es el del producto (853/707/497 mb); se habla de 850/700/500 hPa. NOAA-20 sale como j01_atms-cris_… y no noaa20_ (nombre por corregir).
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_*_Temperature_853mb_*_wgs84_geo_5km.tif`
+- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_853mb_*_wgs84_geo_5km.tif`
 - Vista: `vistas/sounder/` con `nucaps_temp_850.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
@@ -806,11 +827,11 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: Temperature_707mb [K]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_5km
-- **Notas**: El nivel del archivo es el del producto (853/707/497 mb); se habla de 850/700/500 hPa.
+- **Notas**: El nivel del archivo es el del producto (853/707/497 mb); se habla de 850/700/500 hPa. NOAA-20 sale como j01_atms-cris_… y no noaa20_ (nombre por corregir).
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_*_Temperature_707mb_*_wgs84_geo_5km.tif`
+- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_707mb_*_wgs84_geo_5km.tif`
 - Vista: `vistas/sounder/` con `nucaps_temp_700.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
@@ -827,11 +848,11 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: Temperature_497mb [K]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_5km
-- **Notas**: El nivel del archivo es el del producto (853/707/497 mb); se habla de 850/700/500 hPa.
+- **Notas**: El nivel del archivo es el del producto (853/707/497 mb); se habla de 850/700/500 hPa. NOAA-20 sale como j01_atms-cris_… y no noaa20_ (nombre por corregir).
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_*_Temperature_497mb_*_wgs84_geo_5km.tif`
+- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_497mb_*_wgs84_geo_5km.tif`
 - Vista: `vistas/sounder/` con `nucaps_temp_500.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
@@ -848,10 +869,11 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: Skin_Temperature [K]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_5km
+- **Notas**:  NOAA-20 sale como j01_atms-cris_… y no noaa20_ (nombre por corregir).
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_*_Skin_Temperature_*_wgs84_geo_5km.tif`
+- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Skin_Temperature_*_wgs84_geo_5km.tif`
 - Vista: `vistas/sounder/` con `nucaps_skin_temp.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
@@ -946,7 +968,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 `gt-mirs-otros` · ATMS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: clw [?], tskin [K], btemp_88v [K]
+- **Contenido**: clw [mm], tskin [K], btemp_88v [K]
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_5km
 - **Notas**: Dato, sin vista. El 88 GHz sin polarización horizontal no distingue mar despejado de convección.
@@ -981,17 +1003,4 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - Depende de: l2-sounder
 
 </details>
-
-## Por verificar
-
-Los `?` marcan datos que faltan confirmar contra un archivo real en tahan (`ncdump -h`, `gdalinfo`), en vez de deducirlos:
-
-- [Atmósfera y nubes (VIIRS Enterprise)](#l2-atmos): contenido
-- [Criósfera: hielo marino](#l2-cryo): contenido
-- [Temperatura superficial del mar (ACSPO)](#l2-acspo): contenido, patron
-- [Incendios activos](#l2-fires): contenido
-- [Inundaciones](#l2-flood): notas
-- [Day/Night Band (dynamic)](#gt-viirs-dnb): contenido
-- [Reflectancia de superficie por banda](#gt-lsr-surfrefl): contenido
-- [Agua líquida de nube, temperatura de piel y 88 GHz](#gt-mirs-otros): contenido
 
