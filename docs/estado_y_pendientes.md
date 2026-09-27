@@ -261,8 +261,20 @@ stratus) y **METOP** (`metop2.sh`, en tsom03). Aqua no entra en ninguna: ya no s
    de ACSPO y Active Fire con dos corridas).
 3. **Cubre todo lo que publica la vieja, o se decide dejarlo.** Hoy la cadena nueva tiene su
    equivalente de todo menos **AFAI** (índice de algas flotantes, `jpss/viirs/afai` en kawak), que
-   no produce. Hay que traerlo o decidir explícitamente que se deja. Las nubes cambian de
-   producto (JRR en vez de CLAVR-x): eso es un cambio de producto, y se anuncia.
+   no produce en operación. Hay que traerlo o decidir explícitamente que se deja. Las nubes
+   cambian de producto (JRR en vez de CLAVR-x): eso es un cambio de producto, y se anuncia.
+
+   **El AFAI histórico ya corre con nuestros contenedores** (verificado en tahan el 2026-09-26),
+   así que traerlo es pasar a operación algo que existe, no empezar de cero. Lo hace urielm, para
+   estudiar casos de sargazo: `/opt/lanot_shared/scripts/viirs_afai_{procesar_rango,geotiff,atmos}.sh`
+   extrae los SDR de los tar de `/depot/polar/npp_jpss/viirs`, pide a
+   `polar2grid_v3.2-mapdrawer.sif` M05, M07, M10 y los cuatro ángulos en `wgs84_geo_750m`, y saca
+   la máscara de nubes con **copias** de `run_atmos_edr.sh` y `run_polar2grid_edr.sh`. Todo en
+   `/data/tmp/viirs_afai_historico`. Tres cosas a tener en cuenta: **(a)** el índice en sí no lo
+   calculan esos scripts, les entregan los GeoTIFF a otro equipo; **(b)** las copias son de
+   mediados de agosto (6879e2f y d01d885) y no tienen el criterio `M = N` de ATMOS ni lo posterior;
+   **(c)** `/opt/lanot_shared` depende de la interfaz de esos dos scripts y del `.sif` de
+   Polar2Grid, así que un cambio ahí puede romperle el histórico.
 
    **Los quicklooks de ATMS, CrIS y OMPS se dejan, decidido el 2026-09-26.** Son lo que kawak
    sirve en `polar/npp-jpss1/{atms,cris,omps}` —symlinks a `/dataservice/npp-jpss1/<sensor>/vistas`—

@@ -33,7 +33,7 @@ septiembre: recepción, procesamiento y publicación en kawak.
 | Sondeos NUCAPS y Skew-T en 14 estaciones del SMN | no (carpeta vacía desde 2022) | sí, NOAA-20 y NOAA-21 |
 | Ozono total (OMPS) | no | sí |
 | Lluvia, agua precipitable e hielo convectivo (ATMS) | no | sí, los tres satélites |
-| Índice de algas flotantes (AFAI) | sí | no |
+| Índice de algas flotantes (AFAI) | sí | histórico sí (casos de sargazo); operativo no |
 | Quicklooks por canal de ATMS, CrIS y OMPS | sí | no |
 
 **Lo que se deja no se usa.** En los registros del servidor web del 1 de agosto de 2025 al 26
@@ -46,7 +46,8 @@ la lluvia y el hielo convectivo.
 
 1. **Varios días de operación sin intervención.** En curso desde el 23 de septiembre.
 2. **Pasadas encimadas.** El barrido ya las recoge; falta verificarlo con un par real.
-3. **AFAI.** Traerlo a la cadena nueva o dejarlo, por decisión explícita.
+3. **AFAI.** Ya se reconstruye el histórico con los mismos contenedores; falta decidir si se
+   pasa a operación o se deja.
 4. **Publicación completa.** Hoy kawak recibe de la nueva solo lo que la vieja no hace; al
    apagar se publica todo y la página muestra las secciones nuevas (sondeos, ozono, ATMS).
 5. **Avisos de falla** cuando una etapa falla varias veces seguidas (monitoreo común con GOES).
