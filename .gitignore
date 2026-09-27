@@ -24,3 +24,6 @@ temp/
 # Cachés de Python: scripts/publicar_vistas.py se compila al importarse
 __pycache__/
 *.pyc
+
+# Se rehace con scripts/generar_catalogo.py --pdf; es para mandar, no se versiona
+docs/catalogo_productos.pdf

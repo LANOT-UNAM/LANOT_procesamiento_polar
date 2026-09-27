@@ -7,6 +7,12 @@
 #
 #   python3 scripts/generar_catalogo.py               # regenera el .md
 #   python3 scripts/generar_catalogo.py --verificar   # contrasta TSV ÷ código
+#   python3 scripts/generar_catalogo.py --pdf         # además, docs/catalogo_productos.pdf
+#
+# El PDF lo hace pandoc con xelatex, y NO se versiona: es para mandarlo, y se
+# rehace en un segundo. Las anclas de las fichas son <a id> —lo único que
+# GitHub respeta en un .md—, pero LaTeX descarta el HTML crudo y los enlaces
+# del resumen quedarían rotos; un filtro Lua las convierte en anclas de verdad.
 #
 # --verificar existe para que el catálogo no se quede atrás sin que nadie lo
 # note. Revisa que:
@@ -28,11 +34,15 @@
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from collections import OrderedDict
 
 TSV = "docs/catalogo_productos.tsv"
 MD = "docs/catalogo_productos.md"
+PDF = "docs/catalogo_productos.pdf"
 SCRIPTS = "scripts"
 RENDERIZADORES = ["scripts/run_polar2grid_l1.sh", "scripts/run_polar2grid_edr.sh"]
 
@@ -368,10 +378,44 @@ def verificar(filas):
     return 0
 
 
+FILTRO_ANCLAS = r"""
+function RawInline(el)
+  if el.format:match("html") then
+    local id = el.text:match('^<a id="([^"]+)">$')
+    if id then return pandoc.Span({}, {id = id}) end
+    if el.text == "</a>" then return {} end
+  end
+end
+"""
+
+
+def generar_pdf():
+    faltan = [h for h in ("pandoc", "xelatex") if not shutil.which(h)]
+    if faltan:
+        sys.exit(f"ERROR: para el PDF hace falta {' y '.join(faltan)}")
+    with tempfile.NamedTemporaryFile("w", suffix=".lua", delete=False) as f:
+        f.write(FILTRO_ANCLAS)
+        filtro = f.name
+    try:
+        subprocess.run(
+            ["pandoc", MD, "-o", PDF, "--pdf-engine=xelatex", "--lua-filter", filtro,
+             "--toc", "--toc-depth=2",
+             "-V", "lang=es", "-V", "mainfont=DejaVu Sans", "-V", "fontsize=10pt",
+             "-V", "geometry:margin=2cm", "-V", "colorlinks=true",
+             "-M", "title=Catálogo de productos de la cadena polar",
+             "-M", "author=LANOT-UNAM"],
+            check=True)
+    finally:
+        os.unlink(filtro)
+    print(f"✅ {PDF}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Genera o verifica el catálogo de productos.")
     ap.add_argument("--verificar", action="store_true",
                     help="contrasta el TSV contra los scripts y LANOT_tools, sin escribir")
+    ap.add_argument("--pdf", action="store_true",
+                    help=f"además del .md, genera {PDF} (pandoc + xelatex)")
     args = ap.parse_args()
 
     if not os.path.isfile(TSV):
@@ -384,6 +428,8 @@ def main():
     with open(MD, "w", encoding="utf-8") as f:
         f.write(generar_md(filas) + "\n")
     print(f"✅ {MD}: {len(filas)} productos")
+    if args.pdf:
+        generar_pdf()
 
 
 if __name__ == "__main__":
