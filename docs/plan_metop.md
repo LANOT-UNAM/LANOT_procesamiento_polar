@@ -24,9 +24,14 @@ metopizer, el sistema viejo no se apaga y stratus y tsom03 siguen atados a ella.
   `/opt/lanot/polares` con lo demás.
 - **Lo que entra: METOP-B y METOP-C** (`metop-1` y `metop-3` en `lspass`), por `chain6`
   (telemetría `ahrpt`), 3 a 5 pasadas al día de ~0.25 GB.
-- **Lo que no entra:** Aqua; los NOAA heredados (NOAA-15/19, sin pasadas desde agosto de 2025,
-  `referencia/noaa`); y METOP-SG, cuya `chain3` (`metopsgdb`) está inactiva — si empieza a
-  llegar, será otra rama y otro contenedor.
+- **Lo que no entra, nunca:** Aqua (se apaga entre finales de 2026 y principios de 2027) y los
+  NOAA heredados (NOAA-15/19, sin pasadas desde agosto de 2025, `referencia/noaa`).
+- **Lo que no entra en este plan, pero sí en este repositorio: METOP-SG.** No es una exclusión
+  sino un "todavía no": su `chain3` (`metopsgdb`) está configurada en TeraScan pero inactiva, y
+  no ha llegado un solo crudo con qué probar. Tampoco se aprovecharía nada de esta rama —otros
+  instrumentos (METimage, IASI-NG, MWS…), otro software de Level 1—, así que será otro
+  contenedor y otra rama, con la misma recepción, cola, renderizado y publicación. Cuando
+  empiece a llegar, se escribe su propio plan.
 - **Mismas reglas que JPSS**: los `.def` instalan binarios y lo estático o dinámico vive en el
   host; marcador `.done` solo si la etapa produjo **todo** lo esperado; lo intermedio en
   `/data/tmp`; logs en `/var/log/lanot/polares/<etapa>/`.
@@ -170,7 +175,9 @@ convivan (el mismo cuidado que con NPP y NOAA-20).
   documento que esté mal.
 
 **Futuro**
-- ¿Hay fecha de fin para METOP-B, o planes de recibir METOP-SG por `chain3`?
+- ¿Hay fecha de fin para METOP-B?
+- ¿Hay planes de recibir METOP-SG por `chain3`? Que `metopsgdb` ya esté configurada en
+  TeraScan sugiere que alguien lo previó: ¿quién, y qué falta para activarla?
 
 ## Criterio para apagar la rama METOP vieja
 

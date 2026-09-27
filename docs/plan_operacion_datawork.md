@@ -673,8 +673,9 @@ siguen atados a sus instalaciones.
    y su turno en la cola.
 
 **Lo que no entra:** Aqua (nadie lo procesa; sus crudos solo se guardan) y los NOAA heredados
-(NOAA-15/19, sin pasadas desde agosto de 2025). Si METOP-SG empieza a llegar —`chain3` es
-`metopsgdb`, hoy inactiva—, será otra rama y otro contenedor.
+(NOAA-15/19, sin pasadas desde agosto de 2025). METOP-SG queda fuera de esta fase pero no del
+repositorio: si empieza a llegar —`chain3` es `metopsgdb`, hoy inactiva—, será otra rama y otro
+contenedor, con su propio plan.
 
 ---
 
