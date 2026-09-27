@@ -634,6 +634,9 @@ apagado no duplica nada.
 
 ## Fase 4 — METOP en contenedores, y apagar el sistema viejo
 
+**El detalle de METOP vive desde el 2026-09-26 en `plan_metop.md`**, con las preguntas para quien
+armó la rama vieja. Lo de abajo es el resumen con que se acordó la fase.
+
 Acordado el 2026-09-22. El destino no es solo repartir JPSS: es que **los tres servidores
 —tahan, stratus y tsom03— puedan tomar cualquier pasada**, y para eso el trabajo tiene que estar
 dentro de contenedores; si no, habría que instalar AAPP, el metopizer y compañía en los tres. Eso

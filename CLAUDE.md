@@ -52,7 +52,7 @@ sudo ./scripts/preparar_servidor.sh --solo 4     # solo una
 sudo ./scripts/instalar.sh
 ```
 
-**Estado y pendientes**: `docs/estado_y_pendientes.md` es el documento vivo — qué eslabón se ha probado con datos reales, qué falta y qué preguntas siguen abiertas. Los otros dos documentos de `docs/` describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
+**Estado y pendientes**: `docs/estado_y_pendientes.md` es el documento vivo — qué eslabón se ha probado con datos reales, qué falta y qué preguntas siguen abiertas. `docs/plan_metop.md` es el plan para integrar METOP-B/C, todavía por discutir con quien armó la rama vieja. Los otros dos documentos de `docs/` describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
 ## Arquitectura
 
