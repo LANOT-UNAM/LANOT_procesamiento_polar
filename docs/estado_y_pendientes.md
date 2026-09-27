@@ -93,9 +93,9 @@ Pendiente:
 
 **Al retomar:**
 
-1. **Rótulo del 165 GHz, sin urgencia.** Empujar LANOT_tools (`5868a3c`) y esta cadena, y
-   recompilar `polar2grid_v3.2-mapdrawer.sif` con el pin nuevo. No hace falta `install.sh`
-   de LANOT_tools ni reinstalar la cadena. Hasta entonces las vistas salen "165 GHz".
+1. **Rótulo del 165 GHz, sin urgencia.** Va en la misma recompilación que el punto 5: el
+   pin ya está en `a94d579`, que incluye `5868a3c`. Hasta entonces las vistas salen
+   "165 GHz".
 2. ~~Informe breve que justifique pasar del sistema viejo al nuevo.~~ **Escrito**:
    `docs/informe_transicion_jpss.md`, una página para la junta del lunes 2026-09-28. Se
    convierte con `pandoc informe_transicion_jpss.md -o informe.pdf --pdf-engine=xelatex
@@ -106,14 +106,17 @@ Pendiente:
    `--lat-south` por el pendiente 5, así que la barra tapa un poco la orilla sur.
 3. **Idioma de los rótulos**, en la junta del lunes 2026-09-28 (ver abajo).
 4. **La página de kawak** tiene que mostrar `jpss/atms/`.
-5. **`--lat-south` le corta el norte a las pasadas cortas.** `make_south_room`
-   (`mapdrawer.py` de LANOT_tools) hace sitio para la barra de color conservando el tamaño:
-   recorta filas del norte y las pega vacías al sur. Una pasada que termina al norte de
-   11°N pierde su parte norte sin aviso — la NOAA-20 de las 09:20 del 26 (6 gránulos, borde
-   sur en 16.3°N) perdió 110 de 304 filas, todo lo de arriba de ~26°N. Afecta a todas las
-   vistas (VIIRS, sondeos, ozono, MiRS); las pasadas completas bajan más al sur y no lo
-   sufren. Arreglo: agrandar el lienzo hacia el sur en vez de recortar; luego pin y
-   recompilación. Imágenes de la prueba en tahan, `/data/tmp/mirs_prueba/cmp/`.
+5. ~~**`--lat-south` le corta el norte a las pasadas cortas.**~~ **Arreglado el 2026-09-27**
+   en LANOT_tools `a94d579`, pin movido en `polar2grid_v3.2-mapdrawer.def`. Falta: empujar
+   LANOT_tools y esta cadena, y recompilar la imagen. No hace falta `install.sh` de
+   LANOT_tools ni reinstalar la cadena. `make_south_room` recortaba del norte tantas filas
+   como pedía el espacio sur, sin mirar si tenían dato. Medido en tahan, solo actúa en
+   pasadas cortas (en las completas el borde sur ya está al sur de 11°N), y en todas cortaba
+   dato: 9.5 % y 24 % en dos sondeos de NOAA-20, y 67 % en un ATMOS de NPP. Ahora solo
+   recorta filas vacías y, si no alcanzan, agranda el lienzo hacia el sur, así que esas
+   vistas salen más altas. Con el norte vacío hace lo mismo que antes. Sigue sin actuar
+   cuando el espacio pedido es mayor que la imagen entera (pasadas de muy pocos gránulos):
+   ahí la barra se sigue encimando al dato, pero ya no se pierde nada.
 
 Salió de revisar qué se pierde al jubilar los quicklooks de ATMS (ver "Condiciones para
 jubilar la cadena vieja", punto 3). En vez de reproducir 22 canales en bruto que nadie mira,
