@@ -24,8 +24,10 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ## 2026-09-27: el disco, y un GFS truncado que tumbó la tarde del 26
 
-**`/data` está al 96 %**: 1.7 TB libres de 37 TB, compartidos con los demás proyectos del
-servidor. De la cadena: `level2` 885 GB, `level1` 668 GB, `geotiff` 352 GB, `level0` 75 GB,
+**`/data` estaba al 96 %**: 1.7 TB libres de 37 TB, compartidos con los demás proyectos del
+servidor. El mismo día se borró `/data/respaldo` (18 TB de tars de 2025 de la cadena vieja,
+todos ya en `/depot` salvo una versión reprocesada de un compuesto de inundación) y bajó al
+47 %, con 20 TB libres. Lo que sigue es el reparto antes de ese borrado. De la cadena: `level2` 885 GB, `level1` 668 GB, `geotiff` 352 GB, `level0` 75 GB,
 `vistas` 1 GB. Y **`/data/tmp`, 872 GB**, que casi iguala a Level 2:
 
 - ~507 GB en directorios de trabajo de corridas fallidas (`atmos_work_*`, `lsr_work_*`,
