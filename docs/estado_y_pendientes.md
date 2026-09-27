@@ -22,9 +22,45 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-09-27: el disco, y un GFS truncado que tumbó la tarde del 26
+
+**`/data` está al 96 %**: 1.7 TB libres de 37 TB, compartidos con los demás proyectos del
+servidor. De la cadena: `level2` 885 GB, `level1` 668 GB, `geotiff` 352 GB, `level0` 75 GB,
+`vistas` 1 GB. Y **`/data/tmp`, 872 GB**, que casi iguala a Level 2:
+
+- ~507 GB en directorios de trabajo de corridas fallidas (`atmos_work_*`, `lsr_work_*`,
+  `heap_*`, `omps_*`, `sdr_work_*`), que los `run_*.sh` conservan para depurar. Casi todos
+  son de ATMOS, a ~10 GB cada uno.
+- 285 GB de `viirs_afai_historico` y ~75 GB de pruebas de agosto (`CLAVRx_3_0`,
+  `polar2grid_l2`, `data`).
+
+Hay además ~19 GB de GFS de mayo sueltos en la raíz de `/data/ancillary`, de antes de que
+ATMOS tuviera su propio caché, y 17 GB en `/data/output/jpss/tmp`, de la primera fase.
+
+**Por qué ATMOS falló toda la tarde del 2026-09-26.**
+`atmos/gfs.t12z.pgrb2.0p25.f009.20260926` pesa 277 MB, cuando los demás pesan ~520: la
+descarga se cortó a la mitad. Las cuatro pasadas de la tarde lo usaron, y cada corrida dio
+`completed 0 products` con `FATAL … wgrib_avn.cpp: End of resource reached when reading
+message`. El archivo sigue en el caché, así que nada lo repone: ni el segundo intento de
+`run_atmos_edr.sh` (sin `-l`) ni el updater lo vuelven a bajar, porque ya existe. Las
+cuatro pasadas agotaron sus tres reintentos del barrido y quedaron en `.fallido`, sin LSR
+ni CRYO. Cada intento dejó ~10 GB en `/data/tmp`: 19 directorios solo ese día.
+
+Pendiente, sin urgencia (la idea es observar dos semanas de operación antes de tocar nada):
+
+- **Validar lo que descarga `update_atmos_ancillary.sh`**: tamaño mínimo, o leer el GRIB
+  entero. Un archivo truncado no debe quedarse en el caché como si fuera bueno. El de
+  arriba se puede borrar ya: ninguna pasada nueva usa ese ciclo.
+- **La limpieza del pendiente 5 abarca más de lo que decía.** No es solo quitar duplicados
+  de `JRR-*`. Es un script en cron (el crontab de `lanotadm` hoy no tiene ninguno) que
+  borre los directorios de `/data/tmp` de más de N días y aplique retención por nivel.
+  Level 0 y Level 1 son los candidatos obvios: pesan mucho y nadie los usa fuera de la
+  cadena. También barrería los restos viejos: `geotiff/lsr_rgb/`, los DNB viejos de abajo y
+  `/data/output/jpss/tmp`.
+
 ## 2026-09-27: catálogo de productos
 
-`docs/catalogo_productos.tsv` describe los 45 productos de Level 1 en adelante (Level 0
+`docs/catalogo_productos.tsv` describe los 46 productos de Level 1 en adelante (Level 0
 queda fuera: nadie lo usa fuera de la cadena). Es para dos públicos: el externo, que quiere
 saber qué hay, en qué formato y con qué unidades, y el interno, que necesita saber de dónde
 sale cada cosa. El TSV es la fuente y `docs/catalogo_productos.md` se genera con
