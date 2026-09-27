@@ -107,16 +107,22 @@ Pendiente:
 3. **Idioma de los rótulos**, en la junta del lunes 2026-09-28 (ver abajo).
 4. **La página de kawak** tiene que mostrar `jpss/atms/`.
 5. ~~**`--lat-south` le corta el norte a las pasadas cortas.**~~ **Arreglado el 2026-09-27**
-   en LANOT_tools `a94d579`, pin movido en `polar2grid_v3.2-mapdrawer.def`. Falta: empujar
-   LANOT_tools y esta cadena, y recompilar la imagen. No hace falta `install.sh` de
-   LANOT_tools ni reinstalar la cadena. `make_south_room` recortaba del norte tantas filas
+   en LANOT_tools `a94d579` y afinado en `b37ad84`, pin movido en
+   `polar2grid_v3.2-mapdrawer.def`. `make_south_room` recortaba del norte tantas filas
    como pedía el espacio sur, sin mirar si tenían dato. Medido en tahan, solo actúa en
    pasadas cortas (en las completas el borde sur ya está al sur de 11°N), y en todas cortaba
    dato: 9.5 % y 24 % en dos sondeos de NOAA-20, y 67 % en un ATMOS de NPP. Ahora solo
-   recorta filas vacías y, si no alcanzan, agranda el lienzo hacia el sur, así que esas
-   vistas salen más altas. Con el norte vacío hace lo mismo que antes. Sigue sin actuar
-   cuando el espacio pedido es mayor que la imagen entera (pasadas de muy pocos gránulos):
-   ahí la barra se sigue encimando al dato, pero ya no se pierde nada.
+   recorta filas vacías y, si no alcanzan para la barra, agranda el lienzo hacia el sur
+   solo lo que la barra ocupa (~1/9 de la altura), no hasta 11°N. La primera versión
+   (`a94d579`) crecía hasta 11°N, y una vista de incendios que acababa en 28°N pasó de
+   1798 a 3353 filas, casi todas de mapa vacío; con `b37ad84` queda en 1998. Con el norte
+   vacío hace lo mismo que antes, y ahora también actúa en pasadas de muy pocos gránulos,
+   donde el espacio pedido excede la imagen.
+
+   Las 61 vistas que el recorte viejo había dañado (36 pasadas del 14-ago al 27-sep, casi
+   todas de incendios) se rehicieron solo vistiendo de nuevo, sin Polar2Grid, con
+   `/data/tmp/revestir_latsouth_20260927/revestir.sh` (la lista va al lado, y las vistas
+   viejas en `respaldo/`). Se repite con la imagen de `b37ad84`.
 
 Salió de revisar qué se pierde al jubilar los quicklooks de ATMS (ver "Condiciones para
 jubilar la cadena vieja", punto 3). En vez de reproducir 22 canales en bruto que nadie mira,
