@@ -26,42 +26,46 @@ El objetivo es migrar de scripts monolíticos en servidor ("bare metal") a una a
 
 ## 🏗️ Arquitectura del Flujo
 
-`recibe.sh` recibe el RAW de la antena y enruta; `procesar_pasada.sh` encadena los once eslabones de una pasada, con barreras entre niveles y hasta tres etapas simultáneas; `barrer_pendientes.sh` va en cron y recoge lo que se quedó atrás.
+`recibe.sh` recibe el RAW de la antena y enruta; `procesar_pasada.sh` encadena los doce eslabones de una pasada, con barreras entre niveles y hasta tres etapas simultáneas; `barrer_pendientes.sh` va en cron y recoge lo que se quedó atrás.
 
 ```mermaid
-graph TD
-    A[Receptor Antena / Ingesta] -->|Archivo RAW| B(recibe.sh)
-    B -->|chain4 / chain5| C[Legacy: noaa2 / metop2]
-    B -->|chain2 / chain6| D[procesar_pasada.sh]
-    Z[barrer_pendientes.sh<br/>cron cada 15 min] -.->|lo que se quedó atrás| D
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 18, "rankSpacing": 30, "padding": 12}, "themeVariables": {"primaryColor": "#f6f8fa", "primaryBorderColor": "#bbbbbb", "primaryTextColor": "#222222", "lineColor": "#888888", "clusterBkg": "#fbfbf6", "clusterBorder": "#d8d4b0", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart LR
+    A["Antena<br/>RAW"] --> R["recibe.sh<br/>cadenas.tsv"]
+    R --> D["procesar_pasada.sh"]
+    Z["barrer_pendientes.sh<br/>cron cada 15 min"] -.->|reintenta| D
 
-    subgraph "Entorno Apptainer (LANOT)"
-    D --> E[RT-STPS v7.0]
-    E -->|RAW → Level 0 / RDR| F[CSPP SDR v4.1.1]
-
-    F -->|VIIRS| V[SV* · GMTCO*]
-    F -->|CrIS + ATMS| S[SCRIF* · GCRSO*<br/>TATMS* · GATMO*]
-    F -->|OMPS NM + NP| Q[GOTCO* · GONPO*]
-
-    V --> G[ATMOS · ACSPO<br/>Active Fire · Flood]
-    G -->|ATMOS primero| L[CSPP LSR · CSPP CRYO]
-    S --> N[CSPP HEAP v3.0<br/>sondeos NUCAPS]
-    Q --> O[CSPP OMPS L2<br/>V8TOz · V8PRO]
-
-    V -->|Level 1 → GeoTIFF + vistas| H[Polar2Grid v3.2 + LANOT_tools]
-    G -->|Level 2 → GeoTIFF + vistas| H
-    L --> H
-    N -.->|espera NUCAPS-EDR| H
-    O -.->|espera Polar2Grid 3.3| H
+    subgraph AP["Apptainer"]
+        B["RT-STPS 7.0<br/>Level 0 / RDR"] --> C["CSPP SDR 4.1.1<br/>Level 1"]
+        C -->|VIIRS| V["ATMOS · ACSPO<br/>Active Fire · Flood"]
+        V -->|ATMOS primero| L["LSR · CRYO"]
+        C -->|ATMS| MI["MiRS 4.0<br/>lluvia · agua precipitable"]
+        C -->|CrIS + ATMS| N["HEAP 3.0<br/>sondeos NUCAPS"]
+        C -->|OMPS NM + NP| O["OMPS L2<br/>ozono total"]
+        C -->|Level 1| P["Polar2Grid 3.2<br/>GeoTIFF"]
+        V --> P
+        L -->|LSR| P
+        MI --> P
+        N -->|mapas| P
+        N -->|perfiles| K["skewt + MetaGráfica<br/>Skew-T"]
+        P --> M["LANOT_tools<br/>vistas JPG"]
+        O -->|omps_a_geotiff.py| M
     end
 
-    H -->|GeoTIFF y JPG| I[Almacenamiento Final / Distribución]
+    D --> B
+
+    classDef l2 fill:#e8f0fe,stroke:#4a7fd4
+    classDef aux fill:#ffffff,stroke:#bbbbbb,stroke-dasharray:4 3,color:#666666
+    class V,L,MI,N,O l2
+    class Z aux
 ```
 
 **Las ramas de Level 2 no comen todas de lo mismo.** CSPP SDR produce cuatro flujos de sensor y
 cada rama se alimenta de unos y no de otros:
 
 * **VIIRS** → ATMOS, ACSPO, Active Fire, Flood, LSR, CRYO y los renderizados de Level 1.
+* **ATMS** → CSPP MiRS v4.0: lluvia, agua precipitable y temperaturas de brillo con corrección
+  de limbo, en los tres satélites.
 * **CrIS + ATMS** → los sondeos hiperespectrales de **NUCAPS**, hoy en CSPP HEAP v3.0. Es la
   única rama que consume **dos** sensores a la vez, y por eso el emparejamiento va por traslape
   de intervalos con margen (`HEAP_MARGEN_ATMS`) y no por clave de pasada. NUCAPS **no** sale de
@@ -69,11 +73,12 @@ cada rama se alimenta de unos y no de otros:
 * **OMPS** → ozono, con sus dos instrumentos —Nadir Mapper y Nadir Profiler— procesados en
   llamadas separadas de `run_sdr.sh`.
 
-Las dos flechas punteadas son ramas completas que hoy no publican vista, cada una por su motivo:
-CSPP HEAP v3.0 no produce `NUCAPS-EDR` —reportado a CIMSS, y por eso la etapa está comentada en
-`procesar_pasada.sh`— y Polar2Grid no trae lector de OMPS hasta la 3.3, que todavía no existe como
-bundle. El renderizado de sondeos, en cambio, está escrito y probado de punta a punta con gránulos
-de muestra: espera solo al producto.
+Casi todo Level 2 se renderiza con Polar2Grid —una sola vez por lector y rejilla, a GeoTIFF
+float32— y las vistas las viste LANOT_tools. Las excepciones: el ozono total, que Polar2Grid no lee
+hasta la 3.3 y convierte `scripts/omps_a_geotiff.py`; las inundaciones, cuyo GeoTIFF sale del
+convertidor del propio bundle de CSPP; los Skew-T de los sitios de radiosondeo, que dibuja `skewt`
+con MetaGráfica a partir de los perfiles de NUCAPS, y CRYO, que se queda sin renderizar porque no
+tiene lector.
 
 **La órbita no es común entre instrumentos**: el mismo sobrevuelo es `b45236` en VIIRS y `b45237`
 en OMPS. Sirve como clave dentro de un instrumento, nunca para cruzar de uno a otro — para eso,
