@@ -30,7 +30,7 @@ El objetivo es migrar de scripts monolíticos en servidor ("bare metal") a una a
 
 ```mermaid
 %%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 18, "rankSpacing": 30, "padding": 12}, "themeVariables": {"primaryColor": "#f6f8fa", "primaryBorderColor": "#bbbbbb", "primaryTextColor": "#222222", "lineColor": "#888888", "clusterBkg": "#fbfbf6", "clusterBorder": "#d8d4b0", "edgeLabelBackground": "#ffffff"}}}%%
-flowchart LR
+flowchart TD
     A["Antena<br/>RAW"] --> R["recibe.sh<br/>cadenas.tsv"]
     R --> D["procesar_pasada.sh"]
     Z["barrer_pendientes.sh<br/>cron cada 15 min"] -.->|reintenta| D
