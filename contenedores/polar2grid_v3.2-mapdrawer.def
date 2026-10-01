@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view, skewt) + MetaGráfica
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit b37ad84860c9a59e5b5a738164dd1cec129114b7
+    LANOT_tools_commit eaa132da9eca1cf591dec3da2dc4b28f08ec2840
     MetaGrafica_commit 89dfe5e018588add00222aabe8660f92e8bc49b7
 
 %help
@@ -66,8 +66,14 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # 5868a3c: el 165 GHz se rotula 'Convective Ice (165 GHz)'; con el pin
-    # anterior saldría '165 GHz' a secas.
+    # eaa132d: el Skew-T emite cada eje con los decimales que pide el papel
+    # (2 en x, 4 en y) y las isotermas con 2 puntos: .mg ~19 % más chico y sin
+    # el zigzag de las isotermas. La figura sale igual con el pin anterior, solo
+    # peor, así que se comprueba abajo. Se perdió una compilación así el
+    # 2026-10-01: se empujó el commit y se recompiló sin mover este pin.
+    #
+    # Antes iba en b37ad84: el 165 GHz se rotula 'Convective Ice (165 GHz)'
+    # (5868a3c); con un pin anterior saldría '165 GHz' a secas.
     #
     # Antes iba en 7fc4022: microondas de ATMS (CSPP MiRS) — 'rain_rate', '_tpw_' y los
     # canales de 88 y 165 GHz en product_map, con sus tres CPT. A diferencia del
@@ -112,7 +118,7 @@ From: lanot_base_rocky9.sif
     # viaja DENTRO del .sif y que un pin viejo deja atrás en silencio. Las CPT
     # son la excepción de siempre: van montadas desde el host, así que ésas se
     # arreglan con git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=b37ad84860c9a59e5b5a738164dd1cec129114b7
+    LANOT_TOOLS_COMMIT=eaa132da9eca1cf591dec3da2dc4b28f08ec2840
 
     # MetaGráfica: skewt no dibuja pixeles, escribe un .mg y llama a `mg` para
     # compilarlo a SVG/PDF/EPS. Es un binario C++ fuera de pip, así que el venv
@@ -249,6 +255,7 @@ From: lanot_base_rocky9.sif
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'surface_T' in inspect.getsource(n.read_sounding), 'pin anterior a 88f47c6'"
     skewt --help | grep -q -- "3 sin sondeo que dibujar"
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'set_auto_mask(False)' in inspect.getsource(n.read_sounding), 'pin anterior a 931ed29: LI negativo sale n/d'"
+    /opt/lanot-tools/venv/bin/python -c "import skewt; assert hasattr(skewt.SkewT, 'isotherm'), 'pin anterior a eaa132d: isotermas de 61 puntos'"
     printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
     mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
     grep -q '<svg' /tmp/prueba_mg.svg
@@ -364,6 +371,7 @@ From: lanot_base_rocky9.sif
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'surface_T' in inspect.getsource(n.read_sounding), 'pin anterior a 88f47c6'"
     skewt --help | grep -q -- "3 sin sondeo que dibujar"
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'set_auto_mask(False)' in inspect.getsource(n.read_sounding), 'pin anterior a 931ed29: LI negativo sale n/d'"
+    /opt/lanot-tools/venv/bin/python -c "import skewt; assert hasattr(skewt.SkewT, 'isotherm'), 'pin anterior a eaa132d: isotermas de 61 puntos'"
     /opt/lanot-tools/venv/bin/python -c "import skewt, nucaps_sounding, thermo, netCDF4"
     printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
     mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
