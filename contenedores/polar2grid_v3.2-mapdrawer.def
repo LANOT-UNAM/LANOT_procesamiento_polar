@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view, skewt) + MetaGráfica
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit eaa132da9eca1cf591dec3da2dc4b28f08ec2840
+    LANOT_tools_commit 094db73109ab3707cb22a9fcf26004060151ce14
     MetaGrafica_commit 89dfe5e018588add00222aabe8660f92e8bc49b7
 
 %help
@@ -66,7 +66,11 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # eaa132d: el Skew-T emite cada eje con los decimales que pide el papel
+    # 094db73: eaa132d partió un f-string en dos renglones, que solo vale desde
+    # Python 3.12; aquí el venv es 3.9 y el %post murió en `skewt --help` con
+    # SyntaxError. LANOT_tools lo prueba ahora en tests/test_sintaxis_py39.py.
+    #
+    # Antes iba en eaa132d: el Skew-T emite cada eje con los decimales que pide el papel
     # (2 en x, 4 en y) y las isotermas con 2 puntos: .mg ~19 % más chico y sin
     # el zigzag de las isotermas. La figura sale igual con el pin anterior, solo
     # peor, así que se comprueba abajo. Se perdió una compilación así el
@@ -118,7 +122,7 @@ From: lanot_base_rocky9.sif
     # viaja DENTRO del .sif y que un pin viejo deja atrás en silencio. Las CPT
     # son la excepción de siempre: van montadas desde el host, así que ésas se
     # arreglan con git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=eaa132da9eca1cf591dec3da2dc4b28f08ec2840
+    LANOT_TOOLS_COMMIT=094db73109ab3707cb22a9fcf26004060151ce14
 
     # MetaGráfica: skewt no dibuja pixeles, escribe un .mg y llama a `mg` para
     # compilarlo a SVG/PDF/EPS. Es un binario C++ fuera de pip, así que el venv
