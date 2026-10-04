@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view, skewt) + MetaGráfica
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit 094db73109ab3707cb22a9fcf26004060151ce14
+    LANOT_tools_commit fa99373b83a744338c6b876cfa1ce0912a01891f
     MetaGrafica_commit 89dfe5e018588add00222aabe8660f92e8bc49b7
 
 %help
@@ -16,15 +16,14 @@ From: lanot_base_rocky9.sif
     (logos, instante, recortes) y para dibujar los Skew-T de los sondeos
     NUCAPS (skewt, que compila su figura con mg de MetaGráfica).
 
-    REQUISITO DE COMPILACIÓN: este .def toma recursos del HOST donde se
-    construye. La máquina debe tener:
+    REQUISITO DE COMPILACIÓN: este .def toma del HOST donde se construye
+    los gpkg, que no están en el repositorio de LANOT_tools:
 
-        /usr/local/share/lanot/gpkg
-        /usr/local/share/lanot/logos
-        /usr/local/share/lanot/docs/recortes_coordenadas.csv
+        /usr/local/share/lanot/gpkg/{paises_fronteras_10m,mexico_estados}.gpkg
 
-    Las colortables NO se copian del host: las instala LANOT_tools desde su
-    propio repositorio, que es donde están siempre al día.
+    Las colortables, los logos y recortes_coordenadas.csv NO se copian del
+    host: los instala LANOT_tools desde su propio repositorio (recursos.sha256),
+    que es donde están siempre al día.
 
     Verificación tras compilar:  apptainer test polar2grid_v3.2-mapdrawer.sif
 
@@ -37,14 +36,21 @@ From: lanot_base_rocky9.sif
     # ese archivo y contenedores/parches/README.md.
     parches/aplicar_parches_satpy.py /opt/
 
-    # Recursos de mapdrawer que no vienen en el repo, descartando los pesados.
+    # Recursos de mapdrawer que no vienen en el repo de LANOT_tools: solo gpkg.
     #    Sintaxis: <ruta_en_el_host> <ruta_en_el_contenedor>
-    #    Las colortables se omiten a propósito: install.sh copia las del repo a
-    #    /usr/local/share/lanot/colortables y sobrescribiría lo que se pusiera
-    #    aquí, porque %files se procesa ANTES que %post.
-    /usr/local/share/lanot/gpkg /usr/local/share/lanot/gpkg
-    /usr/local/share/lanot/logos /usr/local/share/lanot/logos
-    /usr/local/share/lanot/docs/recortes_coordenadas.csv /usr/local/share/lanot/docs/recortes_coordenadas.csv
+    #    De gpkg/ van solo las dos capas que piden los run_*.sh (--layer
+    #    COUNTRIES y MEXSTATES). Se quedan fuera costas_mundo_10m (COASTLINE),
+    #    paises_fronteras_50m y los mexico_estados2015/2023 de tahan: ~45 MB que
+    #    la cadena no usa. Si un run_*.sh pide otra capa, su gpkg va aquí y en
+    #    las comprobaciones de abajo: sin él, mapdrawer avisa y no la dibuja.
+    #    Las colortables, los logos y recortes_coordenadas.csv se omiten a
+    #    propósito: install.sh los copia del repo (fa99373 en adelante) y, como
+    #    %files se procesa ANTES que %post, encontraría aquí la copia del host;
+    #    si difiriera la respaldaría como .bak y la comprobación del final
+    #    tumbaría la compilación. La cadena solo usa lanot_negro_sn.png (el logo
+    #    de mapdrawer) y el .mg de skewt, y los dos vienen del repo.
+    /usr/local/share/lanot/gpkg/paises_fronteras_10m.gpkg /usr/local/share/lanot/gpkg/paises_fronteras_10m.gpkg
+    /usr/local/share/lanot/gpkg/mexico_estados.gpkg /usr/local/share/lanot/gpkg/mexico_estados.gpkg
 
 %post
     # Sin esto, un fallo a media receta no detiene la compilación: Apptainer se
@@ -66,7 +72,17 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # 094db73: eaa132d partió un f-string en dos renglones, que solo vale desde
+    # fa99373: mapdrawer más rápido sin cambiar un píxel (PNG con zlib nivel 1,
+    # capas vectoriales proyectadas en arrays y leídas del gpkg solo dentro del
+    # recuadro, --clip lee del GeoTIFF solo la ventana) y recursos con
+    # manifiesto: install.sh copia según recursos.sha256 y respalda lo que
+    # difiere. Compara con sha256sum porque esta base no trae cmp (diffutils);
+    # con cmp, cada logo y el CSV de %files habrían quedado respaldados como
+    # .bak. Las dos cosas se comprueban abajo: un pin viejo solo sería más lento.
+    # install.sh termina con su --verifica y avisará FALTA de los gpkg que no
+    # entran a la imagen (costas_mundo_10m): es esperado, no detiene nada.
+    #
+    # Antes iba en 094db73: eaa132d partió un f-string en dos renglones, que solo vale desde
     # Python 3.12; aquí el venv es 3.9 y el %post murió en `skewt --help` con
     # SyntaxError. LANOT_tools lo prueba ahora en tests/test_sintaxis_py39.py.
     #
@@ -122,7 +138,7 @@ From: lanot_base_rocky9.sif
     # viaja DENTRO del .sif y que un pin viejo deja atrás en silencio. Las CPT
     # son la excepción de siempre: van montadas desde el host, así que ésas se
     # arreglan con git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=094db73109ab3707cb22a9fcf26004060151ce14
+    LANOT_TOOLS_COMMIT=fa99373b83a744338c6b876cfa1ce0912a01891f
 
     # MetaGráfica: skewt no dibuja pixeles, escribe un .mg y llama a `mg` para
     # compilarlo a SVG/PDF/EPS. Es un binario C++ fuera de pip, así que el venv
@@ -260,6 +276,7 @@ From: lanot_base_rocky9.sif
     skewt --help | grep -q -- "3 sin sondeo que dibujar"
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'set_auto_mask(False)' in inspect.getsource(n.read_sounding), 'pin anterior a 931ed29: LI negativo sale n/d'"
     /opt/lanot-tools/venv/bin/python -c "import skewt; assert hasattr(skewt.SkewT, 'isotherm'), 'pin anterior a eaa132d: isotermas de 61 puntos'"
+    /opt/lanot-tools/venv/bin/python -c "import mapdrawer; assert hasattr(mapdrawer, 'LazyGeoTIFF'), 'pin anterior a 2f8b16f: --clip lee el GeoTIFF entero'"
     printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
     mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
     grep -q '<svg' /tmp/prueba_mg.svg
@@ -295,9 +312,21 @@ From: lanot_base_rocky9.sif
     # Verificación de los recursos que usan las herramientas
     test -x /opt/lanot-tools/venv/bin/python
     test -d /usr/local/share/lanot/colortables
-    test -d /usr/local/share/lanot/gpkg
-    test -d /usr/local/share/lanot/logos
+    test -f /usr/local/share/lanot/gpkg/paises_fronteras_10m.gpkg
+    test -f /usr/local/share/lanot/gpkg/mexico_estados.gpkg
+    test -f /usr/local/share/lanot/logos/lanot_negro_sn.png
     test -f /usr/local/share/lanot/docs/recortes_coordenadas.csv
+
+    # install.sh respalda como <archivo>.bak-<fecha> lo que difiere del repo. En
+    # una imagen recién hecha no hay nada que respaldar: si aparece uno, la
+    # comparación falló (como habría pasado con cmp, que esta base no trae).
+    # Con if y exit, no con `! find ...`: 'set -e' no aborta cuando el código de
+    # salida se invierte con !, así que esa forma nunca detendría la compilación.
+    if find /usr/local/share/lanot -name '*.bak-*' | grep -q .; then
+        echo "install.sh dejó respaldos .bak en la imagen:" >&2
+        find /usr/local/share/lanot -name '*.bak-*' >&2
+        exit 1
+    fi
 
     echo "--- Contenedor listo ---"
 
@@ -376,6 +405,7 @@ From: lanot_base_rocky9.sif
     skewt --help | grep -q -- "3 sin sondeo que dibujar"
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'set_auto_mask(False)' in inspect.getsource(n.read_sounding), 'pin anterior a 931ed29: LI negativo sale n/d'"
     /opt/lanot-tools/venv/bin/python -c "import skewt; assert hasattr(skewt.SkewT, 'isotherm'), 'pin anterior a eaa132d: isotermas de 61 puntos'"
+    /opt/lanot-tools/venv/bin/python -c "import mapdrawer; assert hasattr(mapdrawer, 'LazyGeoTIFF'), 'pin anterior a 2f8b16f: --clip lee el GeoTIFF entero'"
     /opt/lanot-tools/venv/bin/python -c "import skewt, nucaps_sounding, thermo, netCDF4"
     printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
     mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
@@ -405,8 +435,9 @@ print('  OK reproyección CDMX a Web Mercator')
 
     echo "Recursos:"
     for r in /usr/local/share/lanot/colortables \
-             /usr/local/share/lanot/gpkg \
-             /usr/local/share/lanot/logos \
+             /usr/local/share/lanot/gpkg/paises_fronteras_10m.gpkg \
+             /usr/local/share/lanot/gpkg/mexico_estados.gpkg \
+             /usr/local/share/lanot/logos/lanot_negro_sn.png \
              /usr/local/share/lanot/docs/recortes_coordenadas.csv; do
         test -e "$r"
         echo "  OK $r"
