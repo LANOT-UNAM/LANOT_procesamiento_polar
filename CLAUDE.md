@@ -12,6 +12,10 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
+## Pendiente abierto (2026-10-04)
+
+**Verificar la primera pasada con el `.sif` de LANOT_tools `fa99373`**, instalado en tahan el 2026-10-04 a las 18:18. Qué revisar, la línea base de duraciones y cómo revertir: `docs/estado_y_pendientes.md`, sección "2026-10-04: `.sif` con LANOT_tools `fa99373`". Al confirmarlo, marcarlo allá y borrar esta sección.
+
 ## Comandos
 
 ```bash

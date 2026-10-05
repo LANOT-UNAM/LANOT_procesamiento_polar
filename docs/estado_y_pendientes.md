@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-09-27**
+**Última actualización: 2026-10-04**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,69 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-10-04: `.sif` con LANOT_tools `fa99373` — POR VERIFICAR con la primera pasada
+
+**Pendiente abierto.** El 2026-10-04 a las 18:18 se instaló en tahan
+`/opt/containers/polar2grid_v3.2-mapdrawer.sif` con el pin de LANOT_tools en `fa99373`
+(commit `17ebd0a` de este repo). La anterior (`094db73`) quedó en
+`/opt/contenedores/polar2grid_v3.2-mapdrawer.sif.094db73`. Hasta esa hora no había corrido
+ninguna pasada con la imagen nueva; la última fue a las 15:58.
+
+Qué trae: `mapdrawer`/`geotiff2view` más rápidos sin cambiar un píxel (PNG con zlib nivel
+1, capas vectoriales proyectadas en arrays y leídas del gpkg solo dentro del recuadro,
+`--clip` lee solo la ventana del GeoTIFF), los recursos de `/usr/local/share/lanot` desde
+el repo con manifiesto (`install.sh --verifica`), y en `%files` solo los dos gpkg que
+piden los `run_*.sh`. Además `mexico_estados.gpkg` ahora es la versión simplificada a
+0.001° (las líneas de estados se mueven a lo sumo 1 px; el original de INEGI está en tahan
+como `mexico_estados2023.gpkg`).
+
+Ya probado antes de instalar, en tahan: `apptainer test` pasa; una M13 de NOAA-21 con la
+`DECORACION` de `run_polar2grid_edr.sh` tarda **2.5 s contra 4.8 s**, y con el gpkg
+original montado encima el JPEG sale **idéntico byte a byte** al de la imagen vieja.
+
+### Qué revisar tras la primera pasada (EDR y L1)
+
+```bash
+cd /var/log/lanot/polares/polar2grid
+ls -t | head -6                                   # logs posteriores a 2026-10-04 18:18
+f=$(ls -t p2g_2026*.log | grep -v _l1_ | head -1)
+grep -E "ÉXITO|ERROR" "$f" | tail -1              # resumen: vistas, Skew-T y duración
+grep -h "⚠" "$f"                                   # comparar con los avisos de siempre (abajo)
+grep -iE "Traceback|unrecognized|Error leyendo|SyntaxError" "$f"   # debe salir vacío
+apptainer inspect /opt/containers/polar2grid_v3.2-mapdrawer.sif | grep LANOT_tools_commit
+```
+
+**Avisos que ya salían antes** y no son de esto: `Ozono (OMPS) falló (código 3)`,
+`Sin sondeos para esta pasada`, `Vistas de inundaciones/ozono/sondeos: nada que vestir`.
+
+**Línea base de duración** (2026-10-04, imagen `094db73`; incluye todo Polar2Grid, no solo
+la decoración):
+
+| pasada | vistas | duración |
+|---|---|---|
+| EDR j02 13:20 / j01 14:41 / j02 15:27 | 20 | 4m 51s / 5m 43s / 5m 29s |
+| EDR npp 13:57 / 15:56 | 16 / 15 | 4m 38s / 2m 20s |
+| L1 (las mismas pasadas) | 3 | 2m 24s – 3m 21s |
+
+Esperado: unos 2 s menos por vista, o sea **~30–40 s menos en una EDR de 20 vistas** y
+unos segundos en L1. Comparar contra una pasada del mismo satélite con un número de vistas
+parecido; el tiempo de Polar2Grid varía con el tamaño del granulo.
+
+Revisar también a ojo una vista con estados (`--layer MEXSTATES`) y un Skew-T en
+`/data/output/jpss/vistas/`: deben verse iguales a los de antes.
+
+**Si algo sale mal**, regresar a la imagen anterior (sudo):
+
+```bash
+sudo cp -p /opt/contenedores/polar2grid_v3.2-mapdrawer.sif.094db73 /opt/containers/polar2grid_v3.2-mapdrawer.sif.new
+sudo mv /opt/containers/polar2grid_v3.2-mapdrawer.sif.new /opt/containers/polar2grid_v3.2-mapdrawer.sif
+```
+
+Al confirmarlo, cambiar el título de esta sección a "verificado" con la fecha y las
+duraciones observadas, y quitar el aviso de `CLAUDE.md`.
 ---
 
 ## 2026-09-27: el disco, y un GFS truncado que tumbó la tarde del 26
