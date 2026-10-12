@@ -718,7 +718,7 @@ Salieron al revisar el diseño y no esperan a la cola:
 
 - **La cadena de recepción** está en `referencia/recepcion/watchpolar/`: `inotifywait` sobre el
   passdisk de TeraScan en polaracq → `copypolar.sh` (`scp` y `ssh`) → el `recibe.sh` de stratus.
-- **Qué satélite es cada `chain`**, cruzando con `referencia/lspass.txt`:
+- **Qué satélite es cada `chain`**, cruzando con `lspass` (copia del 2026-09-15 en el historial: `git show a503df9:referencia/lspass.txt`):
   - activas: 1 Aqua, 2 NPP, 5 METOP-B/C y 6 NOAA-20;
   - sin uso desde abril de 2025: 3 (NPP) y 7 (NOAA-20);
   - sin uso desde agosto de 2025: 4 (NOAA-15/19).

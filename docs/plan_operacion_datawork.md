@@ -91,7 +91,7 @@ muestra dónde es frágil:
 **El 2026-09-21, entre las 20:34 y las 22:36 UTC, TeraScan reasignó todas las cadenas** al
 empezar a recibir NOAA-21. El esquema vigente sale de `referencia/terascan/system.config` (qué
 telemetría tiene cada sección `[N]`) y de `lspass` del 2026-09-22 (qué satélite va en cada
-telemetría, al final de `referencia/lspass.txt`):
+telemetría; se conserva en el historial: `git show a503df9:referencia/lspass.txt`):
 
 | Cadena | Pases | Telemetría | Satélite | Antes del 2026-09-21 |
 |---|---|---|---|---|
