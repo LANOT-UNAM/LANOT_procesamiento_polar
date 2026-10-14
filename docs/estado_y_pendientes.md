@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-10-04**
+**Última actualización: 2026-10-14**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,49 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-10-14: ATMOS llena la RAM de tahan, y por eso no caben dos a la vez
+
+Medido con `vmstat` cada 10 s durante la pasada `npp_d20261014_t192957` (13:44–14:20 en
+tahan), cruzando cada muestra con la etapa que corría. **El recurso que se agota no es la
+CPU sino la memoria, y lo agota ATMOS:**
+
+| tramo | CPU media / máx | lo que pesa |
+|---|---|---|
+| SDR de VIIRS | 3 % / 5 % | un `ProSdrViirsCalController` de un hilo por gránulo, 1–4 GB cada uno |
+| ATMOS + ACSPO + Active Fire | 24 % / 39 % | disco: hasta 20 % de espera de E/S |
+| **ATMOS sola** | 15 % / 32 % | **250 de 251 GB usados**, caché a cero, 9 GB a swap, 32 % de espera de E/S |
+| MiRS + P2G de L1 | 43 % / 65 % | el tramo más cargado de CPU |
+| LSR, CRYO, P2G de L2 | 5–19 % | nada |
+
+En toda la pasada la CPU promedió 12 %. ATMOS corre todos los gránulos en paralelo (`-p 20`
+con 10 gránulos) y cada uno ronda los 24 GB: a las 13:58:22 quedaban 0.9 GB libres, el
+kernel tiró los 94 GB de caché y aun así mandó memoria a swap (de 3 a 12 GB). No mató nada
+—el journal no tiene ningún OOM— y ATMOS completó 120 de 120 productos en 9m 48s, dentro de
+lo normal para 10 gránulos (mediana 8.6 min, máximo 14.5, del 27 de septiembre al 14 de
+octubre). **O sea que esto ocurre en cada pasada larga**, no fue una excepción.
+
+Lo que implica:
+
+- **Dos ATMOS a la vez no caben en tahan.** Pedirían el doble de la RAM, y el OOM killer
+  puede matar cualquier proceso de la máquina, no solo los de la cadena. Por eso el plan de
+  dos turnos (`plan_operacion_datawork.md` §0.7) necesita, antes de abrir el segundo, que
+  **ATMOS corra de una en una** —un candado como el de HEAP— o un tope de gránulos en
+  paralelo. Bajar `MAX_PARALELO` de 3 a 2, que es lo que decía el plan pensando en hilos, no
+  protege de esto.
+- Hoy no chocan por poco. Con dos turnos, la pareja más apretada es NPP → NOAA-20 (18 min
+  mínimo entre recepciones): la ATMOS de NPP acaba hacia el minuto 20–25 de su corrida
+  (mediana–p90) y la de NOAA-20 empezaría hacia el 29.
+- **Sin NPP, que podría dejar de recibirse a fines de octubre, NOAA-20 y NOAA-21 no se enciman
+  nunca** (42 min de separación mínima en 275 recepciones desde el 27 de septiembre). El
+  segundo turno vuelve a hacer falta con METOP-B/C, que pasan con 22 min de diferencia.
+- `scripts/prueba_dos_turnos.sh` arranca la segunda pasada 19 min después de la primera por
+  esto mismo, y no acepta un desfase menor de 10 min sin `--permitir-choque`.
+
+Pendiente: medir cuánto pide ATMOS por gránulo con `/usr/bin/time -v` o el cgroup, en vez
+de deducirlo de `vmstat`, y decidir entre candado y tope.
 
 ---
 

@@ -436,6 +436,12 @@ el 6 y el 7, que son pruebas en tahan con datos reales.
   libres.
 - **Concurrencia por pasada.** Con dos turnos, `MAX_PARALELO` baja de 3 a 2 para no pasar de ~64
   hilos en tahan. Variable por servidor.
+- **ATMOS, de una en una.** Corrección del 2026-10-14: el límite de tahan no son los hilos sino la
+  RAM. ATMOS corre todos los gránulos en paralelo y con 10 ocupa ~240 de los 251 GB (medido con
+  `vmstat`; ver `estado_y_pendientes.md`, sección de esa fecha), así que dos ATMOS de turnos
+  distintos no caben y el OOM killer podría matar cualquier proceso de la máquina. Antes de abrir
+  el segundo turno, un candado como el de HEAP (punto 5 de §0.6) o un tope de gránulos en
+  paralelo. La CPU, en cambio, sobra: una pasada promedia 12 % y no pasa de 65 %.
 
 ### Criterio para pasar a la fase 1
 
