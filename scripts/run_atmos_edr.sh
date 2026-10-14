@@ -284,7 +284,10 @@ falto_ancillary() {
     m="$(echo "$tramo" | grep -oE 'completed [0-9]+ products of [0-9]+' | tail -1 | awk '{print $2}')"
     n="$(echo "$tramo" | grep -oE 'completed [0-9]+ products of [0-9]+' | tail -1 | awk '{print $5}')"
     [ -n "$m" ] && [ -n "$n" ] && [ "$m" -lt "$n" ] || return 1
-    echo "$tramo" | grep -qE 'Failed to find files|Unable to find'
+    # Sin tubería: grep -q sale al primer hallazgo y, con un tramo de cientos de
+    # KB, echo muere por SIGPIPE; bajo pipefail eso da 141 y la función decía
+    # "no faltó". Así el reintento descargando no corrió nunca (2026-10-01 a 12).
+    grep -qE 'Failed to find files|Unable to find' <<< "$tramo"
 }
 
 # Deja la pasada como si el intento no hubiera ocurrido: fuera los .nc que
