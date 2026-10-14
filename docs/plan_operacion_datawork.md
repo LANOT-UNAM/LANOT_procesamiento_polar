@@ -150,7 +150,13 @@ con GOES) aguanta meses, no años.
 ### Montajes
 
 - tahan y stratus montan `/datawork` como `172.16.1.101:/data … rw,soft`, sin fijar versión de
-  NFS. Con `soft`, un tiempo de espera devuelve error de E/S al proceso que escribe.
+  NFS (en tahan negocia la 4.2). Con `soft`, un tiempo de espera devuelve error de E/S al
+  proceso que escribe.
+- **Velocidad, medida en tahan el 2026-10-14** (detalle en `estado_y_pendientes.md`): lee a
+  1.2 GB/s, el tope de 10 GbE, pero **escribe a 20 MB/s** asentado en disco (`dd …
+  conv=fdatasync`, 4 GB en 211 s; el COMMIT se llevó ~190 s). El `/data` local, en cambio,
+  lee a ~220 MB/s. Una sola medida: hay que repetirla sin carga y, si se confirma, revisar el
+  RAID6 de `172.16.1.101` (rebuild, caché de la controladora, export en `sync`).
 - tsom03 **no monta `/datawork`**: lee los crudos del `/data` de stratus en `/data2` (`hard`), y
   stratus monta a su vez el `/data` de tsom03 en `/data3`.
 - stratus es CentOS (volúmenes `centos-root`), casi seguro la 7.
@@ -532,6 +538,14 @@ pruebas con rutas en `/tmp` sigan funcionando.
 ---
 
 ## Fase 2 — Migración en tahan
+
+**Prerrequisito: que `/datawork` escriba a una velocidad razonable.** El 2026-10-14 dio 20 MB/s
+asentado en disco (ver "Montajes"); la cadena escribe todo el tiempo y a ese ritmo se
+arrastraría. Repetir la medida sin carga antes de empezar:
+
+```bash
+d=/datawork/input/.prueba_vel; mkdir $d && dd if=/dev/zero of=$d/x bs=4M count=1024 conv=fdatasync; rm -rf $d
+```
 
 1. Detener el procesamiento: comentar el cron y quitar a tahan de la lista de `copypolar.sh`. Los
    crudos siguen llegando al buzón y sus boletos se acumulan en `cola/`. Esperar a que

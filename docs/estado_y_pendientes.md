@@ -23,6 +23,46 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-10-14: discos y NFS — `/data` lee lento, `/datawork` escribe lento
+
+Medido en tahan con `dd` y los contadores del cliente NFS (`nfsiostat`, `/proc/self/mountstats`)
+mientras corría la primera publicación a `/dataservice`:
+
+| | `/data` (4 discos giratorios de 9 TB en un LVM, local) | `/datawork` (RAID6, `172.16.1.101`, NFS 4.2) | `/dataservice` (`172.16.1.100`, NFS 4.0) |
+|---|---|---|---|
+| leer un archivo frío | 224 MB/s | 1.2 GB/s | — |
+| leer 4 a la vez | 98 MB/s (los cabezales saltan) | 1.17 GB/s | — |
+| escribir | — | **20 MB/s** con `conv=fdatasync` (4 GB en 211 s) | 1 GB/s; 180 MB/s sostenidos al publicar |
+
+- **El NFS no es el cuello de botella en ningún caso.** 0 retransmisiones y 0 timeouts en los
+  dos montajes; una escritura de 1 MB tarda 3.5–5 ms de ida y vuelta. El "cuelgue" que motivó
+  revisarlo fue un `du`/`find` sobre 4.4 TB del lado remoto: 73 mil `READDIR` de ~5 ms.
+- **La carga inicial de `publicar_dataservice.sh` va al ritmo de `/data`**: ~200 MB/s, unos
+  65 min para los ~790 GB de 5 días (no los 15 que se estimaron con datos en caché). En
+  operación no pesa: una pasada recién escrita sigue en la caché de página y sale a la
+  velocidad de la red. Paralelizar el publicador empeoraría, no mejoraría.
+- **`/datawork` lee al tope de 10 GbE pero escribe a 20 MB/s.** Los 4 GB cruzaron la red en
+  ~20 s; el resto fue el COMMIT, el servidor asentando en disco (~190 s). Es una sola medida
+  —pudo coincidir con otra carga en ese servidor—, pero tan baja que no parece ruido. Causas
+  típicas en un RAID6: un rebuild o verificación en curso, la caché de escritura de la
+  controladora apagada (batería/BBU agotada o en aprendizaje), o el export en `sync` sobre
+  discos sin caché. Se revisa en `172.16.1.101` con la herramienta de la controladora y
+  `/etc/exports`.
+
+Pendiente:
+
+1. **Repetir la medida de escritura en `/datawork` en un rato sin carga** (la cadena escribe
+   todo el tiempo: RDR, SDR, ATMOS, GeoTIFF). Si se confirma, revisar el RAID con quien
+   administra `172.16.1.101`. **Es prerrequisito de la fase 2 del plan de `/datawork`**: a
+   20 MB/s la cadena se arrastraría.
+2. Opcional: `/dataservice` a `vers=4.2`, como ya está `/datawork` (sesiones de 4.1: mejor
+   recuperación con `soft`). Es por robustez, no por velocidad; se coordina con quien
+   administra el montaje, que comparten GOES y GeoNetCast.
+3. Opcional: `ens106f1` acumula ~2 millones de paquetes de recepción descartados, sin efecto
+   visible en NFS. Un `ethtool -S` algún día.
+
+---
+
 ## 2026-10-14: ATMOS llena la RAM de tahan, y por eso no caben dos a la vez
 
 Medido con `vmstat` cada 10 s durante la pasada `npp_d20261014_t192957` (13:44–14:20 en
@@ -2136,7 +2176,7 @@ falta cotejar contra un `crontab -l` en tahan.
 | `update_atmos_ancillary.sh` | 4× al día (`17 2,8,14,20 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Pendiente de montar** |
 | `update_heap_ancillary.sh` | semanal (`40 3 * * 0`) | **Solo poda.** HEAP baja su GFS por su cuenta al correr, pero el manual (§1.6.3) avisa que no lo borra nunca. Sin esto, `/data/ancillary/heap` crece indefinidamente. | **Escrito el 2026-08-15; pendiente de montar** |
 | `barrer_pendientes.sh` | cada 15 min (`*/15 * * * *`) | Recoge los RAW que se quedaron atrás: los `run_*.sh` no miran hacia atrás, y una pasada que llegue con el candado tomado se descarta. | **Escrito el 2026-08-15; pendiente de montar** |
-| `publicar_dataservice.sh` | cada 5 min (`*/5 * * * *`; toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss`, de donde lo toman los servidores FTP, y poda a 5 días. La primera corrida sube los 5 días enteros (~790 GB, ~15 min). | **Escrito el 2026-10-14; pendiente de montar** |
+| `publicar_dataservice.sh` | cada 5 min (`*/5 * * * *`; toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss`, de donde lo toman los servidores FTP, y poda a 5 días. La primera corrida sube los 5 días enteros (~790 GB, ~65 min: la limita la lectura de `/data`, ~200 MB/s). | **Escrito el 2026-10-14; pendiente de montar** |
 | `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **Escrito el 2026-08-15; pendiente de montar** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
 | Limpieza de productos | por definir | Los `JRR-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
