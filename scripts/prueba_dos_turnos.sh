@@ -349,6 +349,7 @@ echo "--- Buscando escrituras en producción desde $(date -r "$MARCA" '+%H:%M:%S
 find "$SALIDA_PRODUCCION" -newer "$MARCA" -type f 2>/dev/null > "$BASE/escrito_en_produccion.txt"
 find "$LOGS_PRODUCCION" -newer "$MARCA" -type f \
      ! -name 'barrido.log' ! -name 'cron.log' ! -name 'publicar_kawak.log' \
+     ! -name 'publicar_dataservice.log' \
      ! -name '*_recibe.log' ! -name 'atmos_ancillary_*' ! -name 'update_daily_*' \
      2>/dev/null > "$BASE/logs_de_produccion.txt"
 
