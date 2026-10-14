@@ -16,6 +16,20 @@ Todo (comentarios, mensajes de log, documentación) está en español. Mantener 
 
 **Verificar la primera pasada con el `.sif` de LANOT_tools `fa99373`**, instalado en tahan el 2026-10-04 a las 18:18. Qué revisar, la línea base de duraciones y cómo revertir: `docs/estado_y_pendientes.md`, sección "2026-10-04: `.sif` con LANOT_tools `fa99373`". Al confirmarlo, marcarlo allá y borrar esta sección.
 
+## Pendiente abierto (2026-10-14): revisar al retomar
+
+1. **Resultados de `scripts/prueba_dos_turnos.sh`**, programada con `at` como `lanotadm` a las
+   17:30 CST del 2026-10-14. Informe en `/data/tmp/prueba_dos_turnos_<sello>/informe.txt`,
+   salida completa en `/data/tmp/prueba_dos_turnos.out`. Comparar la corrida en serie con la
+   encimada, y ver si las dos ATMOS coincidieron y cuánto swap usaron (sección "ATMOS llena la
+   RAM" de `docs/estado_y_pendientes.md`).
+2. **`publicar_dataservice.sh`**: la primera corrida a mano se interrumpió a las 17:25 con la
+   carga inicial a medias, porque iba a ~200 MB/s y se habría encimado con la prueba. El cron de
+   `lanotadm` (`*/5 * * * *`) quedaba por agregar al terminar la prueba: confirmar que exista y
+   que la carga inicial acabó (`/var/log/lanot/polares/cadena/publicar_dataservice.log`).
+
+Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
+
 ## Comandos
 
 ```bash
