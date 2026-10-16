@@ -77,8 +77,11 @@ de NPP. Lo que se sabe:
 
 Pendiente:
 
-1. **Saber qué familias de Level 2 difieren en datos** y no solo en atributos (quedó corriendo
-   un `h5diff` de los 398 `.nc` el 2026-10-16; resultado abajo si llegó).
+1. ~~Saber qué familias de Level 2 difieren en datos~~ (`h5diff` de los `.nc`, 2026-10-16):
+   **solo las tres de arriba.** ATMOS (las diez familias `JRR-*` y los `NWP_GFS-INTP`), LSR,
+   CRYO, OMPS y las cinco de NUCAPS son idénticos en datos en las dos fases; los 376 "distintos
+   byte a byte" del informe eran atributos de fecha. Difieren 6 de 19 `AFIMG`, la SST de NPP
+   (la de NOAA-20 no) y los dos MiRS de NPP, `IMG` y `SND` (los de NOAA-20 no).
 2. **Confirmar el no determinismo con un control limpio**: la misma pasada dos veces en serie,
    solo ACSPO, Fire y MiRS. Si difieren igual, la diferencia no es de la prueba y el
    comparador debería tolerarla en esos productos; si no, sí es de encimar y hay que
