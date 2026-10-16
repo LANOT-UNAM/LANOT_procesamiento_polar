@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-10-14**
+**Última actualización: 2026-10-16**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,85 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-10-16: la prueba de dos turnos, y el publicador en cron
+
+### `prueba_dos_turnos.sh` (corrida del 2026-10-14, 17:30–19:04)
+
+Dos pasadas reales, `npp_d20261014_t081833` (A) y `j01_d20261014_t083828` (B, 19 min
+después), primero en serie y luego encimadas, con los scripts de `/opt` en `d76d277`. Árbol en
+`/data/tmp/prueba_dos_turnos_20261014_173000` (144 GB; se puede borrar).
+
+- **Las cuatro corridas terminaron en 0, sin etapas fallidas, y nada se escribió en
+  producción** (ni productos ni logs).
+- **Encimar no frena nada.** Razón simultáneo ÷ serie por etapa: mediana 0.99. El único 1.99 es
+  `sdr_atms` de j01 (0.9 → 1.8 min). De reloj, 51m16s en serie y 42m53s encimadas.
+- **Las dos ATMOS no coincidieron, que era lo buscado**: la de A acabó hacia las 18:40:19 y B
+  arrancó RT-STPS a las 18:40:16; la de B empezó a las 18:50. Lo encimado fue la cola de A
+  (ACSPO, Fire, P2G) con el arranque de B (RT-STPS, SDR). La prueba **no** dice cuánto pedirían
+  dos ATMOS juntas, y no hay que provocarlo para saberlo (sección "ATMOS llena la RAM").
+- **Una sola ATMOS de NPP ya llevó tahan al swap, más que el 14 a mediodía**: en serie, de
+  17:42:50 a 17:44:42, el swap subió de 3 a **27 GB**, la caché cayó de ~200 GB a 3 y
+  `vmstat` dejó un hueco de 46 s sin muestras (la máquina se trabó). Encimada, a las 18:35,
+  19 GB. La ATMOS de NOAA-20 no tocó el swap en ninguna de las dos. Refuerza el candado o tope
+  para ATMOS como condición del segundo turno.
+
+**El informe salió con dos errores del comparador, corregidos en `prueba_dos_turnos.sh`:**
+
+1. **Falso "❌ productos distintos: 41 y 41".** 20 eran `.PDS` de RT-STPS, que llevan la hora
+   de creación tras la `S` (`S26287233000000` ÷ `S26288002117000`) y el comparador solo
+   normalizaba el campo `_c`; los otros 21, los `NOAA_AFIMG_*.log` y
+   `cspp_active_fire_noaa.*.log` que CSPP Active Fire deja junto a sus `.nc`, con la hora en el
+   nombre. Ahora se normaliza el sello del PDS y se ignoran los `.log`: las listas coinciden.
+2. **Falso "GeoTIFF con el mismo checksum: 132".** En tahan hay dos `gdalinfo`:
+   `/usr/bin` (GDAL 3.10.3), que **no abre** los GeoTIFF de Polar2Grid (`not recognized as
+   being in a supported file format`), y `/usr/local/bin` (3.11.5), que sí. Bajo `sudo`/`at`
+   el PATH tomó el primero, todos los checksums salieron vacíos y `None == None` contó como
+   igual. Ahora usa el de `/usr/local/bin` y cuenta aparte los "sin checksum" como problema.
+   Cuidado con lo mismo en cualquier script que corra como `lanotadm` y llame a `gdalinfo`.
+
+**Con el comparador corregido salen 9 GeoTIFF de 132 con píxeles distintos**: los tres de
+fuego de cada satélite (`T4`, `confidence_cat`, `power`), la SST de NPP y `tpw`/`tskin` de MiRS
+de NPP. Lo que se sabe:
+
+- **La entrada es la misma**: los 243 SDR tienen datos idénticos en las dos fases (`h5diff`;
+  solo cambian atributos de fecha), y ACSPO, Fire y MiRS citan los mismos
+  `gfs.t00z.pgrb2.1p00.f006/f009.20261014` en sus logs.
+- **Las diferencias son de algoritmo, y chicas**: MiRS, ±1 en el entero escalado del TPW en
+  algunos píxeles (más `Emis`, `ChiSqr`, `CLW`); Active Fire, alguna detección de baja
+  confianza (`8`) de más y el FRP en el tercer decimal (64 → 65 incendios en un gránulo).
+- **No parece efecto de encimar**: la Active Fire de j01 en la fase encimada corrió a las 18:50,
+  cuando A ya había terminado (18:46), y difiere igual. Lo más probable es que esos tres no sean
+  deterministas —hilos, orden de suma en punto flotante—, lo que contradice la idea de que "los
+  `.nc` de CSPP son reproducibles" (CLAUDE.md, de la comparación del 2026-08-29, que pudo no
+  incluir estos productos).
+
+Pendiente:
+
+1. **Saber qué familias de Level 2 difieren en datos** y no solo en atributos (quedó corriendo
+   un `h5diff` de los 398 `.nc` el 2026-10-16; resultado abajo si llegó).
+2. **Confirmar el no determinismo con un control limpio**: la misma pasada dos veces en serie,
+   solo ACSPO, Fire y MiRS. Si difieren igual, la diferencia no es de la prueba y el
+   comparador debería tolerarla en esos productos; si no, sí es de encimar y hay que
+   entender por qué.
+3. Los `.log` de Active Fire se acumulan en `level2/fires` de producción: 2144 desde mayo. Hay
+   que llevarlos a `/var/log/lanot/polares/cspp-edr/` o borrarlos en `run_active_fire_edr.sh`
+   **antes** de que `publicar_dataservice.sh` publique Level 2.
+
+### `publicar_dataservice.sh`
+
+El cron de `lanotadm` (`*/5 * * * *`) quedó puesto el 2026-10-16 hacia las 12:30. La carga
+inicial interrumpida el 14 había dejado 444 GB (994 archivos, todo `level1/viirs`, de 5936 y
+2.6 TB) y un temporal huérfano (`.SVDNB_npp_…h5.tmp.2687769`), que la poda del propio script
+quita a los 60 min. El tic de las 12:35 arrancó y a las 12:39 iba en 495 GB. Quedan ~2.3 TB,
+a ~200 MB/s (el ritmo de `/data`, sección siguiente) unas 3 h; los tics siguientes ven el
+candado y salen. El log solo se escribe al terminar cada tic: `publicar_dataservice.log` no
+existe hasta que acabe la carga inicial.
+
+Pendiente: confirmar en el log que la carga inicial terminó sin fallos y que los tics
+siguientes copian solo lo nuevo.
 
 ---
 

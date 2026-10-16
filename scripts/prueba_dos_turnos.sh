@@ -531,13 +531,22 @@ def productos(fase):
         if rel == "state" or rel.startswith("state/"):
             continue
         for f in fs:
+            # Active Fire deja sus logs junto a los .nc, con la hora en el nombre
+            if f.endswith(".log"):
+                continue
             norm = re.sub(r"_c\d{8,}", "_c", f)   # el campo de creación cambia
+            # Los PDS de RT-STPS llevan la suya tras la S (YYDDDHHMMSS): se
+            # conservan los tres dígitos finales, que distinguen los archivos
+            norm = re.sub(r"S\d{11}(\d{3})\.PDS$", r"S\1.PDS", norm)
             r[os.path.join(rel, norm)] = os.path.join(d, f)
     return r
 
+# El de /usr/local/bin primero: el de /usr/bin (3.10, en tahan) no abre estos GeoTIFF
+GDALINFO = next((g for g in ("/usr/local/bin/gdalinfo",) if os.access(g, os.X_OK)), "gdalinfo")
+
 def checksum(p):
     try:
-        out = subprocess.run(["gdalinfo", "-checksum", p], capture_output=True,
+        out = subprocess.run([GDALINFO, "-checksum", p], capture_output=True,
                              text=True, timeout=300).stdout
     except Exception:
         return None
@@ -560,12 +569,19 @@ if con_serie:
             print(f"    solo en serie:   {k}")
         for k in solo_v[:15]:
             print(f"    solo a la vez:   {k}")
-    tif_ig = tif_dif = nc_ig = nc_dif = 0
+    tif_ig = tif_dif = tif_err = nc_ig = nc_dif = 0
     difs = []
     for k in sorted(s & v):
         a, b = P["serie"][k], P["simultaneo"][k]
         if k.endswith(".tif"):
-            if checksum(a) == checksum(b):
+            ca, cb = checksum(a), checksum(b)
+            # Sin checksum no hay comparación: None == None no es "iguales".
+            # Así salió el informe del 2026-10-14, con 132 iguales que eran 123:
+            # bajo sudo/at el PATH toma /usr/bin/gdalinfo (GDAL 3.10), que no
+            # abre estos GeoTIFF, y no /usr/local/bin/gdalinfo (3.11), que sí
+            if not ca or not cb:
+                tif_err += 1
+            elif ca == cb:
                 tif_ig += 1
             else:
                 tif_dif += 1; difs.append(k)
@@ -574,12 +590,14 @@ if con_serie:
                 nc_ig += 1
             else:
                 nc_dif += 1; difs.append(k)
-    print(f"  GeoTIFF con el mismo checksum: {tif_ig}, distinto: {tif_dif}")
+    print(f"  GeoTIFF con el mismo checksum: {tif_ig}, distinto: {tif_dif}, sin checksum: {tif_err}")
     print(f"  NetCDF idénticos byte a byte:  {nc_ig}, distintos: {nc_dif}")
     for k in difs[:15]:
         print(f"    difiere: {k}")
     if tif_dif:
         problemas.append(f"{tif_dif} GeoTIFF con píxeles distintos al control")
+    if tif_err:
+        problemas.append(f"{tif_err} GeoTIFF sin comparar: gdalinfo -checksum no respondió")
     if nc_dif:
         # Los .nc de CSPP han resultado reproducibles, pero alguno puede llevar la
         # hora de creación dentro: se señala para revisarlo con h5diff, no se
