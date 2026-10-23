@@ -24,6 +24,10 @@ publicador en cron".
    `level2/` y se le puso un filtro por fecha. Tras instalar, comprobar que las pasadas de 20
    vistas vuelven a ~5 min (sección "2026-10-23" de `docs/estado_y_pendientes.md`).
 
+3. **Fallos diarios de ATMOS y LSR** (2026-10-23): nueve `atmos_work_*` y nueve `lsr_work_*`
+   conservados en una semana. Confirmar en los logs si es solo el GFS de la madrugada y si el
+   reintento del barrido termina bien (sección "2026-10-23" de `docs/estado_y_pendientes.md`).
+
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 
 ## Comandos

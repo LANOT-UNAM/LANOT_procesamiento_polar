@@ -93,6 +93,19 @@ mano: `CLAVRx_3_0` (30 GB), `polar2grid_l2` (28), `data` (16, datos de prueba de
 `prueba_*`/`nucaps_*`/`heap_*` del diagnóstico de HEAP de agosto.
 
 
+Después se borraron a mano, con confirmación, las 31 entradas viejas de `/data/tmp` que no son
+temporales de etapa (234 GB: `prueba_dos_turnos_20261014_173000` sola eran 144). `/data` quedó en
+19 TB usados y 19 libres (51 %); `/data/tmp`, en 295 GB, casi todo `viirs_afai_historico`.
+
+Pendiente: **¿por qué hay tantos directorios de trabajo de ATMOS y LSR?** El 2026-10-23 quedaban
+en `/data/tmp` nueve `atmos_work_*` y nueve `lsr_work_*` de la última semana, y como el
+directorio solo se conserva cuando la etapa falla, eso es casi un fallo diario de cada una, sobre
+todo de madrugada (los `atmos_work_*` son de las 03:xx CST, las pasadas de las 09 UTC). Lo más
+probable es el caso conocido —ATMOS sin el ciclo del GFS, que el barrido reintenta a la hora, y
+LSR cayendo detrás—, pero hay que confirmarlo en `/var/log/lanot/polares/cspp-edr/` y ver si
+el reintento termina bien. Si es eso, los directorios se acumulan solo hasta que `limpiar.sh`
+los quita a los 7 días.
+
 Pendiente aparte: **por qué ATMOS escribe ~145 GB al día**. Puede ser lo normal de diez
 familias `JRR-*` por gránulo, o duplicados de las pasadas que `barrer_pendientes.sh` retoma
 (los `JRR-*` llevan `_c<sello>`, pendiente 5). Con la retención deja de ser urgente.
