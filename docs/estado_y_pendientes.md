@@ -131,6 +131,15 @@ de ATMOS, 31 s → 17 s; el tramo completo de vistas, 85 s → 54 s con cinco ve
 La carga inicial terminó. El 2026-10-23 cada tic copia solo lo nuevo, poda lo de más de 5 días
 (`PUB_DS_DIAS`) y lleva **0 fallos**.
 
+**Cambio de destinos (2026-10-23, a pedido tras la revisión de Víctor):** en `/dataservice`
+cada GeoTIFF va junto a su dato. Los de Level 1 (`geotiff/{m_bands,i_bands,dnb,rgb}`) se
+publican en `level1/viirs`, al lado de los SDR; en `/data/output/jpss` nada cambia. El reparto
+vive en `DESTINOS` del script, y Level 2 entrará igual (`level2/acspo ← level2/acspo +
+geotiff/acspo`), con el marcador de `polar2grid` en vez del de `polar2grid_l1`. Las carpetas
+`geotiff/*` viejas de `/dataservice` quedan en `RETIRADAS`: solo se podan, y hacia el
+**2026-10-29** estarán vacías y se pueden borrar. **Avisar a quien consuma del FTP** que las
+rutas de los GeoTIFF cambian.
+
 ---
 
 ## 2026-10-16: la prueba de dos turnos, y el publicador en cron

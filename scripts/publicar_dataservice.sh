@@ -5,15 +5,24 @@
 # Para cron de lanotadm, cada 5 minutos (el candado lo toma el propio script):
 #   */5 * * * * /opt/lanot/polares/scripts/publicar_dataservice.sh
 #
-# Qué se publica, con el mismo árbol que /data/output/jpss:
+# Qué se publica. En /dataservice cada GeoTIFF va JUNTO al dato del que sale,
+# aunque en /data/output/jpss vivan en árboles separados (decidido el
+# 2026-10-23, para que quien baje una carpeta del FTP tenga los dos):
 #
-#   level1/{viirs,atms,cris,omps}         SDR .h5
-#   geotiff/{m_bands,i_bands,dnb,rgb}     GeoTIFF de datos de Level 1
+#   /dataservice/jpss/        ←  /data/output/jpss/
+#   level1/viirs              ←  level1/viirs (SDR .h5)
+#                                + geotiff/{m_bands,i_bands,dnb,rgb}
+#   level1/{atms,cris,omps}   ←  lo mismo (SDR .h5)
 #
-# Ni level0 ni vistas, de momento. Level 2 se agrega cuando se confirme: es
-# sumar carpetas a CARPETAS. Las carpetas van con nombre y nunca "todo
-# /data/output/jpss", para que nada se publique por accidente. No choca con lo
-# que publica la cadena vieja, que escribe en /dataservice/npp-jpss1.
+# El reparto está en DESTINOS. Ni level0 ni vistas, de momento. Level 2 se
+# agrega cuando se confirme qué familias: es una línea por destino, p. ej.
+# "level2/acspo level2/acspo geotiff/acspo". Las carpetas van con nombre y nunca
+# "todo /data/output/jpss", para que nada se publique por accidente. No choca
+# con lo que publica la cadena vieja, que escribe en /dataservice/npp-jpss1.
+#
+# Hasta el 2026-10-23 los GeoTIFF se publicaban en geotiff/… también en
+# /dataservice. Esas carpetas están en RETIRADAS: ya no reciben nada y solo se
+# podan, así que en PUB_DS_DIAS días quedan vacías y se pueden borrar a mano.
 #
 # /dataservice es NFS (172.16.1.100:/data, soft). Medido el 2026-10-14: escribe
 # a 1 GB/s, lo que da 10 GbE, y sin un timeout ni una retransmisión. Lo caro
@@ -35,8 +44,9 @@
 # Cuándo un archivo está listo para salir:
 #
 #   - SDR: siempre. run_sdr.sh los mueve a level1/ ya terminados.
-#   - GeoTIFF: solo si su pasada tiene marcador de polar2grid_l1 más nuevo que
-#     el archivo. Polar2Grid escribe directo en geotiff/, así que un .tif puede
+#   - GeoTIFF: solo si su pasada tiene marcador del renderizador más nuevo que
+#     el archivo —polar2grid_l1 para los de Level 1, polar2grid para los de
+#     Level 2—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
 #     estar a medias; el marcador se escribe solo cuando la etapa terminó bien.
 #     La clave sale del nombre: noaa20_viirs_…_20261014_083828_… es
 #     j01_d20261014_t083828.
@@ -54,6 +64,7 @@
 #   PUB_DS_LOG        Log                  (def. /var/log/lanot/polares/cadena/publicar_dataservice.log)
 #   ESTADO_BASE       Marcadores           (def. /data/output/jpss/state)
 #   L1G_STATE_DIR     Marcadores de P2G L1 (def. $ESTADO_BASE/polar2grid_l1)
+#   P2G_STATE_DIR     Marcadores de P2G L2 (def. $ESTADO_BASE/polar2grid)
 #
 # Uso:
 #   publicar_dataservice.sh            publica y poda
@@ -69,11 +80,25 @@ LOCK="${PUB_DS_LOCK:-/data/tmp/publicar_dataservice.lock}"
 LOG="${PUB_DS_LOG:-/var/log/lanot/polares/cadena/publicar_dataservice.log}"
 ESTADO="${ESTADO_BASE:-/data/output/jpss/state}"
 DIR_P2G_L1="${L1G_STATE_DIR:-$ESTADO/polar2grid_l1}"
+DIR_P2G_L2="${P2G_STATE_DIR:-$ESTADO/polar2grid}"
 
-CARPETAS=(
-    level1/viirs level1/atms level1/cris level1/omps
+# Una línea por carpeta de destino: el destino y, detrás, las carpetas de
+# origen que se publican en él. Relativas a ORIGEN y DEST.
+DESTINOS=(
+    "level1/viirs  level1/viirs geotiff/m_bands geotiff/i_bands geotiff/dnb geotiff/rgb"
+    "level1/atms   level1/atms"
+    "level1/cris   level1/cris"
+    "level1/omps   level1/omps"
+)
+
+# Carpetas de destino que ya no reciben nada: solo se podan.
+RETIRADAS=(
     geotiff/m_bands geotiff/i_bands geotiff/dnb geotiff/rgb
 )
+
+# Los GeoTIFF de estas carpetas los hace run_polar2grid_l1.sh; los de las demás
+# carpetas geotiff/, run_polar2grid_edr.sh. Decide qué marcador cuenta.
+GEOTIFF_L1=" geotiff/m_bands geotiff/i_bands geotiff/dnb geotiff/rgb "
 
 RETENCION_MIN=$((DIAS * 1440))
 
@@ -124,11 +149,11 @@ terminar() {
     exit "$codigo"
 }
 
-# ¿Está listo un GeoTIFF? Su pasada tiene que tener el marcador de P2G L1, y
-# ese marcador ser más nuevo que el archivo (un re-renderizado con --force
-# reescribe los .tif antes de reescribir el marcador).
+# ¿Está listo un GeoTIFF? Su pasada tiene que tener el marcador del renderizador
+# que lo hizo, y ese marcador ser más nuevo que el archivo (un re-renderizado con
+# --force reescribe los .tif antes de reescribir el marcador).
 geotiff_listo() {
-    local ruta="$1" nombre sat
+    local ruta="$1" origen_rel="$2" nombre sat marcadores
     nombre="$(basename "$ruta")"
     [[ "$nombre" =~ ^(npp|noaa20|noaa21)_viirs_.*_([0-9]{8})_([0-9]{6})_ ]] || return 1
     case "${BASH_REMATCH[1]}" in
@@ -136,52 +161,19 @@ geotiff_listo() {
         noaa21) sat=j02 ;;
         npp)    sat=npp ;;
     esac
-    [ "$DIR_P2G_L1/${sat}_d${BASH_REMATCH[2]}_t${BASH_REMATCH[3]}.done" -nt "$ruta" ]
+    if [[ "$GEOTIFF_L1" == *" $origen_rel "* ]]; then
+        marcadores="$DIR_P2G_L1"
+    else
+        marcadores="$DIR_P2G_L2"
+    fi
+    [ "$marcadores/${sat}_d${BASH_REMATCH[2]}_t${BASH_REMATCH[3]}.done" -nt "$ruta" ]
 }
 
-publicar_carpeta() {
-    local rel="$1" origen="$ORIGEN/$1" destino="$DEST/$1"
-    local nombre tam mtime ruta tmp
-    local -A remoto=()
-
-    [ -d "$origen" ] || return 0
-    if [ "$DRY_RUN" -eq 0 ] && ! mkdir -p "$destino" 2>/dev/null; then
-        echo "  ✗ $rel: no se pudo crear $destino"
-        fallos=$((fallos + 1))
-        return 0
-    fi
-
-    # El destino, de una sola lectura. Los temporales (.*) no cuentan.
-    while IFS=$'\t' read -r nombre tam mtime; do
-        remoto["$nombre"]="$tam $mtime"
-    done < <(find "$destino" -maxdepth 1 -type f ! -name '.*' -printf '%f\t%s\t%Ts\n' 2>/dev/null)
-
-    # Lo local dentro de la retención, del más viejo al más nuevo: si un tic se
-    # interrumpe, lo pendiente es lo más reciente y no huecos en medio.
-    while IFS=$'\t' read -r mtime tam nombre; do
-        [ "${remoto[$nombre]:-}" != "$tam $mtime" ] || continue
-        ruta="$origen/$nombre"
-        if [ "${rel%%/*}" = geotiff ] && ! geotiff_listo "$ruta"; then
-            esperando=$((esperando + 1))
-            continue
-        fi
-        if [ "$DRY_RUN" -eq 1 ]; then
-            echo "  [dry-run] copiaría $rel/$nombre"
-            copiados=$((copiados + 1)); bytes=$((bytes + tam))
-            continue
-        fi
-        tmp="$destino/.$nombre.tmp.$$"
-        if cp --preserve=timestamps "$ruta" "$tmp" 2>/dev/null && mv -f "$tmp" "$destino/$nombre"; then
-            copiados=$((copiados + 1)); bytes=$((bytes + tam))
-        else
-            rm -f "$tmp" 2>/dev/null
-            echo "  ✗ $rel/$nombre: falló la copia"
-            fallos=$((fallos + 1))
-        fi
-    done < <(find "$origen" -maxdepth 1 -type f -mmin "-$RETENCION_MIN" -printf '%Ts\t%s\t%f\n' | sort -n)
-
-    # Poda: lo que pasó de la retención, y temporales huérfanos de un tic que
-    # murió a media copia.
+# Poda: lo que pasó de la retención, y temporales huérfanos de un tic que murió
+# a media copia.
+podar() {
+    local rel="$1" destino="$DEST/$1" nombre
+    [ -d "$destino" ] || return 0
     while IFS= read -r nombre; do
         if [ "$DRY_RUN" -eq 1 ]; then
             echo "  [dry-run] borraría $rel/$nombre"
@@ -196,6 +188,60 @@ publicar_carpeta() {
                   -printf '%f\n' 2>/dev/null)
 }
 
+# publicar_destino <destino> <origen>...
+publicar_destino() {
+    local rel="$1"; shift
+    local destino="$DEST/$rel" o nombre tam mtime dir ruta origen_rel tmp
+    local -a origenes=()
+    local -A remoto=()
+
+    for o in "$@"; do
+        [ -d "$ORIGEN/$o" ] && origenes+=("$ORIGEN/$o")
+    done
+    [ "${#origenes[@]}" -gt 0 ] || return 0
+
+    if [ "$DRY_RUN" -eq 0 ] && ! mkdir -p "$destino" 2>/dev/null; then
+        echo "  ✗ $rel: no se pudo crear $destino"
+        fallos=$((fallos + 1))
+        return 0
+    fi
+
+    # El destino, de una sola lectura aunque lleguen varios orígenes. Los
+    # temporales (.*) no cuentan.
+    while IFS=$'\t' read -r nombre tam mtime; do
+        remoto["$nombre"]="$tam $mtime"
+    done < <(find "$destino" -maxdepth 1 -type f ! -name '.*' -printf '%f\t%s\t%Ts\n' 2>/dev/null)
+
+    # Lo local dentro de la retención, de todos los orígenes y del más viejo al
+    # más nuevo: si un tic se interrumpe, lo pendiente es lo más reciente y no
+    # huecos en medio.
+    while IFS=$'\t' read -r mtime tam nombre dir; do
+        [ "${remoto[$nombre]:-}" != "$tam $mtime" ] || continue
+        ruta="$dir/$nombre"
+        origen_rel="${dir#"$ORIGEN"/}"
+        if [ "${origen_rel%%/*}" = geotiff ] && ! geotiff_listo "$ruta" "$origen_rel"; then
+            esperando=$((esperando + 1))
+            continue
+        fi
+        if [ "$DRY_RUN" -eq 1 ]; then
+            echo "  [dry-run] copiaría $origen_rel/$nombre → $rel/"
+            copiados=$((copiados + 1)); bytes=$((bytes + tam))
+            continue
+        fi
+        tmp="$destino/.$nombre.tmp.$$"
+        if cp --preserve=timestamps "$ruta" "$tmp" 2>/dev/null && mv -f "$tmp" "$destino/$nombre"; then
+            copiados=$((copiados + 1)); bytes=$((bytes + tam))
+        else
+            rm -f "$tmp" 2>/dev/null
+            echo "  ✗ $rel/$nombre: falló la copia"
+            fallos=$((fallos + 1))
+        fi
+    done < <(find "${origenes[@]}" -maxdepth 1 -type f -mmin "-$RETENCION_MIN" \
+                  -printf '%Ts\t%s\t%f\t%h\n' | sort -n)
+
+    podar "$rel"
+}
+
 # El NFS, antes de tocar nada. Con montaje soft una operación puede tardar
 # minutos en devolver error; mejor saberlo aquí una vez que en cada archivo.
 if ! timeout 30 stat -f "$DEST" > /dev/null 2>&1; then
@@ -204,8 +250,13 @@ if ! timeout 30 stat -f "$DEST" > /dev/null 2>&1; then
     terminar 1
 fi
 
-for c in "${CARPETAS[@]}"; do
-    publicar_carpeta "$c"
+for linea in "${DESTINOS[@]}"; do
+    read -r -a campos <<< "$linea"
+    publicar_destino "${campos[@]}"
+done
+
+for c in "${RETIRADAS[@]}"; do
+    podar "$c"
 done
 
 [ "$fallos" -eq 0 ] && terminar 0 || terminar 1
