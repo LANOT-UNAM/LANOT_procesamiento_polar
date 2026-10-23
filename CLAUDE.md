@@ -28,6 +28,16 @@ publicador en cron".
    conservados en una semana. Confirmar en los logs si es solo el GFS de la madrugada y si el
    reintento del barrido termina bien (sección "2026-10-23" de `docs/estado_y_pendientes.md`).
 
+4. **Lo instalado el 2026-10-23, en su primera corrida real**:
+   - `publicar_dataservice.sh` con Level 2 y vistas: que la primera carga (~865 GB, arrancó
+     hacia las 16:25 CST) haya terminado sin fallos en `publicar_dataservice.log`, y que
+     `/dataservice/jpss/level2/*` y `vistas/*` estén poblados.
+   - AFMOD: que las pasadas nuevas digan "N AFIMG, M AFMOD" en el log de Active Fire y
+     traigan `*_confidence_pct_*_750m.tif`.
+   - EVI: que las pasadas diurnas nuevas tengan vista en `vistas/lsr/`.
+   - `limpiar.sh` en cron (17:30 UTC): su línea en `limpiar.log`.
+   - Duración de `run_polar2grid_edr.sh`: ~5 min en las pasadas de 20 vistas (punto 2).
+
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 
 ## Comandos
