@@ -55,6 +55,44 @@ arriba (se espera volver a ~5 min o menos) y el tramo hasta `--- Productos atmos
 Y sigue en pie lo de fondo: **sin retención en `/data/output/jpss`**, todo lo que liste esos
 directorios se irá frenando (ver "La limpieza del pendiente 5", sección del 2026-09-27).
 
+### Retención: `/data` se llenaba en un mes
+
+Medido el 2026-10-23 en tahan: `/data` 37 TB, 26 usados, **11 libres**. Desde la semana 39
+(NOAA-21 y la automatización) la cadena escribe **~2.4 TB por semana**, sin borrar nada:
+
+| | por semana | acumulado |
+|---|---|---|
+| level0 | ~68 GB | 336 GB |
+| level1 | ~800 GB | 3.7 TB |
+| level2 | ~1130 GB (de ellos `atmosphere` ~1015, `lsr` ~127) | 5.2 TB |
+| geotiff | ~410 GB | 1.9 TB |
+| vistas | ~1 GB | 5 GB |
+| `/data/tmp` | — | 1.4 TB |
+
+El ancillary está en orden: ATMOS (91 GB) y HEAP (14 GB) se podan a 14 días por cron. En la
+raíz de `/data/ancillary` quedan **~19 GB del 6–8 de mayo** (36 `gfs.*.pgrb2.0p25.*`, dos CMC y
+tres `snow_map`), de antes de que ATMOS tuviera caché propio: se borran **a mano**, una vez;
+`limpiar.sh` no toca nada suelto de esa raíz a propósito.
+
+`scripts/limpiar.sh` + `config/retencion.tsv`, con los días acordados ese día: `/data/tmp` 7,
+level0 14, level1 7, level2 14, geotiff 14, vistas 90, marcadores 30, directorios por día del
+ancillary de SDR 30. Régimen esperado ~4 TB en vez de 12.6. Los marcadores de RT-STPS **no se
+borran por edad** sino cuando su RAW ya no está en el buzón (los RAW duran ~un mes, y el
+barrido revisa el buzón entero); si el buzón no se ve o está vacío, no se tocan.
+
+La primera vez son ~8 TB: a mano, por tandas, fuera de 07–09 y 19–21 UTC, y el cron solo
+después.
+
+```bash
+cd /opt/lanot/polares/scripts
+./limpiar.sh --verificar                 # revisar sobre todo la fila de /data/tmp
+./limpiar.sh --margen 28                 # y bajar: 21, 14, 7, 0
+```
+
+Pendiente aparte: **por qué ATMOS escribe ~145 GB al día**. Puede ser lo normal de diez
+familias `JRR-*` por gránulo, o duplicados de las pasadas que `barrer_pendientes.sh` retoma
+(los `JRR-*` llevan `_c<sello>`, pendiente 5). Con la retención deja de ser urgente.
+
 ### `.sif` con LANOT_tools `fa99373`: verificado
 
 `apptainer inspect` confirma `fa99373` instalado. Sin `Traceback` ni errores desde el 4. La
@@ -2307,7 +2345,7 @@ las de la instalación, `/opt/lanot/polares/scripts/`, no las del clon.
 | `publicar_dataservice.sh` | cada 5 min (toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss` para los FTP, y poda a 5 días. | **Activa** desde el 2026-10-16 |
 | `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **No está en cron** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
-| Limpieza de productos y `/data/tmp` | diaria | `/data/output/jpss` no tiene retención (frenaba P2G, sección del 2026-10-23) y los `JRR-*`/`NUCAPS-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
+| `limpiar.sh` | diaria (`30 11 * * *` CST = 17:30 UTC) | Retención de `config/retencion.tsv`: productos, `/data/tmp`, marcadores y ancillary por día de SDR (sección del 2026-10-23). | **Escrito el 2026-10-23; pendiente de montar** tras la primera limpieza por tandas |
 
 Ajeno a esta cadena pero en el mismo crontab y la misma máquina: desde el 2026-10-18,
 **ceniza CONUS** (`/opt/lanot/ceniza`), `procesa_ceniza.sh` dos veces cada 5 min y
