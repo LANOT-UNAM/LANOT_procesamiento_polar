@@ -98,15 +98,15 @@ familias `JRR-*` por gránulo, o duplicados de las pasadas que `barrer_pendiente
 Sus notas, una por una:
 
 1. **ACSPO, "publicar el dato, no solo la vista"** y **6. los NWP de ATMOS**: los `.nc` se
-   generan y se quedan en `level2/`; no salen porque `publicar_dataservice.sh` solo publica
-   Level 1. El nombre que citó (`ACSPO-VIIRS_v2-80_…`) es el de la cadena vieja: ACSPO 3.0
-   nombra al estilo GHRSST. **Pendiente**: qué familias quiere en `/dataservice` (todo ATMOS
-   son ~730 GB en 5 días) y agregar Level 2 al publicador con la misma regla de "listo" que los
-   GeoTIFF de L1.
+   generaban y se quedaban en `level2/`; no salían porque `publicar_dataservice.sh` solo
+   publicaba Level 1. El nombre que citó (`ACSPO-VIIRS_v2-80_…`) es el de la cadena vieja:
+   ACSPO 3.0 nombra al estilo GHRSST. **Hecho el 2026-10-23**: las nueve familias de Level 2,
+   NWP incluidos, y las vistas se publican en `/dataservice/jpss`, cada GeoTIFF junto a su
+   `.nc`. Primera carga en curso esa tarde.
 2. **Faltaba el AFMOD (fuegos a 750 m)**. El driver solo lo hace con `-M`, en una corrida
    aparte, y nunca se le pidió. **Hecho el 2026-10-23**: `run_active_fire_edr.sh` corre las
    dos y `run_polar2grid_edr.sh` remalla `confidence_pct`, `T13` y `power` a 750 m (sin vista).
-   Por verificar con la primera pasada.
+   Por verificar con la primera pasada en operación.
 3. **`confidence_cat` con valores 43–74**: el GeoTIFF que citó
    (`noaa20_viirs_confidence_cat_20261023_091135`) tiene un solo valor, 8, que es válido.
    Falta preguntarle con qué lo leyó; probablemente la vista, donde los números son colores.
@@ -124,7 +124,9 @@ Sus notas, una por una:
    `move` renombra) y el script mueve a `level2/lsr` en el host. Probado en tahan sobre
    `j01_d20261023_t202135`: los 10 gránulos con ~7.7 M píxeles de EVI, como el NDVI; mediana
    ~0 en mar y ~0.1 en tierra. Lo anterior no se recupera sin reprocesar LSR.
-7. **"Borrar cache cada 5 días"**: por aclarar a qué se refiere.
+7. **"Borrar cache cada 5 días"**: resuelto con la retención (`config/retencion.tsv`,
+   `limpiar.sh`) y los 5 días de `/dataservice`. La tabla de vigencia está en el catálogo,
+   sección "Cuánto se conserva".
 
 `gdalinfo -stats` escribe un `.aux.xml` junto al GeoTIFF: en directorios de producción,
 `gdalinfo -mm`.
