@@ -2294,24 +2294,27 @@ limpio sobre nube brillante, que es el caso que un sondeo no podía probar.
 
 ## Tareas programadas
 
-Qué debe quedar en el `crontab` de `lanotadm`. **Ninguna está confirmada como activa**:
-falta cotejar contra un `crontab -l` en tahan.
+El `crontab` de `lanotadm` en tahan, cotejado con `crontab -l` el 2026-10-23. Las rutas son
+las de la instalación, `/opt/lanot/polares/scripts/`, no las del clon.
 
 | Tarea | Frecuencia | Por qué | Estado |
 |---|---|---|---|
-| `update_sdr_daily.sh` | diaria | LUTs de calibración y TLE/GFS de CSPP SDR. Sin esto, la calibración se degrada con los días. | Existe desde antes; **verificar si está en cron** |
-| `update_atmos_ancillary.sh` | 4× al día (`17 2,8,14,20 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Pendiente de montar** |
-| `update_heap_ancillary.sh` | semanal (`40 3 * * 0`) | **Solo poda.** HEAP baja su GFS por su cuenta al correr, pero el manual (§1.6.3) avisa que no lo borra nunca. Sin esto, `/data/ancillary/heap` crece indefinidamente. | **Escrito el 2026-08-15; pendiente de montar** |
-| `barrer_pendientes.sh` | cada 15 min (`*/15 * * * *`) | Recoge los RAW que se quedaron atrás: los `run_*.sh` no miran hacia atrás, y una pasada que llegue con el candado tomado se descarta. | **Escrito el 2026-08-15; pendiente de montar** |
-| `publicar_dataservice.sh` | cada 5 min (`*/5 * * * *`; toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss`, de donde lo toman los servidores FTP, y poda a 5 días. La primera corrida sube los 5 días enteros (~790 GB, ~65 min: la limita la lectura de `/data`, ~200 MB/s). | **Escrito el 2026-10-14; pendiente de montar** |
-| `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **Escrito el 2026-08-15; pendiente de montar** |
+| `update_sdr_daily.sh` | diaria (`40 23 * * *` CST = 05:40 UTC) | LUTs de calibración y TLE/GFS de CSPP SDR. Sin esto, la calibración se degrada con los días. | **Activa** |
+| `update_atmos_ancillary.sh` | 4× al día (`17 0,6,12,18 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Activa** |
+| `update_heap_ancillary.sh` | semanal (`40 3 * * 0`) | **Solo poda** (14 días). HEAP baja su GFS por su cuenta al correr, pero el manual (§1.6.3) avisa que no lo borra nunca. | **Activa** |
+| `barrer_pendientes.sh` | cada 15 min (`7-59/15`) | Recoge los RAW que se quedaron atrás y retoma ATMOS/LSR/CRYO de las últimas 24 h. | **Activa** |
+| `publicar_kawak.sh` | cada 15 min (`12-59/15`, con `flock`) | Publicación provisional en kawak: vistas de NOAA-21, sondeos y Skew-T, lo que la cadena vieja no publica. | **Activa** |
+| `publicar_dataservice.sh` | cada 5 min (toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss` para los FTP, y poda a 5 días. | **Activa** desde el 2026-10-16 |
+| `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **No está en cron** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
-| Limpieza de productos | por definir | Los `JRR-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
+| Limpieza de productos y `/data/tmp` | diaria | `/data/output/jpss` no tiene retención (frenaba P2G, sección del 2026-10-23) y los `JRR-*`/`NUCAPS-*` se duplican en cada reproceso (pendiente 5). | **Sin escribir** |
+
+Ajeno a esta cadena pero en el mismo crontab y la misma máquina: desde el 2026-10-18,
+**ceniza CONUS** (`/opt/lanot/ceniza`), `procesa_ceniza.sh` dos veces cada 5 min y
+`vigila_ceniza.sh` cada 15. Cuenta como carga al medir duraciones.
 
 Los `run_*.sh` **no van en cron**: los encadena `procesar_pasada.sh`, que a su vez lo dispara
 `recibe.sh` cuando llega un RAW. Lo único periódico de la cadena es el barrido.
-
-Las rutas del cron son las de la instalación, `/opt/lanot/polares/scripts/`, no las del clon.
 
 La preparación del servidor —`preparar_servidor.sh`— se ejecuta una sola vez, nunca en cron.
 `instalar.sh` va en cada despliegue, a mano.
