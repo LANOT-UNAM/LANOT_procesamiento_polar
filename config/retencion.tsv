@@ -24,13 +24,19 @@
 #                           (días es solo la edad mínima del marcador). El barrido
 #                           revisa el buzón entero, sin límite de antigüedad, y un
 #                           RAW sin marcador se reprocesa completo.
+#   patrón  opcional, solo para entradas: ERE que tiene que cumplir el NOMBRE de
+#           la entrada para borrarla. En /data/tmp es obligatorio en la práctica:
+#           ahí conviven los temporales de esta cadena con cosas que no son suyas
+#           y que corren con el mismo usuario (viirs_afai_historico, de sargazo,
+#           294 GB el 2026-10-23), así que se borran solo los <etapa>_work_* y
+#           <etapa>_staging_* que crean los run_*.sh. Lo demás, a mano.
 #
 # Los días se acordaron el 2026-10-23. level1 se conserva menos que level2 porque ya
 # vive 5 días en /dataservice (publicar_dataservice.sh); level0 más que level1
 # porque pesa poco (~70 GB por semana) y permite rehacer SDR.
 
-# ruta	días	modo
-/data/tmp	7	entradas
+# ruta	días	modo	patrón
+/data/tmp	7	entradas	^((acspo|atmos|cryo|fire|flood|heap|lsr|mirs|omps|p2g|p2g_l1|sdr)_(work|staging)|rt_stps)_
 /data/output/jpss/tmp	7	entradas
 /data/output/jpss/level0	14	archivos
 /data/output/jpss/level1	7	archivos

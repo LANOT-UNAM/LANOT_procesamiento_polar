@@ -159,7 +159,7 @@ echo "[$(date '+%F %T')] limpiar.sh$([ "$DRY_RUN" -eq 1 ] && echo ' --verificar'
 printf '  %-34s %-15s %6s  %8s  %s\n' ruta modo días archivos peso
 
 errores=0
-while IFS=$'\t' read -r ruta dias modo _resto; do
+while IFS=$'\t' read -r ruta dias modo patron _resto; do
     [[ -z "$ruta" || "$ruta" == \#* ]] && continue
     ruta="${ruta%/}"
 
@@ -174,7 +174,7 @@ while IFS=$'\t' read -r ruta dias modo _resto; do
     min=$(( (dias + MARGEN) * 1440 ))
     case "$modo" in
         archivos)       r=$(limpiar_archivos "$ruta" "$min") ;;
-        entradas)       r=$(limpiar_entradas "$ruta" "$min") ;;
+        entradas)       r=$(limpiar_entradas "$ruta" "$min" "${patron:-}") ;;
         dias_anc)       r=$(limpiar_entradas "$ruta" "$min" '^[0-9]{4}_[0-9]{2}_[0-9]{2}_[0-9]{3}$') ;;
         marcadores)     r=$(limpiar_marcadores "$ruta" "$min") ;;
         marcadores_raw) r=$(limpiar_marcadores_raw "$ruta" "$min") ;;
