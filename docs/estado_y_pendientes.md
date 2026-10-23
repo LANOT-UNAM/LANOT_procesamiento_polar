@@ -224,7 +224,7 @@ Pendiente:
    entender por qué.
 3. ~~Los `.log` de Active Fire se acumulan en `level2/fires`~~. **Arreglado el 2026-10-23**:
    el driver corre en un directorio de trabajo bajo `/data/tmp` y solo los `.nc` pasan a la
-   salida. Los ~2144 viejos se borran a mano una vez (`rm /data/output/jpss/level2/fires/*.log`).
+   salida. Los viejos (2766) se borraron a mano el mismo día.
 
 ### `publicar_dataservice.sh`
 
