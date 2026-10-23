@@ -342,19 +342,38 @@ REF_FILE=$(mktemp -t lsr_edr_ref_XXXXXX)
 # lectura dentro del contenedor—: 'Read-only file system: /work_lsr_…' en las
 # quince pasadas del 2026-09-23 y 24, las primeras en automático. Va al lado del
 # staging, no dentro, por la misma razón que en los otros EDR.
+#
+# -o /work/salida, y NO directo a la salida, por el EVI. El driver agrega NDVI y
+# EVI a cada SurfRefl abriéndolo en modo escritura y sin cerrarlo nunca
+# (cspp_viirs_lsr_ndvi_evi.py), y enseguida lo pasa de work_lsr_*/output_N a -o
+# con shutil.move. Si -o es otro montaje —y /output_data lo era—, move no puede
+# renombrar y COPIA el archivo con lo último escrito todavía en el caché de HDF5:
+# la copia lleva la variable EVI creada pero vacía. Así salieron TODOS los EVI
+# desde mayo, 9.97e36 en cada píxel, mientras el NDVI, escrito antes, sí llegaba
+# (diagnosticado el 2026-10-23, tras la revisión de Víctor). Dentro del mismo
+# montaje, move renombra, el archivo abierto sigue siendo el mismo y HDF5 lo
+# termina de escribir al salir el proceso. El traslado a la salida lo hace este
+# script, en el host, con el contenedor ya terminado. La limpieza del driver solo
+# borra work_lsr_*, así que /work/salida sobrevive.
+mkdir -p "$WORK_DIR/salida"
 EXIT_CODE=0
 apptainer exec \
     --env LC_ALL=C \
     --env CSPP_VIIRS_LSR_V2_HOME=/opt/cspp-surf_refl \
     -B "${STAGING_DIR}":/input_data \
-    -B "${OUTPUT_LSR_DIR}":/output_data \
     -B "${WORK_DIR}":/work \
     -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
     -B "${INPUT_ATMOS_DIR}":"${INPUT_ATMOS_DIR}" \
     --pwd /work \
     "${SIF_IMAGE}" \
-    /opt/cspp-surf_refl/run_cspp_lsr_v2.sh -o /output_data -p "${CORES}" /input_data \
+    /opt/cspp-surf_refl/run_cspp_lsr_v2.sh -o /work/salida -p "${CORES}" /input_data \
     >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
+
+# Con el contenedor terminado, a la salida. Mismo disco en el host: mv renombra.
+# Va antes de revisar el código de salida para no dejar varado lo que sí salió.
+while IFS= read -r -d '' f; do
+    mv -f "$f" "$OUTPUT_LSR_DIR"/
+done < <(find "$WORK_DIR/salida" -maxdepth 1 -name 'SurfRefl*.nc' -print0 2>/dev/null)
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 

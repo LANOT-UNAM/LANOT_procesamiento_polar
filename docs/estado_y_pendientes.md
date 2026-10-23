@@ -113,8 +113,17 @@ Sus notas, una por una:
 4. **Unidades de `surf_refl_*`**: Satpy las entrega en **porcentaje** (`viirs_edr.py:139`
    multiplica por 100). El i01 de NPP del 22: mínimo -1, máximo 159.99, media 20.8; los extremos
    son el rango válido del producto ×100. **Pendiente**: decidir con él si se pasan a 0–1.
-5. **EVI sin GeoTIFF**: sí está (`npp_viirs_EVI_20261022_202035`). Lo que falta es la vista:
-   la pasada dio "lsr 1 vista", solo NDVI. Por revisar si el EVI sale vacío (código 3).
+5. **EVI sin GeoTIFF**: el GeoTIFF existía pero **vacío, en todas las pasadas desde mayo**, y
+   por eso nunca hubo vista (código 3). La culpa no era de Polar2Grid: en los `SurfRefl_*.nc`
+   el EVI valía 9.97e36 (el relleno por omisión de NetCDF) en cada píxel, con el NDVI del
+   mismo archivo bien. `cspp_viirs_lsr_ndvi_evi.py` abre cada archivo en `r+`, escribe NDVI y
+   EVI y **no lo cierra**; el driver lo pasa enseguida a `-o` con `shutil.move`, y como
+   `/output_data` era otro montaje, `move` copió el archivo con el EVI aún en el caché de
+   HDF5. El mismo cálculo, cerrando el archivo, da EVI completo. **Arreglado el 2026-10-23**
+   en `run_lsr_edr.sh`: `-o /work/salida` (mismo montaje que el trabajo del driver, así que
+   `move` renombra) y el script mueve a `level2/lsr` en el host. Probado en tahan sobre
+   `j01_d20261023_t202135`: los 10 gránulos con ~7.7 M píxeles de EVI, como el NDVI; mediana
+   ~0 en mar y ~0.1 en tierra. Lo anterior no se recupera sin reprocesar LSR.
 7. **"Borrar cache cada 5 días"**: por aclarar a qué se refiere.
 
 `gdalinfo -stats` escribe un `.aux.xml` junto al GeoTIFF: en directorios de producción,
