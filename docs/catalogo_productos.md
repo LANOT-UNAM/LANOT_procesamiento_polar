@@ -11,6 +11,18 @@ Productos que el LANOT genera a partir de la recepción directa de los satélite
 
 Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de 20 min. En los nombres de GeoTIFF y vistas el satélite va como `npp`, `noaa20` o `noaa21`; en los de CSPP, como `npp`, `j01` o `j02` (o `n20`/`n21` en algunos Level 2).
 
+## Cuánto se conserva
+
+Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts/limpiar.sh` una vez al día, con los días de `config/retencion.tsv`; en `/dataservice/jpss/`, que es de donde lo toman los FTP, `scripts/publicar_dataservice.sh`, a los 5 días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así que ahí la carpeta puede no ser la misma que aquí.
+
+| Carpeta en `/data/output/jpss/` | Se conserva | En `/dataservice/jpss/` (5 días) |
+|---|---|---|
+| `level0/` | 14 días | no se publica |
+| `level1/` | 7 días | `level1/atms`, `level1/cris`, `level1/omps`, `level1/viirs` |
+| `level2/` | 14 días | no se publica |
+| `geotiff/` | 14 días | `geotiff/dnb` → `level1/viirs`, `geotiff/i_bands` → `level1/viirs`, `geotiff/m_bands` → `level1/viirs`, `geotiff/rgb` → `level1/viirs` |
+| `vistas/` | 90 días | no se publica |
+
 ## Resumen
 
 ### Level 1: SDR

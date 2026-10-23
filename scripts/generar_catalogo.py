@@ -45,6 +45,8 @@ MD = "docs/catalogo_productos.md"
 PDF = "docs/catalogo_productos.pdf"
 SCRIPTS = "scripts"
 RENDERIZADORES = ["scripts/run_polar2grid_l1.sh", "scripts/run_polar2grid_edr.sh"]
+RETENCION = "config/retencion.tsv"
+PUBLICADOR = "scripts/publicar_dataservice.sh"
 
 COLUMNAS = ("id nombre nivel sensor satelites formato contenido resolucion ruta "
             "patron ruta_vista vista p2g origen depende_de notas").split()
@@ -113,6 +115,59 @@ def pendientes(f):
     return [c for c in COLUMNAS if "?" in f[c]]
 
 
+def leer_retencion():
+    """Filas de config/retencion.tsv bajo /data/output/jpss: (carpeta, días)."""
+    filas = []
+    with open(RETENCION, encoding="utf-8") as f:
+        for linea in f:
+            if not linea.strip() or linea.startswith("#"):
+                continue
+            ruta, dias, modo = linea.rstrip("\n").split("\t")[:3]
+            if modo != "archivos" or not ruta.startswith("/data/output/jpss/"):
+                continue
+            filas.append((ruta[len("/data/output/jpss/"):], int(dias)))
+    return filas
+
+
+def leer_publicacion():
+    """Días de retención en /dataservice y el reparto origen → destino."""
+    with open(PUBLICADOR, encoding="utf-8") as f:
+        texto = f.read()
+    dias = int(re.search(r'DIAS="\$\{PUB_DS_DIAS:-(\d+)\}"', texto).group(1))
+    bloque = re.search(r"DESTINOS=\((.*?)\n\)", texto, re.S).group(1)
+    reparto = []   # (origen, destino)
+    for m in re.finditer(r'"([^"]+)"', bloque):
+        destino, *origenes = m.group(1).split()
+        reparto += [(o, destino) for o in origenes]
+    return dias, reparto
+
+
+def seccion_conservacion(w):
+    dias_pub, reparto = leer_publicacion()
+    w("## Cuánto se conserva")
+    w("")
+    w(f"Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace "
+      f"`scripts/limpiar.sh` una vez al día, con los días de `{RETENCION}`; en "
+      f"`/dataservice/jpss/`, que es de donde lo toman los FTP, `{PUBLICADOR}`, a los "
+      f"{dias_pub} días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así "
+      f"que ahí la carpeta puede no ser la misma que aquí.")
+    w("")
+    w(f"| Carpeta en `/data/output/jpss/` | Se conserva | En `/dataservice/jpss/` ({dias_pub} días) |")
+    w("|---|---|---|")
+    for carpeta, dias in leer_retencion():
+        if carpeta.startswith("state"):
+            continue
+        pub = sorted({(o, d) for o, d in reparto if o == carpeta or o.startswith(carpeta + "/")})
+        if not pub:
+            destino = "no se publica"
+        elif all(o == d for o, d in pub):
+            destino = ", ".join(f"`{d}`" for _, d in pub)
+        else:
+            destino = ", ".join(f"`{o}` → `{d}`" for o, d in pub)
+        w(f"| `{carpeta}/` | {dias} días | {destino} |")
+    w("")
+
+
 def generar_md(filas):
     o = []
     w = o.append
@@ -138,6 +193,8 @@ def generar_md(filas):
       "En los nombres de GeoTIFF y vistas el satélite va como `npp`, `noaa20` o `noaa21`; en "
       "los de CSPP, como `npp`, `j01` o `j02` (o `n20`/`n21` en algunos Level 2).")
     w("")
+
+    seccion_conservacion(w)
 
     w("## Resumen")
     w("")
