@@ -11,7 +11,17 @@
 # LANOT - UNAM | CSPP VIIRS Active Fire v2.1
 # ==============================================================================
 #
-# Level 1 (SDR de VIIRS) → detección de incendios (AF*.nc)
+# Level 1 (SDR de VIIRS) → detección de incendios, en las dos resoluciones:
+#
+#   AFIMG_*.nc   banda I, 375 m. Confianza por categoría: 7, 8, 9 (baja,
+#                nominal, alta). Es lo que hace el driver por omisión.
+#   AFMOD_*.nc   banda M, 750 m. Confianza en porcentaje, 0-100. Solo sale con
+#                -M, en una corrida aparte (manual §3): hasta el 2026-10-23 no
+#                se pedía y la cadena solo tenía la de 375 m.
+#
+# Las dos corridas van en directorios de trabajo propios bajo /data/tmp y solo
+# los .nc pasan a la salida. Antes el pwd era la salida, y el driver dejaba ahí
+# sus NOAA_AFIMG_*.log y cspp_active_fire_noaa.*.log (2144 desde mayo).
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue procesada con éxito, avisa y no hace nada. Una pasada se identifica
@@ -32,7 +42,7 @@
 #   FIRE_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-active-fire)
 #   FIRE_CACHE      Máscaras tierra/agua (def. /data/ancillary/active_fire_cache)
 #   FIRE_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_active_fire_edr_v2.1.sif)
-#   FIRE_WORK_BASE  Raíz de staging  (def. /data/tmp)
+#   FIRE_WORK_BASE  Raíz de staging y trabajo (def. /data/tmp)
 #   FIRE_LOG_BASE   Raíz de logs     (def. /var/log/lanot/polares)
 #
 # ==============================================================================
@@ -122,6 +132,7 @@ done
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 START_EPOCH=$(date '+%s')
 STAGING_DIR="${WORK_BASE}/fire_staging_${JOB_ID}"
+WORK_DIR="${WORK_BASE}/fire_work_${JOB_ID}"
 
 # ==============================================================================
 # SELECCIÓN DE LA PASADA
@@ -194,53 +205,88 @@ echo "  Caché:   $HOST_CACHE"          | tee -a "$LOG_FILE"
 # ==============================================================================
 # EJECUCIÓN
 # ==============================================================================
-# --pwd /output_data: el ejecutable escribe en el directorio actual.
+# Dos corridas: la de banda I (por omisión) y la de banda M (-M). Cada una en su
+# propio directorio de trabajo, que es el pwd: ahí deja el driver los .nc y sus
+# logs. Los .nc se mueven a la salida; lo demás se va con el directorio si todo
+# salió bien, y se queda para depurar si no.
 
 REF_FILE=$(mktemp -t fire_ref_XXXXXX)
 trap 'rm -rf "$STAGING_DIR" "$REF_FILE"' EXIT
 
-EXIT_CODE=0
-apptainer exec \
-    --env LC_ALL=C \
-    --env CSPP_ACTIVE_FIRE_CACHE_DIR=/cache \
-    -B "${STAGING_DIR}":/input_data \
-    -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
-    -B "${OUTPUT_DIR}":/output_data \
-    -B "${HOST_CACHE}":/cache \
-    --pwd /output_data \
-    "${SIF_IMAGE}" \
-    /bin/bash -c "source ${ENV_SCRIPT} && ${EXEC_SCRIPT} -v /input_data" \
-    >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
+mkdir -p "$WORK_DIR/img" "$WORK_DIR/mod"
+
+# correr_fire <subdirectorio> <etiqueta> [opciones del driver]
+# Deja en CODIGO_<etiqueta> el código de salida y en N_<etiqueta> los .nc movidos.
+correr_fire() {
+    local sub="$1" etiqueta="$2"; shift 2
+    local codigo=0 n
+
+    echo "--- $etiqueta ${*:-} --- $(date +%H:%M:%S)" >> "$LOG_FILE"
+    apptainer exec \
+        --env LC_ALL=C \
+        --env CSPP_ACTIVE_FIRE_CACHE_DIR=/cache \
+        -B "${STAGING_DIR}":/input_data \
+        -B "${INPUT_SDR_DIR}":"${INPUT_SDR_DIR}" \
+        -B "${WORK_DIR}/${sub}":/work \
+        -B "${HOST_CACHE}":/cache \
+        --pwd /work \
+        "${SIF_IMAGE}" \
+        /bin/bash -c "source ${ENV_SCRIPT} && ${EXEC_SCRIPT} -v $* /input_data" \
+        >> "$LOG_FILE" 2>&1 || codigo=$?
+
+    n=0
+    while IFS= read -r -d '' f; do
+        mv -f "$f" "$OUTPUT_DIR"/ && n=$((n + 1))
+    done < <(find "$WORK_DIR/$sub" -maxdepth 1 -name "${etiqueta}_*.nc" -print0)
+
+    printf -v "CODIGO_${etiqueta}" '%s' "$codigo"
+    printf -v "N_${etiqueta}" '%s' "$n"
+}
+
+correr_fire img AFIMG
+correr_fire mod AFMOD -M
 
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ ERROR: CSPP Active Fire falló (código $EXIT_CODE) tras $DURACION" | tee -a "$LOG_FILE"
-    echo "   Revisa el log: $LOG_FILE"                                         | tee -a "$LOG_FILE"
-    exit $EXIT_CODE
-fi
 
 # ==============================================================================
 # VERIFICACIÓN DE PRODUCTOS
 # ==============================================================================
+# Cada resolución tiene que haber terminado en 0 Y producido algo: el código de
+# salida solo no basta (ver CLAUDE.md, "Estado"). Si una falla, la etapa falla
+# y no se escribe el marcador, aunque lo de la otra ya esté en la salida: al
+# reintentar se rehacen las dos, y el duplicado de la que salió bien lo absorbe
+# run_polar2grid_edr.sh, que enlaza el _c<creación> más reciente de cada gránulo.
 
-NC_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" 2>/dev/null | wc -l)
+FALLO=0
+for etiqueta in AFIMG AFMOD; do
+    codigo_var="CODIGO_${etiqueta}"; n_var="N_${etiqueta}"
+    if [ "${!codigo_var}" -ne 0 ]; then
+        echo "❌ ERROR: $etiqueta falló (código ${!codigo_var})" | tee -a "$LOG_FILE"
+        FALLO=1
+    elif [ "${!n_var}" -eq 0 ]; then
+        echo "❌ ERROR: $etiqueta terminó sin error pero no generó productos" | tee -a "$LOG_FILE"
+        FALLO=1
+    fi
+done
 
-if [ "$NC_COUNT" -eq 0 ]; then
-    echo "❌ ERROR: Active Fire terminó sin error pero no generó productos." | tee -a "$LOG_FILE"
-    echo "   Revisa el log: $LOG_FILE"                                       | tee -a "$LOG_FILE"
+if [ "$FALLO" -ne 0 ]; then
+    echo "   Tras $DURACION. Revisa el log: $LOG_FILE"   | tee -a "$LOG_FILE"
+    echo "   Directorio de trabajo conservado: $WORK_DIR" | tee -a "$LOG_FILE"
     exit 1
 fi
+
+rm -rf "$WORK_DIR"
+NC_COUNT=$((N_AFIMG + N_AFMOD))
 
 {
     echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "pasada:    $CLAVE"
     echo "sdr:       $SDR_COUNT archivos de entrada"
-    echo "productos: $NC_COUNT archivos .nc"
+    echo "productos: $NC_COUNT archivos .nc ($N_AFIMG AFIMG, $N_AFMOD AFMOD)"
     echo "duracion:  $DURACION"
     echo "salida:    $OUTPUT_DIR"
     echo "log:       $LOG_FILE"
 } > "$MARKER"
 
-echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE en $OUTPUT_DIR ($DURACION)" | tee -a "$LOG_FILE"
+echo "✅ ÉXITO: $NC_COUNT productos de la pasada $CLAVE ($N_AFIMG AFIMG, $N_AFMOD AFMOD) en $OUTPUT_DIR ($DURACION)" | tee -a "$LOG_FILE"
 echo "   Marcador: $MARKER" | tee -a "$LOG_FILE"

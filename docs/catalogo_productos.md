@@ -32,6 +32,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 | [Criósfera: hielo marino](#l2-cryo) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Temperatura superficial del mar (ACSPO)](#l2-acspo) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4, GHRSST L2P | no |
 | [Incendios activos](#l2-fires) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
+| [Incendios activos, banda M](#l2-fires-m) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Incendios activos: lista en texto](#l2-fires-txt) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | texto (CSV con comentarios #) | no |
 | [Inundaciones](#l2-flood) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Microondas de ATMS (MiRS)](#l2-mirs) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
@@ -62,6 +63,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 | [Temperatura superficial del mar](#gt-sst) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
 | [Incendios: confianza de la detección](#gt-fire-confidence) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
 | [Incendios: temperatura y potencia](#gt-fire-t4-power) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | no |
+| [Incendios banda M: confianza, temperatura y potencia](#gt-fire-m) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | no |
 | [Inundaciones](#gt-flood) | VIIRS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF 8 bits con paleta | sí |
 | [Temperatura en 850 hPa](#gt-sounder-t850) | CrIS+ATMS | NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
 | [Temperatura en 700 hPa](#gt-sounder-t700) | CrIS+ATMS | NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
@@ -265,13 +267,32 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - **Contenido**: grupo Fire Pixels: una fila por incendio con FP_latitude, FP_longitude, FP_T4 [K], FP_power (FRP) [MW], FP_confidence, ángulos [°]; grupo Fire Mask: fire_mask en la malla de 375 m
 - **Formato**: NetCDF4
 - **Resolución**: puntos, 375 m
-- **Notas**: NetCDF con grupos. Aquí sat va como npp|j01|j02. Los NOAA_AFIMG_*.log del mismo directorio son logs, no producto.
+- **Notas**: NetCDF con grupos. Aquí sat va como npp|j01|j02. Desde el 2026-10-23 los logs del driver ya no quedan en este directorio.
 
 <details><summary>Para operación</summary>
 
 - Ruta: `level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*.nc`
 - Origen: CSPP Active Fire 2.1 → run_active_fire_edr.sh
 - Depende de: l1-viirs-sdr (bandas I)
+
+</details>
+
+<a id="l2-fires-m"></a>
+
+#### Incendios activos, banda M
+
+`l2-fires-m` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
+
+- **Contenido**: grupo Fire Pixels: una fila por incendio con FP_latitude, FP_longitude, FP_T13 [K], FP_power (FRP) [MW], FP_confidence [%, 0-100]
+- **Formato**: NetCDF4
+- **Resolución**: puntos, 750 m
+- **Notas**: Desde el 2026-10-23. Misma familia que l2-fires a 750 m; la confianza es porcentaje, no categoría.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `level2/fires/` · patrón `AFMOD_{sat}_d*_t*_e*_b*_c*.nc`
+- Origen: CSPP Active Fire 2.1 (-M) → run_active_fire_edr.sh
+- Depende de: l1-viirs-sdr (bandas M)
 
 </details>
 
@@ -774,6 +795,26 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-fires
 - Polar2Grid `-p`: `T4 power`
+
+</details>
+
+<a id="gt-fire-m"></a>
+
+#### Incendios banda M: confianza, temperatura y potencia
+
+`gt-fire-m` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
+
+- **Contenido**: confidence_pct [%], T13 [K], power [MW]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_750m
+- **Notas**: Dato, sin vista. Remallado por vecino más cercano.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `geotiff/fire/` · patrón `{sat}_viirs_{confidence_pct,T13,power}_*_wgs84_geo_750m.tif`
+- Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
+- Depende de: l2-fires-m
+- Polar2Grid `-p`: `confidence_pct T13 power`
 
 </details>
 

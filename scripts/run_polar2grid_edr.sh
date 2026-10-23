@@ -639,6 +639,7 @@ EDR_COUNT=0
 LSR_COUNT=0
 ACSPO_COUNT=0
 FIRE_COUNT=0
+FIRE_M_COUNT=0
 SOUNDER_COUNT=0
 OMPS_COUNT=0
 MIRS_COUNT=0
@@ -650,6 +651,8 @@ MIRS_COUNT=0
 # pasada (b45264 en el primer gránulo del 2026-08-13 y b45265 en los siguientes),
 # así que un glob por órbita dejaría fuera parte de los gránulos.
 [ -d "$HOST_FIRE_IN" ] && FIRE_COUNT=$(enlazar_en_ventana "$STAGING_FIRE" "$HOST_FIRE_IN" "AFIMG_")
+# Y los AFMOD, la versión de banda M (750 m), que existe desde el 2026-10-23.
+[ -d "$HOST_FIRE_IN" ] && FIRE_M_COUNT=$(enlazar_en_ventana "$STAGING_FIRE" "$HOST_FIRE_IN" "AFMOD_")
 # Solo los NUCAPS-EDR, que son los perfiles. En level2/sounder conviven además
 # los NUCAPS-ALL-HR (intermedios de NUCAPS) y los NUCAPS-OLR (onda larga
 # saliente), que no tienen lector en Polar2Grid y que además harían fallar la
@@ -675,7 +678,7 @@ echo "  SDR:      $SDR_COUNT archivos"                  | tee -a "$LOG_FILE"
 echo "  ATMOS:    $EDR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  LSR:      $LSR_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  ACSPO:    $ACSPO_COUNT productos en la ventana"  | tee -a "$LOG_FILE"
-echo "  FIRE:     $FIRE_COUNT productos en la ventana"   | tee -a "$LOG_FILE"
+echo "  FIRE:     $FIRE_COUNT AFIMG y $FIRE_M_COUNT AFMOD en la ventana" | tee -a "$LOG_FILE"
 echo "  SONDEOS:  $SOUNDER_COUNT productos en la ventana" | tee -a "$LOG_FILE"
 echo "  OZONO:    $OMPS_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
 echo "  MIRS:     $MIRS_COUNT productos en la ventana"    | tee -a "$LOG_FILE"
@@ -736,6 +739,8 @@ P2G_DATOS="$P2G_COMUN --dtype float32 --no-enhance"
 # discreta que los usa como índice; si Polar2Grid los realza a 0-255, la
 # correspondencia se rompe y la leyenda miente.
 P2G_FIRE_DATOS="--grid-configs /config/grid.yaml -g $GRID_375 --method nearest --dtype float32 --no-enhance"
+# Los AFMOD son de banda M: a la rejilla de 750 m, como el resto.
+P2G_FIRE_M_DATOS="--grid-configs /config/grid.yaml -g $GRID --method nearest --dtype float32 --no-enhance"
 
 if [ "$EDR_COUNT" -gt 0 ]; then
     # Los siete primeros son los que entregaba la lista por omisión, o sea que
@@ -815,6 +820,22 @@ if [ "$FIRE_COUNT" -gt 0 ]; then
         "cd /output_fire_tif && polar2grid.sh -v -r viirs_edr_active_fires -w geotiff -p confidence_cat T4 power --grid-coverage=0.0 $P2G_FIRE_DATOS -f /input_fire/AFIMG_*.nc"
 else
     echo "  ⚠ Sin productos de Active Fire para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
+fi
+
+if [ "$FIRE_M_COUNT" -gt 0 ]; then
+    # La versión de banda M trae otros productos que la de banda I: la confianza
+    # es un PORCENTAJE (confidence_pct, 0-100) y no una categoría, y la
+    # temperatura es la de M13 (T13), no la de I4. Por eso no se le puede pedir
+    # confidence_cat: el lector de Satpy lo declara solo para los AFIMG. Los
+    # nombres no chocan con los de banda I aunque power se llame igual: la
+    # rejilla va en el nombre del archivo (…_wgs84_geo_750m.tif).
+    #
+    # Sin vista, de momento: viirs_confidence_cat.cpt es una paleta de tres
+    # clases y no sirve para un porcentaje.
+    en_contenedor "Incendios banda M (Active Fire)" \
+        "cd /output_fire_tif && polar2grid.sh -v -r viirs_edr_active_fires -w geotiff -p confidence_pct T13 power --grid-coverage=0.0 $P2G_FIRE_M_DATOS -f /input_fire/AFMOD_*.nc"
+else
+    echo "  ⚠ Sin productos de Active Fire de banda M para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi
 
 if [ "$SOUNDER_COUNT" -gt 0 ]; then

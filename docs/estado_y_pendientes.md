@@ -93,6 +93,33 @@ Pendiente aparte: **por qué ATMOS escribe ~145 GB al día**. Puede ser lo norma
 familias `JRR-*` por gránulo, o duplicados de las pasadas que `barrer_pendientes.sh` retoma
 (los `JRR-*` llevan `_c<sello>`, pendiente 5). Con la retención deja de ser urgente.
 
+### Revisión de Level 2 de Víctor (junta del 2026-10-23)
+
+Sus notas, una por una:
+
+1. **ACSPO, "publicar el dato, no solo la vista"** y **6. los NWP de ATMOS**: los `.nc` se
+   generan y se quedan en `level2/`; no salen porque `publicar_dataservice.sh` solo publica
+   Level 1. El nombre que citó (`ACSPO-VIIRS_v2-80_…`) es el de la cadena vieja: ACSPO 3.0
+   nombra al estilo GHRSST. **Pendiente**: qué familias quiere en `/dataservice` (todo ATMOS
+   son ~730 GB en 5 días) y agregar Level 2 al publicador con la misma regla de "listo" que los
+   GeoTIFF de L1.
+2. **Faltaba el AFMOD (fuegos a 750 m)**. El driver solo lo hace con `-M`, en una corrida
+   aparte, y nunca se le pidió. **Hecho el 2026-10-23**: `run_active_fire_edr.sh` corre las
+   dos y `run_polar2grid_edr.sh` remalla `confidence_pct`, `T13` y `power` a 750 m (sin vista).
+   Por verificar con la primera pasada.
+3. **`confidence_cat` con valores 43–74**: el GeoTIFF que citó
+   (`noaa20_viirs_confidence_cat_20261023_091135`) tiene un solo valor, 8, que es válido.
+   Falta preguntarle con qué lo leyó; probablemente la vista, donde los números son colores.
+4. **Unidades de `surf_refl_*`**: Satpy las entrega en **porcentaje** (`viirs_edr.py:139`
+   multiplica por 100). El i01 de NPP del 22: mínimo -1, máximo 159.99, media 20.8; los extremos
+   son el rango válido del producto ×100. **Pendiente**: decidir con él si se pasan a 0–1.
+5. **EVI sin GeoTIFF**: sí está (`npp_viirs_EVI_20261022_202035`). Lo que falta es la vista:
+   la pasada dio "lsr 1 vista", solo NDVI. Por revisar si el EVI sale vacío (código 3).
+7. **"Borrar cache cada 5 días"**: por aclarar a qué se refiere.
+
+`gdalinfo -stats` escribe un `.aux.xml` junto al GeoTIFF: en directorios de producción,
+`gdalinfo -mm`.
+
 ### `.sif` con LANOT_tools `fa99373`: verificado
 
 `apptainer inspect` confirma `fa99373` instalado. Sin `Traceback` ni errores desde el 4. La
@@ -169,9 +196,9 @@ Pendiente:
    solo ACSPO, Fire y MiRS. Si difieren igual, la diferencia no es de la prueba y el
    comparador debería tolerarla en esos productos; si no, sí es de encimar y hay que
    entender por qué.
-3. Los `.log` de Active Fire se acumulan en `level2/fires` de producción: 2144 desde mayo. Hay
-   que llevarlos a `/var/log/lanot/polares/cspp-edr/` o borrarlos en `run_active_fire_edr.sh`
-   **antes** de que `publicar_dataservice.sh` publique Level 2.
+3. ~~Los `.log` de Active Fire se acumulan en `level2/fires`~~. **Arreglado el 2026-10-23**:
+   el driver corre en un directorio de trabajo bajo `/data/tmp` y solo los `.nc` pasan a la
+   salida. Los ~2144 viejos se borran a mano una vez (`rm /data/output/jpss/level2/fires/*.log`).
 
 ### `publicar_dataservice.sh`
 
