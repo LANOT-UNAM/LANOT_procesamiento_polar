@@ -95,6 +95,40 @@ _fijar_pasada() {
     FECHA="d${FECHA_NUM}"
 }
 
+# preparar_filtro_fechas / en_fechas_de_ventana <nombre>
+#
+# Descarte barato, sin abrir procesos, de los archivos que no pueden caer en la
+# ventana: los que no llevan en el nombre ninguna fecha de ella, ni calendario
+# (AAAAMMDD) ni juliana (AAAADDD). Es un filtro previo y nada más: quien decide
+# es sello_de_archivo(), que sigue mirando cada archivo que pase.
+#
+# Hace falta porque /data/output/jpss no tiene retención: level2/atmos crece cada
+# día, y los enlazar_en_ventana() de P2G, LSR y CRYO abrían varios echo|grep|sed
+# por CADA archivo de la historia antes de descartarlo por fecha. Entre el 2026-10-04
+# y el 23 eso llevó de 1m44s a 5m00s el arranque de run_polar2grid_edr.sh, antes
+# de la primera llamada a Polar2Grid.
+#
+# Se llama después de fijar la ventana definitiva (con su margen, si lo hay).
+_FECHAS_VENTANA=()
+preparar_filtro_fechas() {
+    local s
+    _FECHAS_VENTANA=()
+    for s in "$FECHA_NUM" "$FECHA_SIG" "${VENTANA_INI:0:8}" "${VENTANA_FIN:0:8}"; do
+        [ -n "$s" ] || continue
+        _FECHAS_VENTANA+=("$s" "$(date -u -d "$s" +%Y%j)")
+    done
+}
+
+en_fechas_de_ventana() {
+    local s
+    # Sin filtro preparado, no se descarta nada.
+    [ "${#_FECHAS_VENTANA[@]}" -eq 0 ] && return 0
+    for s in "${_FECHAS_VENTANA[@]}"; do
+        [[ "$1" == *"$s"* ]] && return 0
+    done
+    return 1
+}
+
 # resolver_pasada <dir> <geo> [<pedido>]
 #
 # Sin pedido, la pasada del archivo <geo> modificado más recientemente. Con él,

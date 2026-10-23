@@ -12,10 +12,6 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-10-04)
-
-**Verificar la primera pasada con el `.sif` de LANOT_tools `fa99373`**, instalado en tahan el 2026-10-04 a las 18:18. Qué revisar, la línea base de duraciones y cómo revertir: `docs/estado_y_pendientes.md`, sección "2026-10-04: `.sif` con LANOT_tools `fa99373`". Al confirmarlo, marcarlo allá y borrar esta sección.
-
 ## Pendiente abierto (2026-10-16): revisar al retomar
 
 Detalle en `docs/estado_y_pendientes.md`, sección "2026-10-16: la prueba de dos turnos, y el
@@ -24,8 +20,9 @@ publicador en cron".
 1. **¿ACSPO, Active Fire y MiRS son deterministas?** Con los mismos SDR y el mismo GFS, la
    prueba de dos turnos dio 9 GeoTIFF distintos de 132 entre la fase en serie y la encimada.
    Falta un control: la misma pasada dos veces en serie.
-2. **`publicar_dataservice.sh`**: el cron ya corre (desde el 2026-10-16, 12:35). Confirmar en
-   `/var/log/lanot/polares/cadena/publicar_dataservice.log` que la carga inicial terminó.
+2. **Duración de `run_polar2grid_edr.sh`** (2026-10-23): el arranque crecía con la historia de
+   `level2/` y se le puso un filtro por fecha. Tras instalar, comprobar que las pasadas de 20
+   vistas vuelven a ~5 min (sección "2026-10-23" de `docs/estado_y_pendientes.md`).
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

@@ -157,9 +157,11 @@ enlazar_en_ventana() {
     local destino="$1" origen="$2" patron="$3" enlazados=0 f nombre sello clave
     local -A elegido=()
 
+    preparar_filtro_fechas
     shopt -s nullglob
     for f in "$origen"/${patron}*.nc; do
-        nombre=$(basename "$f")
+        nombre="${f##*/}"
+        en_fechas_de_ventana "$nombre" || continue
         de_otro_satelite "$nombre" && continue
         sello=$(sello_de_archivo "$nombre") || continue
         [ "$sello" -ge "$VENTANA_INI" ] && [ "$sello" -le "$VENTANA_FIN" ] || continue

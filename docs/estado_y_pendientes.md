@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-10-16**
+**Última actualización: 2026-10-23**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,51 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-10-23: el arranque de P2G crecía con la historia, y el `.sif` de `fa99373` verificado
+
+### La duración de `run_polar2grid_edr.sh` subía sola
+
+Pasadas de 20 vistas, típico por semana: ~5m10s (27 sep–3 oct), ~5m15s (4–10 oct), ~5m50s
+(11–16 oct), ~6m45s (17–23 oct), con 7m34s y 8m0s al final. Ningún script de render cambió en
+esas fechas. Por la hora de modificación de las salidas de dos pasadas j02, la del 4 (4m51s) y
+la del 23 (8m0s):
+
+| tramo | 4 oct | 23 oct |
+|---|---|---|
+| arranque → primer GeoTIFF de ATMOS | 1m44s | **5m00s** |
+| resto de GeoTIFF | 1m26s | 2m06s |
+| vistas + Skew-T | 1m25s (2 Skew-T) | 0m54s (10 Skew-T) |
+
+Todo el crecimiento estaba **antes** de Polar2Grid: en `enlazar_en_ventana()`, que recorre
+todos los `.nc` del directorio de Level 2 y abría varios `echo | grep | sed` por **cada**
+archivo antes de descartarlo por fecha. Como `/data/output/jpss` no tiene retención, el costo
+crecía con la historia. La misma función, copiada, está en `run_lsr_edr.sh` (que además recorre
+`level2/atmos/*.nc` entero, sin patrón) y en `run_cryo_edr.sh`, así que también se alargaban.
+
+Arreglo: `preparar_filtro_fechas` / `en_fechas_de_ventana` en `pasadas.sh`, un descarte sin
+procesos de los nombres que no llevan ninguna fecha de la ventana (calendario o juliana). Es
+solo filtro previo: `sello_de_archivo()` sigue decidiendo sobre lo que pasa. Además, en la
+primera pasada que corra con el cambio, los encabezados `--- sección ---` del log ya traen la
+hora y hay un `--- fin ---`.
+
+Pendiente: tras instalar, comparar la duración de las pasadas de 20 vistas contra la tabla de
+arriba (se espera volver a ~5 min o menos) y el tramo hasta `--- Productos atmosféricos`.
+Y sigue en pie lo de fondo: **sin retención en `/data/output/jpss`**, todo lo que liste esos
+directorios se irá frenando (ver "La limpieza del pendiente 5", sección del 2026-09-27).
+
+### `.sif` con LANOT_tools `fa99373`: verificado
+
+`apptainer inspect` confirma `fa99373` instalado. Sin `Traceback` ni errores desde el 4. La
+ganancia esperada en las vistas sí se ve, aunque la tapaba el problema de arriba: las 8 vistas
+de ATMOS, 31 s → 17 s; el tramo completo de vistas, 85 s → 54 s con cinco veces más Skew-T.
+
+### `publicar_dataservice.sh`: en régimen
+
+La carga inicial terminó. El 2026-10-23 cada tic copia solo lo nuevo, poda lo de más de 5 días
+(`PUB_DS_DIAS`) y lleva **0 fallos**.
 
 ---
 
@@ -188,9 +233,9 @@ de deducirlo de `vmstat`, y decidir entre candado y tope.
 
 ---
 
-## 2026-10-04: `.sif` con LANOT_tools `fa99373` — POR VERIFICAR con la primera pasada
+## 2026-10-04: `.sif` con LANOT_tools `fa99373` — verificado el 2026-10-23
 
-**Pendiente abierto.** El 2026-10-04 a las 18:18 se instaló en tahan
+**Verificado el 2026-10-23** (ver esa sección: vistas de ATMOS 31 s → 17 s, sin errores). El 2026-10-04 a las 18:18 se instaló en tahan
 `/opt/containers/polar2grid_v3.2-mapdrawer.sif` con el pin de LANOT_tools en `fa99373`
 (commit `17ebd0a` de este repo). La anterior (`094db73`) quedó en
 `/opt/contenedores/polar2grid_v3.2-mapdrawer.sif.094db73`. Hasta esa hora no había corrido
