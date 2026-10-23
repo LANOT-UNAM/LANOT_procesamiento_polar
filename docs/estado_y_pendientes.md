@@ -80,14 +80,18 @@ ancillary de SDR 30. Régimen esperado ~4 TB en vez de 12.6. Los marcadores de R
 borran por edad** sino cuando su RAW ya no está en el buzón (los RAW duran ~un mes, y el
 barrido revisa el buzón entero); si el buzón no se ve o está vacío, no se tocan.
 
-La primera vez son ~8 TB: a mano, por tandas, fuera de 07–09 y 19–21 UTC, y el cron solo
-después.
+**Hecho el 2026-10-23, 22:34 UTC**, como `lanotadm`, por tandas (`--margen` 28, 21, 14, 7 y
+0): **8.1 TB** en menos de un minuto (borrar archivos grandes es barato); `/data` pasó de 26 TB
+usados y 11 libres a 19 y 18. El cron quedó puesto enseguida.
 
-```bash
-cd /opt/lanot/polares/scripts
-./limpiar.sh --verificar                 # revisar sobre todo la fila de /data/tmp
-./limpiar.sh --margen 28                 # y bajar: 21, 14, 7, 0
-```
+Antes de soltarla, el `--verificar` mostró que en `/data/tmp` se habría llevado
+`viirs_afai_historico` (294 GB, de sargazo, mismo usuario `lanotadm`): de ahí la columna de
+patrón en `retencion.tsv`, que en `/data/tmp` deja borrar solo `<etapa>_work_*` y
+`<etapa>_staging_*`. Lo demás de `/data/tmp` que es de esta cadena y ya no sirve se revisa a
+mano: `CLAVRx_3_0` (30 GB), `polar2grid_l2` (28), `data` (16, datos de prueba de ATMOS),
+`heap_host` (5, lo usa `diagnostico_heap_cimss.sh`), `CSPP_ATMOS_1_0` y una veintena de
+`prueba_*`/`nucaps_*`/`heap_*` del diagnóstico de HEAP de agosto.
+
 
 Pendiente aparte: **por qué ATMOS escribe ~145 GB al día**. Puede ser lo normal de diez
 familias `JRR-*` por gránulo, o duplicados de las pasadas que `barrer_pendientes.sh` retoma
@@ -2400,7 +2404,7 @@ las de la instalación, `/opt/lanot/polares/scripts/`, no las del clon.
 | `publicar_dataservice.sh` | cada 5 min (toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss` para los FTP, y poda a 5 días. | **Activa** desde el 2026-10-16 |
 | `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **No está en cron** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |
-| `limpiar.sh` | diaria (`30 11 * * *` CST = 17:30 UTC) | Retención de `config/retencion.tsv`: productos, `/data/tmp`, marcadores y ancillary por día de SDR (sección del 2026-10-23). | **Escrito el 2026-10-23; pendiente de montar** tras la primera limpieza por tandas |
+| `limpiar.sh` | diaria (`30 11 * * *` CST = 17:30 UTC) | Retención de `config/retencion.tsv`: productos, temporales de etapas en `/data/tmp`, marcadores y ancillary por día de SDR (sección del 2026-10-23). | **Activa** desde el 2026-10-23 |
 
 Ajeno a esta cadena pero en el mismo crontab y la misma máquina: desde el 2026-10-18,
 **ceniza CONUS** (`/opt/lanot/ceniza`), `procesa_ceniza.sh` dos veces cada 5 min y
