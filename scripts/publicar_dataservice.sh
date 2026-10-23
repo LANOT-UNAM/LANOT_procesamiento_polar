@@ -13,12 +13,13 @@
 #   level1/viirs              ←  level1/viirs (SDR .h5)
 #                                + geotiff/{m_bands,i_bands,dnb,rgb}
 #   level1/{atms,cris,omps}   ←  lo mismo (SDR .h5)
+#   level2/<familia>          ←  level2/<familia> (.nc) + geotiff/<la suya>
+#   vistas/…                  ←  vistas/… (JPG y los SVG de Skew-T), igual
 #
-# El reparto está en DESTINOS. Ni level0 ni vistas, de momento. Level 2 se
-# agrega cuando se confirme qué familias: es una línea por destino, p. ej.
-# "level2/acspo level2/acspo geotiff/acspo". Las carpetas van con nombre y nunca
-# "todo /data/output/jpss", para que nada se publique por accidente. No choca
-# con lo que publica la cadena vieja, que escribe en /dataservice/npp-jpss1.
+# El reparto está en DESTINOS. Level 2 y vistas desde el 2026-10-23; level0
+# no. Las carpetas van con nombre y nunca "todo /data/output/jpss", para que
+# nada se publique por accidente. No choca con lo que publica la cadena vieja,
+# que escribe en /dataservice/npp-jpss1.
 #
 # Hasta el 2026-10-23 los GeoTIFF se publicaban en geotiff/… también en
 # /dataservice. Esas carpetas están en RETIRADAS: ya no reciben nada y solo se
@@ -43,7 +44,11 @@
 #
 # Cuándo un archivo está listo para salir:
 #
-#   - SDR: siempre. run_sdr.sh los mueve a level1/ ya terminados.
+#   - Lo que no es GeoTIFF (SDR, .nc de Level 2, vistas): cuando lleva QUIETO
+#     PUB_DS_QUIETO_MIN minutos. Los SDR llegan ya terminados, pero varios
+#     drivers de CSPP escriben sus .nc directo en level2/, y una vista se escribe
+#     en su lugar: sin esto, un tic podía copiar un archivo a medias (se
+#     corregiría en el siguiente, pero alguien pudo bajarlo entre tanto).
 #   - GeoTIFF: solo si su pasada tiene marcador del renderizador más nuevo que
 #     el archivo —polar2grid_l1 para los de Level 1, polar2grid para los de
 #     Level 2—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
@@ -60,6 +65,7 @@
 #   PUB_DS_ORIGEN     Árbol de productos   (def. /data/output/jpss)
 #   PUB_DS_DEST       Destino              (def. /dataservice/jpss)
 #   PUB_DS_DIAS       Retención en días    (def. 5)
+#   PUB_DS_QUIETO_MIN Minutos sin cambios para publicar lo que no es GeoTIFF (def. 2)
 #   PUB_DS_LOCK       Candado propio       (def. /data/tmp/publicar_dataservice.lock)
 #   PUB_DS_LOG        Log                  (def. /var/log/lanot/polares/cadena/publicar_dataservice.log)
 #   ESTADO_BASE       Marcadores           (def. /data/output/jpss/state)
@@ -89,6 +95,28 @@ DESTINOS=(
     "level1/atms   level1/atms"
     "level1/cris   level1/cris"
     "level1/omps   level1/omps"
+
+    "level2/atmosphere  level2/atmosphere geotiff/atmos"
+    "level2/lsr         level2/lsr        geotiff/lsr"
+    "level2/acspo       level2/acspo      geotiff/acspo"
+    "level2/fires       level2/fires      geotiff/fire"
+    "level2/flood       level2/flood      geotiff/flood"
+    "level2/cryosphere  level2/cryosphere"
+    "level2/sounder     level2/sounder    geotiff/sounder"
+    "level2/omps        level2/omps       geotiff/omps"
+    "level2/mirs        level2/mirs       geotiff/mirs"
+
+    "vistas/dnb            vistas/dnb"
+    "vistas/rgb            vistas/rgb"
+    "vistas/atmos          vistas/atmos"
+    "vistas/lsr            vistas/lsr"
+    "vistas/acspo          vistas/acspo"
+    "vistas/fire           vistas/fire"
+    "vistas/flood          vistas/flood"
+    "vistas/sounder        vistas/sounder"
+    "vistas/sounder/skewt  vistas/sounder/skewt"
+    "vistas/omps           vistas/omps"
+    "vistas/mirs           vistas/mirs"
 )
 
 # Carpetas de destino que ya no reciben nada: solo se podan.
@@ -101,6 +129,7 @@ RETIRADAS=(
 GEOTIFF_L1=" geotiff/m_bands geotiff/i_bands geotiff/dnb geotiff/rgb "
 
 RETENCION_MIN=$((DIAS * 1440))
+QUIETO_MIN="${PUB_DS_QUIETO_MIN:-2}"
 
 DRY_RUN=0
 case "${1:-}" in
@@ -125,6 +154,7 @@ exec > "$SALIDA" 2>&1
 ahora() { date '+%Y-%m-%d %H:%M:%S'; }
 
 INICIO=$(date +%s)
+QUIETO_HASTA=$((INICIO - QUIETO_MIN * 60))
 copiados=0
 bytes=0
 borrados=0
@@ -219,9 +249,13 @@ publicar_destino() {
         [ "${remoto[$nombre]:-}" != "$tam $mtime" ] || continue
         ruta="$dir/$nombre"
         origen_rel="${dir#"$ORIGEN"/}"
-        if [ "${origen_rel%%/*}" = geotiff ] && ! geotiff_listo "$ruta" "$origen_rel"; then
-            esperando=$((esperando + 1))
-            continue
+        if [ "${origen_rel%%/*}" = geotiff ]; then
+            if ! geotiff_listo "$ruta" "$origen_rel"; then
+                esperando=$((esperando + 1))
+                continue
+            fi
+        elif [ "$mtime" -gt "$QUIETO_HASTA" ]; then
+            continue     # se está escribiendo: al siguiente tic
         fi
         if [ "$DRY_RUN" -eq 1 ]; then
             echo "  [dry-run] copiaría $origen_rel/$nombre → $rel/"
@@ -236,7 +270,10 @@ publicar_destino() {
             echo "  ✗ $rel/$nombre: falló la copia"
             fallos=$((fallos + 1))
         fi
+    # Nunca logs ni los .aux.xml que deja gdalinfo -stats: en level2/fires hay
+    # miles de logs de CSPP Active Fire de antes del 2026-10-23.
     done < <(find "${origenes[@]}" -maxdepth 1 -type f -mmin "-$RETENCION_MIN" \
+                  ! -name '*.log' ! -name '*.aux.xml' \
                   -printf '%Ts\t%s\t%f\t%h\n' | sort -n)
 
     podar "$rel"

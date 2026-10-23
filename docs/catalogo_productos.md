@@ -19,9 +19,9 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 |---|---|---|
 | `level0/` | 14 días | no se publica |
 | `level1/` | 7 días | `level1/atms`, `level1/cris`, `level1/omps`, `level1/viirs` |
-| `level2/` | 14 días | no se publica |
-| `geotiff/` | 14 días | `geotiff/dnb` → `level1/viirs`, `geotiff/i_bands` → `level1/viirs`, `geotiff/m_bands` → `level1/viirs`, `geotiff/rgb` → `level1/viirs` |
-| `vistas/` | 90 días | no se publica |
+| `level2/` | 14 días | `level2/acspo`, `level2/atmosphere`, `level2/cryosphere`, `level2/fires`, `level2/flood`, `level2/lsr`, `level2/mirs`, `level2/omps`, `level2/sounder` |
+| `geotiff/` | 14 días | `geotiff/acspo` → `level2/acspo`, `geotiff/atmos` → `level2/atmosphere`, `geotiff/dnb` → `level1/viirs`, `geotiff/fire` → `level2/fires`, `geotiff/flood` → `level2/flood`, `geotiff/i_bands` → `level1/viirs`, `geotiff/lsr` → `level2/lsr`, `geotiff/m_bands` → `level1/viirs`, `geotiff/mirs` → `level2/mirs`, `geotiff/omps` → `level2/omps`, `geotiff/rgb` → `level1/viirs`, `geotiff/sounder` → `level2/sounder` |
+| `vistas/` | 90 días | `vistas/acspo`, `vistas/atmos`, `vistas/dnb`, `vistas/fire`, `vistas/flood`, `vistas/lsr`, `vistas/mirs`, `vistas/omps`, `vistas/rgb`, `vistas/sounder`, `vistas/sounder/skewt` |
 
 ## Resumen
 

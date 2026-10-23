@@ -149,6 +149,14 @@ geotiff/acspo`), con el marcador de `polar2grid` en vez del de `polar2grid_l1`. 
 **2026-10-29** estarán vacías y se pueden borrar. **Avisar a quien consuma del FTP** que las
 rutas de los GeoTIFF cambian.
 
+**Level 2 y vistas, también (2026-10-23).** Con `/dataservice/jpss` aparte de lo que publica
+la cadena vieja (`npp-jpss1`), que sigue corriendo hasta que Víctor revise, se agregaron las
+nueve familias de `level2/` —cada una con sus GeoTIFF de `geotiff/`— y las once carpetas de
+`vistas/`, Skew-T incluidos. Dos reglas nuevas: lo que no es GeoTIFF se publica solo tras
+`PUB_DS_QUIETO_MIN` (2) minutos sin cambios, porque varios drivers escriben sus `.nc` directo
+en `level2/`; y nunca `*.log` ni `*.aux.xml`. Primera carga ~865 GB (`level2/atmosphere` casi
+todo; `/dataservice` tenía 39 TB libres), unos 75 min a la velocidad de lectura de `/data`.
+
 ---
 
 ## 2026-10-16: la prueba de dos turnos, y el publicador en cron
