@@ -690,7 +690,7 @@ en_contenedor() {
     local etiqueta="$1"; shift
     local codigo=0
 
-    echo "--- $etiqueta ---" >> "$LOG_FILE"
+    echo "--- $etiqueta --- $(date +%H:%M:%S)" >> "$LOG_FILE"
     apptainer exec "${BINDS_P2G[@]}" \
         "$SIF_P2G" /bin/bash -c "$*" >> "$LOG_FILE" 2>&1 || codigo=$?
 
@@ -927,7 +927,7 @@ vestir() {
     [ "$solo_nuevos" -eq 1 ] && criterio=(-newer "$REF_FILE")
     [ -n "$extras" ] && read -r -a extra_args <<< "$extras"
 
-    echo "--- $etiqueta ---" >> "$LOG_FILE"
+    echo "--- $etiqueta --- $(date +%H:%M:%S)" >> "$LOG_FILE"
 
     while IFS= read -r tif; do
         nombre=$(basename "$tif")
@@ -1029,7 +1029,7 @@ vestir "Vistas de microondas" "$HOST_MIRS_TIF_OUT" /output_mirs_tif /output_mirs
 SKEWT_SIN=0
 SKEWT_ERR=0
 if [ "$SOUNDER_COUNT" -gt 0 ] && [ -f "$SITIOS_SKEWT" ]; then
-    echo "--- Skew-T ---" >> "$LOG_FILE"
+    echo "--- Skew-T --- $(date +%H:%M:%S)" >> "$LOG_FILE"
     mapfile -t NUCAPS_PASADA < <(find "$STAGING_SOUNDER" -maxdepth 1 -name 'NUCAPS-EDR*.nc' \
                                       -printf '/input_sounder/%f\n' | sort)
     s=$(basename "${NUCAPS_PASADA[0]}" | grep -oE '_s[0-9]{14}' | head -1 || true)
@@ -1116,6 +1116,7 @@ SVG_SKEWT=$(contar_nuevos "$HOST_SKEWT_OUT" '*.svg')
 TIF_TOTAL=$((TIF_ATMOS + TIF_LSR + TIF_SST + TIF_FIRE + TIF_SOUNDER + TIF_OMPS + TIF_MIRS))
 JPG_TOTAL=$((JPG_ATMOS + JPG_LSR + JPG_SST + JPG_FIRE + JPG_SOUNDER + JPG_OMPS + JPG_MIRS + JPG_FLOOD))
 
+echo "--- fin --- $(date +%H:%M:%S)" >> "$LOG_FILE"
 DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 
 # El criterio de éxito son los GeoTIFF: las vistas dependen de que el producto
