@@ -42,8 +42,10 @@ Diez días después de instalar, en tahan:
   `_atms_` y `_omps_`) y, aunque lo hubiera aceptado, la hora del nombre es la del primer
   gránulo de su sensor y no la clave de la pasada, que sale de VIIRS. Arreglado el 2026-11-03:
   si no hay marcador con la hora exacta, cuenta el del mismo satélite a menos de 30 min
-  (`PUB_DS_MARGEN_S`). Probado en seco con un árbol simulado. Tras instalar, el contador del
-  log tiene que bajar a casi cero en un tic y `level2/{sounder,mirs,omps}` crecer en GeoTIFF.
+  (`PUB_DS_MARGEN_S`). Probado en seco con un árbol simulado. Instalado el mismo día: el
+  primer tic copió 316 archivos y el contador bajó de 384 a 68. Parte de esos 68 eran los de
+  **flood**, que tampoco se publicaron nunca: su nombre (`noaa20_viirs_flood_<fecha>_<hora>.tif`)
+  acaba en `.tif` justo después de la hora, y el patrón exigía un `_`. Arreglado también.
 - **Fallos de ATMOS y LSR**: los seis `atmos_edr_*` fallidos de la última semana son de la
   primera corrida de pasadas que empiezan entre las 09:03 y las 09:24 UTC (más una de las
   20:54), lanzada a los pocos minutos: es el hueco del GFS 06Z (y 18Z) que ya se conocía. Cada

@@ -194,7 +194,8 @@ declare -A _MARCADORES_SAT=()   # "<dir> <sat>" → "época:ruta …", leído un
 geotiff_listo() {
     local ruta="$1" origen_rel="$2" nombre sat marcadores exacto t m e r
     nombre="$(basename "$ruta")"
-    [[ "$nombre" =~ ^(npp|noaa20|noaa21)_[a-z-]+_.*_([0-9]{8})_([0-9]{6})_ ]] || return 1
+    # La hora va seguida de "_" (los de Polar2Grid) o de ".tif" (el de flood).
+    [[ "$nombre" =~ ^(npp|noaa20|noaa21)_[a-z-]+_.*_([0-9]{8})_([0-9]{6})[_.] ]] || return 1
     case "${BASH_REMATCH[1]}" in
         noaa20) sat=j01 ;;
         noaa21) sat=j02 ;;
