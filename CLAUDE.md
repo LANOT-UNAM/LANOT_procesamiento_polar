@@ -19,13 +19,10 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-03" y "2026-10-16".
 1. **¿ACSPO, Active Fire y MiRS son deterministas?** Con los mismos SDR y el mismo GFS, la
    prueba de dos turnos dio 9 GeoTIFF distintos de 132 entre la fase en serie y la encimada.
    Falta un control: la misma pasada dos veces en serie.
-2. **Publicador**: tras instalar el arreglo del 2026-11-03, que "GeoTIFF esperando su
-   marcador" baje a casi cero y que `/dataservice/jpss/level2/{sounder,mirs,omps}` reciban
-   GeoTIFF.
-3. **ATMOS pospuesto** (2026-11-03): tras instalar, las pasadas de las 09 y 21 UTC tienen que
+2. **ATMOS pospuesto** (2026-11-03): tras instalar, las pasadas de las 09 y 21 UTC tienen que
    salir "pospuesto" en el resumen de la cadena, completarse en el reintento del barrido y no
    dejar `atmos_work_*` ni `lsr_work_*` nuevos en `/data/tmp`. Los 20 que hay se borran a mano.
-4. **"¿Salió todo?" en los EDR** (2026-11-03): antes de instalar, correr en tahan la prueba
+3. **"¿Salió todo?" en los EDR** (2026-11-03): antes de instalar, correr en tahan la prueba
    contra los logs reales (`probar_remates.sh`, en la sección "2026-11-03" del estado) y
    confirmar que ninguna pasada buena habría caído.
 

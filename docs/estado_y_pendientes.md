@@ -48,7 +48,7 @@ Diez días después de instalar, en tahan:
   acaba en `.tif` justo después de la hora, y el patrón exigía un `_`. El resto eran los
   sondeos de **NOAA-20**, que salen como `j01_atms-cris_…` y no `noaa20_` (anotado en el
   catálogo como "nombre por corregir"): el publicador acepta ahora los dos prefijos. Arreglados
-  los dos; con eso, los 68 quedan explicados.
+  los dos e instalados: el tic de las 11:40 copió los 68 y dejó **0 esperando su marcador**.
 - **Fallos de ATMOS y LSR**: los seis `atmos_edr_*` fallidos de la última semana son de la
   primera corrida de pasadas que empiezan entre las 09:03 y las 09:24 UTC (más una de las
   20:54), lanzada a los pocos minutos: es el hueco del GFS 06Z (y 18Z) que ya se conocía. Cada
