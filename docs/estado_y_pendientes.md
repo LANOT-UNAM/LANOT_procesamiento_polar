@@ -31,11 +31,9 @@ Diez días después de instalar, en tahan:
   `*_confidence_pct_*_750m.tif`.
 - **EVI**: bien. Las pasadas diurnas de los tres satélites tienen vista en `vistas/lsr/`.
 - **`limpiar.sh`**: corre en cron; la del 2026-11-02 borró 5037 entradas (320 GB).
-- **Duración de `run_polar2grid_edr.sh`**: entre 1m15s y 3m07s, contra 6–8 min antes del
-  filtro por fecha. Pero **las mismas pasadas reportan 3 vistas de día y 1 de noche**, y las
-  de la tabla del 2026-10-23 eran de 20. Falta ver la línea `ÉXITO` completa para saber de qué
-  familia faltan, antes de dar el arreglo por bueno: un arranque más rápido que además hace
-  menos no prueba nada.
+- **Duración de `run_polar2grid_edr.sh`**: sin medir todavía. La primera lectura (1–3 min,
+  "3 vistas") era de Level 1: `p2g_*.log` atrapa también los `p2g_l1_*.log`, que se ordenan
+  después. Para Level 2 hay que excluirlos: `ls p2g_2*.log`.
 - **`publicar_dataservice.sh`**: la carga terminó, `fallos: 0` en todos los tics y las
   carpetas de `level2/` y `vistas/` pobladas. Pero cada tic decía **"GeoTIFF esperando su
   marcador: ~400"**, sin bajar nunca. Eran los GeoTIFF de **sondeos, MiRS y ozono**, que no se
