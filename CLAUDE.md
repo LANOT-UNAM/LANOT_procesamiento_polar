@@ -16,16 +16,21 @@ Todo (comentarios, mensajes de log, documentación) está en español. Mantener 
 
 Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-03" y "2026-10-16".
 
-1. **¿ACSPO, Active Fire y MiRS son deterministas?** Con los mismos SDR y el mismo GFS, la
-   prueba de dos turnos dio 9 GeoTIFF distintos de 132 entre la fase en serie y la encimada.
-   Falta un control: la misma pasada dos veces en serie. Es `scripts/control_determinismo.sh`
-   (2026-11-03), por correr en tahan con `at` en una hora sin pasadas.
-2. **ATMOS pospuesto** (2026-11-03): tras instalar, las pasadas de las 09 y 21 UTC tienen que
-   salir "pospuesto" en el resumen de la cadena, completarse en el reintento del barrido y no
-   dejar `atmos_work_*` ni `lsr_work_*` nuevos en `/data/tmp`. Los 20 que hay se borran a mano.
-3. **"¿Salió todo?" en los EDR** (2026-11-03): antes de instalar, correr en tahan la prueba
-   contra los logs reales (`probar_remates.sh`, en la sección "2026-11-03" del estado) y
-   confirmar que ninguna pasada buena habría caído.
+1. **¿ACSPO, Active Fire y MiRS son deterministas?** La prueba de dos turnos dio 9 GeoTIFF
+   distintos de 132 con la misma entrada. El control, `scripts/control_determinismo.sh
+   --un-hilo`, quedó programado con `at` en tahan para el 2026-11-04 a las 10:00 CST, sobre
+   NOAA-20 y NOAA-21: leer `/data/tmp/control_determinismo_*/informe.txt`.
+2. **ATMOS pospuesto** (instalado el 2026-11-03): la pasada de las 09 UTC del 4 tiene que salir
+   "pospuesto" en el log de la cadena, completarse en el reintento del barrido y no dejar
+   `atmos_work_*` ni `lsr_work_*` en `/data/tmp`.
+3. **"¿Salió todo?" en los EDR** (instalado el 2026-11-03, tras pasar la prueba contra 210
+   corridas reales): en los próximos días, si alguna etapa sale "a medias" en el resumen de la
+   cadena, ver si fue real o si la regla necesita ajuste.
+4. **Dos notas de Víctor (junta del 2026-10-23) que esperan respuesta suya** (sección "Revisión
+   de Level 2 de Víctor" del estado): (a) el `confidence_cat` que vio con valores 43–74 tiene
+   un solo valor, 8, válido: preguntarle con qué lo leyó (seguramente la vista JPG); (b) los
+   `surf_refl_*` salen en porcentaje porque así los entrega Satpy: decidir con él si se pasan
+   a 0–1.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 
