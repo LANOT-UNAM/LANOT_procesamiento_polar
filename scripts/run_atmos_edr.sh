@@ -28,6 +28,14 @@
 #   ./run_atmos_edr.sh --download      # descarga sin probar antes el caché
 #   ./run_atmos_edr.sh --force         # reprocesa aunque ya tenga marcador
 #
+# Antes de todo eso, si el ciclo del GFS que cubre la pasada todavía no puede
+# estar publicado, no se intenta: sale en 75 (EX_TEMPFAIL) sin tocar nada, y
+# barrer_pendientes.sh la retoma una hora después. Es el caso de cada mañana:
+# una pasada que acaba después de las 09 UTC necesita el ciclo 06Z, que sale
+# hacia las 09:30, y la cadena la procesa a los pocos minutos de recibirla.
+# Intentarla de todos modos costaba dos corridas de ATMOS, un fallo en el
+# resumen y un atmos_work_* (más un lsr_work_*) conservados sin nada que ver.
+#
 # Variables de entorno (para pruebas o rutas alternas):
 #   ATMOS_SDR_IN     Entrada Level 1  (def. /data/output/jpss/level1/viirs)
 #   ATMOS_OUT        Salida Level 2   (def. /data/output/jpss/level2/atmosphere)
@@ -37,6 +45,9 @@
 #   ATMOS_CONTAINER  Imagen .sif      (def. /opt/containers/cspp_atmos_edr_v1.0.sif)
 #   ATMOS_WORK_BASE  Raíz de trabajo  (def. /data/tmp)
 #   ATMOS_LOG_BASE   Raíz de logs     (def. /var/log/lanot/polares)
+#   ATMOS_GFS_LATENCIA_MIN  Desde el inicio de un ciclo del GFS hasta que se da
+#                    por publicado, si no está en el caché (def. 225; 0 desactiva
+#                    la espera)
 #
 # ==============================================================================
 
@@ -54,6 +65,8 @@ WORK_BASE="${ATMOS_WORK_BASE:-/data/tmp}"
 LOG_DIR="${ATMOS_LOG_BASE:-/var/log/lanot/polares}/cspp-edr"
 
 CORES="${SLURM_CPUS_PER_TASK:-20}"
+GFS_LATENCIA_MIN="${ATMOS_GFS_LATENCIA_MIN:-225}"
+CODIGO_POSPUESTO=75
 
 # ==============================================================================
 # FUNCIONES
@@ -81,6 +94,43 @@ EOF
 # Qué es una pasada y cómo se elige: por tiempo, no por órbita (ver pasadas.sh).
 # Fija CLAVE, SAT, FECHA y la ventana VENTANA_INI – VENTANA_FIN.
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/pasadas.sh"
+
+# gfs_pendiente: ¿falta un ciclo del GFS que todavía no puede estar publicado?
+#
+# Cada gránulo necesita el GFS válido a las horas sinópticas (múltiplos de 3)
+# que lo encierran, y atmos-anc solo baja los pronósticos f003, f006 y f009 de
+# cada ciclo (00, 06, 12, 18Z). Una hora válida V la cubren, entonces:
+#   V = 06, 12, 18, 00  → el ciclo de 6 h antes (f006)
+#   V = 03, 09, 15, 21  → el de 3 h antes (f003) o el de 9 h antes (f009)
+# Un candidato sirve si su archivo ya está en el caché, o si ya pasó
+# GFS_LATENCIA_MIN desde que arrancó el ciclo: entonces está publicado y el
+# segundo intento, descargando, lo trae. Si para alguna V ningún candidato
+# sirve, escribe en FALTA_GFS los ciclos que se esperan y devuelve 0.
+FALTA_GFS=""
+gfs_pendiente() {
+    local ahora ini fin v h c f dia hh cubierta esperados
+    [ "$GFS_LATENCIA_MIN" -gt 0 ] || return 1
+    ahora=$(date -u +%s)
+    ini=$(date -u -d "${VENTANA_INI:0:8} ${VENTANA_INI:8:2}:${VENTANA_INI:10:2}:${VENTANA_INI:12:2}" +%s)
+    fin=$(date -u -d "${VENTANA_FIN:0:8} ${VENTANA_FIN:8:2}:${VENTANA_FIN:10:2}:${VENTANA_FIN:12:2}" +%s)
+    FALTA_GFS=""
+    for (( v = ini - ini % 10800; v < fin + 10800; v += 10800 )); do
+        cubierta=0; esperados=""
+        for h in 3 6 9; do
+            c=$(( v - h * 3600 ))
+            [ $(( c % 21600 )) -eq 0 ] || continue
+            dia=$(date -u -d "@$c" +%Y%m%d); hh=$(date -u -d "@$c" +%H)
+            f=$(printf 'f%03d' "$h")
+            if compgen -G "$HOST_CACHE/gfs.t${hh}z.pgrb2.*.${f}.${dia}*" > /dev/null \
+               || [ "$ahora" -ge $(( c + GFS_LATENCIA_MIN * 60 )) ]; then
+                cubierta=1; break
+            fi
+            esperados="${esperados:+$esperados o }${hh}Z del ${dia} ($f)"
+        done
+        [ "$cubierta" -eq 1 ] || FALTA_GFS="$FALTA_GFS $esperados;"
+    done
+    [ -n "$FALTA_GFS" ]
+}
 
 formato_duracion() {
     local s="$1"
@@ -185,6 +235,18 @@ if [ "$DOWNLOAD" -eq 0 ] && [ -z "$(ls -A "$HOST_CACHE" 2>/dev/null)" ]; then
     echo "ERROR: El caché de ancillary está vacío: $HOST_CACHE" >&2
     echo "       Ejecuta update_atmos_ancillary.sh (o usa --download)." >&2
     exit 1
+fi
+
+# ==============================================================================
+# ¿ESTÁ PUBLICADO EL GFS?
+# ==============================================================================
+
+if gfs_pendiente; then
+    echo "⏸  POSPUESTO: la pasada $CLAVE ($VENTANA_INI – $VENTANA_FIN UTC) necesita"
+    echo "   un ciclo del GFS que todavía no puede estar publicado:${FALTA_GFS%;}"
+    echo "   No se intenta. barrer_pendientes.sh la retoma; a mano, más tarde, o con"
+    echo "   ATMOS_GFS_LATENCIA_MIN=0 para intentarla de todos modos."
+    exit "$CODIGO_POSPUESTO"
 fi
 
 # ==============================================================================
@@ -340,7 +402,9 @@ if [ $EXIT_CODE -ne 0 ]; then
 fi
 
 if [ "$INCOMPLETA" -eq 1 ]; then
+    # La causa está en el log; el staging son enlaces y no hay nada que depurar.
     descartar_intento
+    rm -rf "$HOST_WORK"
     echo "❌ ERROR: falta ancillary dinámico para la pasada $CLAVE, aun descargando." | tee -a "$LOG_FILE"
     echo "   Lo más probable: el ciclo del GFS que la cubre todavía no se publica."   | tee -a "$LOG_FILE"
     echo "   Se descartó lo parcial; barrer_pendientes.sh la reintenta más tarde."    | tee -a "$LOG_FILE"

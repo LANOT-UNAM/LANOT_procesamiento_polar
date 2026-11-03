@@ -387,6 +387,8 @@ armar_tarea() {
 # ==============================================================================
 
 CODIGO_OCUPADO=75
+# El mismo 75, devuelto por una etapa: no la pudo intentar todavía.
+CODIGO_POSPUESTO=75
 
 if [ "$DRY_RUN" -eq 0 ]; then
     mkdir -p "$(dirname "$LOCK_FILE")" 2>/dev/null || true
@@ -590,6 +592,13 @@ ejecutar_nivel "Nivel 2 — Level 2 y renderizado de Level 1" \
 # MiRS entra el 2026-09-26, en el mismo nivel y por lo mismo: solo come SDR de
 # ATMS. A diferencia de HEAP, cubre NPP. Pide 8 procesos y tarda ~1m 45s.
 
+# Sin ATMOS de esta pasada, LSR y CRYO no tienen con qué: no se lanzan. Antes se
+# lanzaban, fallaban y cada uno dejaba su directorio de trabajo conservado.
+if [ "$DRY_RUN" -eq 0 ] && [ ! -f "$(marcador_de atmos)" ]; then
+    SIN_DATOS[lsr]="sin ATMOS de esta pasada (el barrido la retoma)"
+    SIN_DATOS[cryo]="${SIN_DATOS[lsr]}"
+fi
+
 ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
     "$(tarea lsr  run_lsr_edr.sh  "$CLAVE")" \
     "$(tarea cryo run_cryo_edr.sh "$CLAVE")"
@@ -635,6 +644,7 @@ printf '  %-22s %-9s %-10s %s\n' ETAPA RESULTADO DURACIÓN PRODUCTOS
 printf '  %-22s %-9s %-10s %s\n' "----------------------" "---------" "----------" "----------"
 
 fallos=0
+pospuestas=0
 for i in "${!RES_ETAPA[@]}"; do
     etapa="${RES_ETAPA[$i]}"
     codigo="${RES_CODIGO[$i]}"
@@ -642,7 +652,11 @@ for i in "${!RES_ETAPA[@]}"; do
 
     # Sin tilde a propósito: printf %-9s cuenta bytes, y una tilde descuadra la
     # columna. Como sustantivo, "fallo" es lo correcto aquí de todos modos.
-    if [ "$codigo" -ne 0 ]; then
+    if [ "$codigo" -eq "$CODIGO_POSPUESTO" ]; then
+        # 75 de una etapa: hoy no se puede (ATMOS sin su GFS). No es un fallo.
+        estado="pospuesto"; dur=""; prod="el barrido la retoma"
+        pospuestas=$((pospuestas + 1))
+    elif [ "$codigo" -ne 0 ]; then
         estado="fallo"
         fallos=$((fallos + 1))
         dur=""
@@ -668,6 +682,7 @@ if [ "$fallos" -eq 0 ]; then
 else
     echo "  Etapas con fallo: $fallos  (las demás siguieron; ver arriba)"
 fi
+[ "$pospuestas" -eq 0 ] || echo "  Etapas pospuestas: $pospuestas  (sin su ancillary todavía; el barrido las retoma)"
 echo "  Log de la pasada: $LOG"
 
 exit 0

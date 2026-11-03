@@ -54,6 +54,19 @@ Diez días después de instalar, en tahan:
   siguiente paso es que el primer intento ni se lance antes de que el ciclo esté publicado, en vez de
   fallar y conservar el trabajo.
 
+  **Hecho el 2026-11-03.** `run_atmos_edr.sh` revisa, antes de armar el staging, qué ciclos del
+  GFS necesita la pasada: las horas sinópticas que la encierran, cada una cubierta por el ciclo
+  de 6 h antes (f006) o por los de 3 y 9 h antes (f003, f009), que es lo que baja `atmos-anc`.
+  Un ciclo sirve si está en el caché o si ya pasaron `ATMOS_GFS_LATENCIA_MIN` (225 min) desde
+  que arrancó. Si alguna hora se queda sin ciclo, sale en **75** sin tocar nada. En
+  `procesar_pasada.sh`, un 75 de una etapa es "pospuesto" (no fallo), y sin marcador de ATMOS
+  no se lanzan LSR ni CRYO, que solo fallaban y conservaban su directorio. El barrido retoma la
+  pasada como antes, a los 60 min, y el primer intento no le cuenta. Si aun así falta
+  ancillary con el ciclo ya dado por publicado, el fallo sigue siendo 1, pero ya no conserva
+  el `atmos_work_*`: eran solo enlaces y la causa está en el log. Probado con reloj simulado
+  (pasada de 09:04 a las 09:27 → pospone; a las 09:50, o con el f006 del 06Z en el caché → corre)
+  y con `run_atmos_edr.sh` sobre un árbol falso; falta verlo en tahan una mañana.
+
 ## 2026-10-23: el arranque de P2G crecía con la historia, y el `.sif` de `fa99373` verificado
 
 ### La duración de `run_polar2grid_edr.sh` subía sola
