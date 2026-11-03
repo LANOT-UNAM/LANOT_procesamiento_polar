@@ -25,6 +25,13 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ## 2026-11-03: revisión de lo instalado el 2026-10-23
 
+**S-NPP quedó fuera el 2026-11-02.** Su último crudo es `chain4-8_pass38_20261102T091627`
+(09:16 UTC, pasada `npp_d20261102_t090426`); desde el racimo de esa tarde no llega nada por la
+cadena 4. En `config/cadenas.tsv`, una fila nueva para la 4 desde las 12:00 UTC del 2 con `xml`
+= `-`: los crudos de antes se siguen procesando y uno nuevo por la 4, no. Si la 4 vuelve a
+entregar, es otro satélite y hay que confirmarlo con `lspass`. Lo de NPP que queda en
+`/data/output/jpss` se va con la retención.
+
 Diez días después de instalar, en tahan:
 
 - **AFMOD**: bien. Las diez últimas pasadas dicen "N AFIMG, N AFMOD" con N igual, y hay 84

@@ -40,3 +40,9 @@
 4	2026-09-21T21:00:00Z	NPP		nppdb		npp.xml
 5	2026-09-21T21:00:00Z	Aqua		aquadb		-
 6	2026-09-21T21:00:00Z	METOP-B/C	ahrpt		-
+
+# Desde el 2026-11-02: S-NPP fuera. El último crudo es chain4-8_pass38_20261102T091627
+# (09:16 UTC); desde el racimo de la tarde no llega nada por la 4. Queda con xml `-`
+# en vez de quitarse porque las filas solo se agregan. Si la 4 vuelve a entregar
+# crudos, es otro satélite: confirmarlo con lspass y agregar su fila.
+4	2026-11-02T12:00:00Z	NPP		nppdb		-
