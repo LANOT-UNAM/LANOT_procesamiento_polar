@@ -300,15 +300,27 @@ mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
 # Más de 0 no basta: cada algoritmo remata con "completed M products of N". Con
 # M < N lo que salió se entrega igual —el barrido no retoma OMPS, así que
 # borrarlo sería perderlo—, pero sin marcador, para que el resumen lo cuente.
-RC_MN=0
-m_de_n "$LOG_FILE" 'completed [0-9]+ products of [0-9]+' 2 5 || RC_MN=$?
-if [ "$RC_MN" -eq 1 ]; then
-    echo "❌ ERROR: OMPS salió a medias: $M_DE_N_CORTOS productos (V8TOz $TOZ_COUNT, V8PRO $PRO_COUNT)." | tee -a "$LOG_FILE"
+#
+# V8Pro, con tolerancia de uno: en 11 de 30 pasadas buenas (27 oct a 1 nov) le
+# faltó exactamente un producto y a V8TOZ ninguno —el gránulo del borde del
+# perfilador, que es más largo que los del mapper—. Exigirle M = N habría
+# tumbado un tercio de las pasadas sin que faltara nada que se pudiera tener.
+FALTA_OMPS=""
+for alg_tol in "V8TOZ 0" "V8Pro 1"; do
+    read -r ALG TOL <<< "$alg_tol"
+    RC_MN=0
+    m_de_n "$LOG_FILE" "$ALG Processing completed [0-9]+ products of [0-9]+" 4 7 "$TOL" || RC_MN=$?
+    if [ "$RC_MN" -eq 1 ]; then
+        FALTA_OMPS="$FALTA_OMPS $ALG $M_DE_N_CORTOS;"
+    elif [ "$RC_MN" -eq 2 ]; then
+        echo "⚠  El log no trae el 'completed M products of N' de $ALG: no se pudo comprobar que salió todo." | tee -a "$LOG_FILE"
+    fi
+done
+if [ -n "$FALTA_OMPS" ]; then
+    echo "❌ ERROR: OMPS salió a medias:${FALTA_OMPS%;} (V8TOz $TOZ_COUNT, V8PRO $PRO_COUNT archivos)." | tee -a "$LOG_FILE"
     echo "   Lo que salió quedó en $HOST_EDR_OUT, sin marcador."  | tee -a "$LOG_FILE"
     echo "   grep -n 'products of' $LOG_FILE"                    | tee -a "$LOG_FILE"
     exit 1
-elif [ "$RC_MN" -eq 2 ]; then
-    echo "⚠  El log no trae 'completed M products of N': no se pudo comprobar que salió todo." | tee -a "$LOG_FILE"
 fi
 
 {

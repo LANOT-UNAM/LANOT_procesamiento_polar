@@ -256,22 +256,25 @@ pasada_que_traslapa() {
     echo "$r"
 }
 
-# m_de_n <log> <ERE> <campo M> <campo N>
+# m_de_n <log> <ERE> <campo M> <campo N> [tolerancia]
 #
 # "¿Salió todo?", según el propio driver de CSPP. Busca en <log> los remates que
 # casan con <ERE> (p. ej. 'completed [0-9]+ products of [0-9]+', campos 2 y 5) y
 # compara M contra N en cada uno. "Más de 0 productos" no basta: ATMOS terminó
 # en 0 con 24 de 96 y quedó marcado (2026-09-24), y CRYO hizo lo mismo encima.
 #
+# Con [tolerancia] (def. 0) se aceptan hasta esos de menos: el perfilador de
+# OMPS pierde uno en un tercio de las pasadas buenas (ver run_omps_edr.sh).
+#
 # Devuelve 0 si todos los remates dicen M = N; 1 si alguno se quedó corto (y
 # deja en M_DE_N_CORTOS cuáles, "M de N"); 2 si el log no trae ninguno, que es
 # un cambio del driver y no se da por fallo: quien llama avisa y sigue.
 M_DE_N_CORTOS=""
 m_de_n() {
-    local log="$1" ere="$2" cm="$3" cn="$4" pares
+    local log="$1" ere="$2" cm="$3" cn="$4" tol="${5:-0}" pares
     M_DE_N_CORTOS=""
     pares="$(grep -aoE "$ere" "$log" 2>/dev/null | awk -v m="$cm" -v n="$cn" '{ print $m, $n }')"
     [ -n "$pares" ] || return 2
-    M_DE_N_CORTOS="$(awk '$1 < $2 { printf "%s%s de %s", (k++ ? ", " : ""), $1, $2 }' <<< "$pares")"
+    M_DE_N_CORTOS="$(awk -v t="$tol" '$1 + t < $2 { printf "%s%s de %s", (k++ ? ", " : ""), $1, $2 }' <<< "$pares")"
     [ -z "$M_DE_N_CORTOS" ]
 }
