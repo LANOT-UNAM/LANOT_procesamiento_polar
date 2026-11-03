@@ -19,13 +19,12 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-03" y "2026-10-16".
 1. **¿ACSPO, Active Fire y MiRS son deterministas?** Con los mismos SDR y el mismo GFS, la
    prueba de dos turnos dio 9 GeoTIFF distintos de 132 entre la fase en serie y la encimada.
    Falta un control: la misma pasada dos veces en serie.
-2. **Duración de `run_polar2grid_edr.sh`**: que las pasadas de 20 vistas vuelvan a ~5 min.
-   Sus logs son `polar2grid/p2g_2*.log`: `p2g_*.log` mezcla los de Level 1.
-3. **Publicador**: tras instalar el arreglo del 2026-11-03, que "GeoTIFF esperando su
+2. **Publicador**: tras instalar el arreglo del 2026-11-03, que "GeoTIFF esperando su
    marcador" baje a casi cero y que `/dataservice/jpss/level2/{sounder,mirs,omps}` reciban
    GeoTIFF.
-4. **ATMOS de las 09 UTC**: confirmar que el reintento termina bien; luego, no lanzar el
-   primer intento antes de que esté el GFS.
+3. **ATMOS de las 09 y 21 UTC**: el reintento ya termina bien; falta no lanzar el primer
+   intento antes de que esté publicado el GFS, para no dejar un `atmos_work_*` y un
+   `lsr_work_*` conservados por día.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

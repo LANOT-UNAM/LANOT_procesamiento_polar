@@ -31,9 +31,10 @@ Diez días después de instalar, en tahan:
   `*_confidence_pct_*_750m.tif`.
 - **EVI**: bien. Las pasadas diurnas de los tres satélites tienen vista en `vistas/lsr/`.
 - **`limpiar.sh`**: corre en cron; la del 2026-11-02 borró 5037 entradas (320 GB).
-- **Duración de `run_polar2grid_edr.sh`**: sin medir todavía. La primera lectura (1–3 min,
-  "3 vistas") era de Level 1: `p2g_*.log` atrapa también los `p2g_l1_*.log`, que se ordenan
-  después. Para Level 2 hay que excluirlos: `ls p2g_2*.log`.
+- **Duración de `run_polar2grid_edr.sh`**: resuelto. Las pasadas de 21 vistas tardan
+  3m11s–3m46s (2026-11-02), contra 6–8 min antes del filtro por fecha y ~5 min a fines de
+  septiembre. Ojo al medir: `p2g_*.log` atrapa también los `p2g_l1_*.log`; los de Level 2 son
+  `p2g_2*.log`.
 - **`publicar_dataservice.sh`**: la carga terminó, `fallos: 0` en todos los tics y las
   carpetas de `level2/` y `vistas/` pobladas. Pero cada tic decía **"GeoTIFF esperando su
   marcador: ~400"**, sin bajar nunca. Eran los GeoTIFF de **sondeos, MiRS y ozono**, que no se
@@ -47,9 +48,10 @@ Diez días después de instalar, en tahan:
   primera corrida de pasadas que empiezan entre las 09:03 y las 09:24 UTC (más una de las
   20:54), lanzada a los pocos minutos: es el hueco del GFS 06Z (y 18Z) que ya se conocía. Cada
   uno deja su `atmos_work_*` y el `lsr_work_*` de detrás (20 en `/data/tmp`). No hay
-  `.fallido` nuevo desde el 2026-09-28, así que los reintentos parecen terminar bien; falta
-  confirmarlo en el log del segundo intento de alguna de esas pasadas. Si es así, el siguiente
-  paso es que el primer intento ni se lance antes de que el ciclo esté publicado, en vez de
+  `.fallido` nuevo desde el 2026-09-28, y **el reintento termina bien**: en los logs de
+  Polar2Grid, `j01_d20261103_t090400` sale dos veces, con 17 GeoTIFF en la primera (sin
+  ATMOS) y 28 en la que fuerza el reintento; `j01_d20261102_t092421`, 10 y luego 21. El
+  siguiente paso es que el primer intento ni se lance antes de que el ciclo esté publicado, en vez de
   fallar y conservar el trabajo.
 
 ## 2026-10-23: el arranque de P2G crecía con la historia, y el `.sif` de `fa99373` verificado
