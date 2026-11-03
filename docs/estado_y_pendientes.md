@@ -321,8 +321,8 @@ Pendiente:
    (la de NOAA-20 no) y los dos MiRS de NPP, `IMG` y `SND` (los de NOAA-20 no).
 2. **Confirmar el no determinismo con un control limpio**: la misma pasada dos veces en serie,
    solo ACSPO, Fire y MiRS. **Escrito el 2026-11-03: `scripts/control_determinismo.sh`**, que
-   toma el candado de producción, corre los tres EDR dos veces sobre la última pasada de NPP y
-   la de NOAA-20 (salida en `/data/tmp/control_determinismo_<sello>`), compara los `.nc` dataset
+   toma el candado de producción, corre los tres EDR dos veces sobre la última pasada de NOAA-20
+   y la de NOAA-21 (NPP, donde difirieron la SST y MiRS, ya no se recibe) (salida en `/data/tmp/control_determinismo_<sello>`), compara los `.nc` dataset
    por dataset con `h5diff` sin contar atributos y deja `informe.txt` con un veredicto.
    `--un-hilo` agrega un par a un solo hilo para ver si la causa es el paralelismo. Probado con
    EDR y `h5diff` simulados; falta la corrida real. Si difieren igual, la diferencia no es de la prueba y el

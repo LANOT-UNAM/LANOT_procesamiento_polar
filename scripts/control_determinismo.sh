@@ -43,8 +43,10 @@
 #   control_determinismo.sh [opciones] [PASADA ...]
 #
 #   PASADA   Clave o trozo de una pasada de level1/viirs (j01_d20261103_t090400,
-#            "t0904"). Sin ninguna, la más reciente de NPP y la de NOAA-20: NPP
-#            es donde difirieron la SST y MiRS; NOAA-20, Fire.
+#            "t0904"). Sin ninguna, la más reciente de NOAA-20 y la de NOAA-21.
+#            El 2026-10-14 la SST y MiRS difirieron en NPP, pero NPP ya no se
+#            recibe (noviembre de 2026); Fire difirió en los tres satélites. Una
+#            pasada vieja de NPP se puede pedir aquí si sus SDR siguen en level1.
 #
 # Opciones:
 #   -b, --base DIR   Árbol de la prueba (def. /data/tmp/control_determinismo_<sello>)
@@ -125,12 +127,12 @@ agregar_pasada() {
     CLAVES+=("$CLAVE"); CLAVES_MIRS+=("$cm")
 }
 if [ "${#PEDIDAS[@]}" -eq 0 ]; then
-    for sat in npp j01; do
+    for sat in j01 j02; do
         ultima="$(listar_pasadas "$LEVEL1/viirs" GMTCO | awk -v s="$sat" 'index($1, s "_") == 1 { k = $1 } END { print k }')"
         [ -n "$ultima" ] && PEDIDAS+=("$ultima")
     done
 fi
-[ "${#PEDIDAS[@]}" -gt 0 ] || { echo "❌ No hay pasadas de NPP ni de NOAA-20 en $LEVEL1/viirs" >&2; exit 2; }
+[ "${#PEDIDAS[@]}" -gt 0 ] || { echo "❌ No hay pasadas de NOAA-20 ni de NOAA-21 en $LEVEL1/viirs" >&2; exit 2; }
 for p in "${PEDIDAS[@]}"; do agregar_pasada "$p"; done
 
 mkdir -p "$BASE" || exit 2
