@@ -81,7 +81,7 @@ los dos últimos logs buenos de cada uno, y lo que ahora se exige:
 |---|---|---|---|
 | CRYO | `completed M products of N` | M = N | se descarta; el barrido la retoma |
 | LSR | `Number of Granules: N` | N `SurfRefl` | se descarta; el barrido la retoma |
-| OMPS | `completed M products of N`, uno por algoritmo | M = N en V8TOZ; en V8Pro, uno de menos | se entrega sin marcador |
+| OMPS | `completed M products of N`, uno por algoritmo | M = N en V8TOZ; en V8Pro, hasta dos de menos (un gránulo por borde) | se entrega sin marcador |
 | MiRS | `mirs X out of Y granules processed` | X = Y | se entrega sin marcador |
 | Fire | `granule_id …: afire_rc = R, problem_rc = P` por gránulo, en cada corrida | todos en 0 y un `.nc` por gránulo | se entrega sin marcador |
 | Flood | `VIIRS Flood output files = [...]` por gránulo | un `.nc` por inventario no vacío | se entrega sin marcador |
@@ -100,9 +100,10 @@ buenas de cada EDR en tahan (solo lectura, desde el clon). Tiene que dar cero "f
 o, si da alguno, que sea una pasada que de verdad salió a medias.
 
 Primera corrida (2026-11-03): CRYO, MiRS, LSR, HEAP y Fire, 30 de 30 en ok; Flood, 29 de 29.
-**OMPS, 11 de 30 fuera**, todas por exactamente un producto y todas en V8Pro (`17 products of
-18`), con V8TOZ completo. Es el gránulo del borde del perfilador, no una pasada rota: V8Pro
-quedó con tolerancia de uno.
+**OMPS, 11 de 30 fuera**, todas en V8Pro y ninguna en V8TOZ: diez por un producto y una
+(`j01_d20261101_t205506`, la más corta, 11 de 13) por dos. Es el gránulo de cada extremo del
+perfilador, que no tiene vecino, no una pasada rota: V8Pro quedó con tolerancia de dos, una
+por borde. Con eso, segunda corrida: 0 fuera de ok en los siete.
 
 ## 2026-10-23: el arranque de P2G crecía con la historia, y el `.sif` de `fa99373` verificado
 

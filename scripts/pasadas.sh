@@ -264,7 +264,8 @@ pasada_que_traslapa() {
 # en 0 con 24 de 96 y quedó marcado (2026-09-24), y CRYO hizo lo mismo encima.
 #
 # Con [tolerancia] (def. 0) se aceptan hasta esos de menos: el perfilador de
-# OMPS pierde uno en un tercio de las pasadas buenas (ver run_omps_edr.sh).
+# OMPS pierde el gránulo de un borde, o de los dos, en un tercio de las pasadas
+# buenas (ver run_omps_edr.sh).
 #
 # Devuelve 0 si todos los remates dicen M = N; 1 si alguno se quedó corto (y
 # deja en M_DE_N_CORTOS cuáles, "M de N"); 2 si el log no trae ninguno, que es

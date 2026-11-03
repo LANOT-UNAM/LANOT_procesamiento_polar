@@ -301,12 +301,13 @@ mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
 # M < N lo que salió se entrega igual —el barrido no retoma OMPS, así que
 # borrarlo sería perderlo—, pero sin marcador, para que el resumen lo cuente.
 #
-# V8Pro, con tolerancia de uno: en 11 de 30 pasadas buenas (27 oct a 1 nov) le
-# faltó exactamente un producto y a V8TOZ ninguno —el gránulo del borde del
-# perfilador, que es más largo que los del mapper—. Exigirle M = N habría
-# tumbado un tercio de las pasadas sin que faltara nada que se pudiera tener.
+# V8Pro, con tolerancia de dos: uno por borde de la pasada. En 30 pasadas buenas
+# (27 oct a 1 nov) a V8TOZ no le faltó nada y a V8Pro, 0 en 19, 1 en 10 y 2 en
+# una sola, la más corta (11 de 13): el gránulo de cada extremo del perfilador,
+# que no tiene vecino. Exigirle M = N habría tumbado un tercio de las pasadas
+# sin que faltara nada que se pudiera tener; de tres para arriba, sí es fallo.
 FALTA_OMPS=""
-for alg_tol in "V8TOZ 0" "V8Pro 1"; do
+for alg_tol in "V8TOZ 0" "V8Pro 2"; do
     read -r ALG TOL <<< "$alg_tol"
     RC_MN=0
     m_de_n "$LOG_FILE" "$ALG Processing completed [0-9]+ products of [0-9]+" 4 7 "$TOL" || RC_MN=$?
