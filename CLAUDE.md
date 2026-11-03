@@ -12,31 +12,20 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-10-16): revisar al retomar
+## Pendiente abierto (2026-11-03): revisar al retomar
 
-Detalle en `docs/estado_y_pendientes.md`, sección "2026-10-16: la prueba de dos turnos, y el
-publicador en cron".
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-03" y "2026-10-16".
 
 1. **¿ACSPO, Active Fire y MiRS son deterministas?** Con los mismos SDR y el mismo GFS, la
    prueba de dos turnos dio 9 GeoTIFF distintos de 132 entre la fase en serie y la encimada.
    Falta un control: la misma pasada dos veces en serie.
-2. **Duración de `run_polar2grid_edr.sh`** (2026-10-23): el arranque crecía con la historia de
-   `level2/` y se le puso un filtro por fecha. Tras instalar, comprobar que las pasadas de 20
-   vistas vuelven a ~5 min (sección "2026-10-23" de `docs/estado_y_pendientes.md`).
-
-3. **Fallos diarios de ATMOS y LSR** (2026-10-23): nueve `atmos_work_*` y nueve `lsr_work_*`
-   conservados en una semana. Confirmar en los logs si es solo el GFS de la madrugada y si el
-   reintento del barrido termina bien (sección "2026-10-23" de `docs/estado_y_pendientes.md`).
-
-4. **Lo instalado el 2026-10-23, en su primera corrida real**:
-   - `publicar_dataservice.sh` con Level 2 y vistas: que la primera carga (~865 GB, arrancó
-     hacia las 16:25 CST) haya terminado sin fallos en `publicar_dataservice.log`, y que
-     `/dataservice/jpss/level2/*` y `vistas/*` estén poblados.
-   - AFMOD: que las pasadas nuevas digan "N AFIMG, M AFMOD" en el log de Active Fire y
-     traigan `*_confidence_pct_*_750m.tif`.
-   - EVI: que las pasadas diurnas nuevas tengan vista en `vistas/lsr/`.
-   - `limpiar.sh` en cron (17:30 UTC): su línea en `limpiar.log`.
-   - Duración de `run_polar2grid_edr.sh`: ~5 min en las pasadas de 20 vistas (punto 2).
+2. **`run_polar2grid_edr.sh` tarda la mitad, pero reporta 3 vistas por pasada en vez de 20.**
+   Ver la línea `ÉXITO` completa antes de dar por bueno el filtro por fecha.
+3. **Publicador**: tras instalar el arreglo del 2026-11-03, que "GeoTIFF esperando su
+   marcador" baje a casi cero y que `/dataservice/jpss/level2/{sounder,mirs,omps}` reciban
+   GeoTIFF.
+4. **ATMOS de las 09 UTC**: confirmar que el reintento termina bien; luego, no lanzar el
+   primer intento antes de que esté el GFS.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

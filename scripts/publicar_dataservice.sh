@@ -182,10 +182,19 @@ terminar() {
 # ¿Está listo un GeoTIFF? Su pasada tiene que tener el marcador del renderizador
 # que lo hizo, y ese marcador ser más nuevo que el archivo (un re-renderizado con
 # --force reescribe los .tif antes de reescribir el marcador).
+#
+# La clave de la pasada es la hora de inicio de su VIIRS, y la hora del nombre
+# es la del primer gránulo del sensor: coinciden en VIIRS, pero no en sondeos
+# (atms-cris), MiRS (atms) ni ozono (omps). Para esos, cuenta el marcador del
+# mismo satélite que caiga a menos de PUB_DS_MARGEN_S de esa hora: dos pasadas
+# del mismo satélite están a una órbita (~100 min) una de otra.
+MARGEN_S="${PUB_DS_MARGEN_S:-1800}"
+declare -A _MARCADORES_SAT=()   # "<dir> <sat>" → "época:ruta …", leído una vez por tic
+
 geotiff_listo() {
-    local ruta="$1" origen_rel="$2" nombre sat marcadores
+    local ruta="$1" origen_rel="$2" nombre sat marcadores exacto t m e r
     nombre="$(basename "$ruta")"
-    [[ "$nombre" =~ ^(npp|noaa20|noaa21)_viirs_.*_([0-9]{8})_([0-9]{6})_ ]] || return 1
+    [[ "$nombre" =~ ^(npp|noaa20|noaa21)_[a-z-]+_.*_([0-9]{8})_([0-9]{6})_ ]] || return 1
     case "${BASH_REMATCH[1]}" in
         noaa20) sat=j01 ;;
         noaa21) sat=j02 ;;
@@ -196,7 +205,27 @@ geotiff_listo() {
     else
         marcadores="$DIR_P2G_L2"
     fi
-    [ "$marcadores/${sat}_d${BASH_REMATCH[2]}_t${BASH_REMATCH[3]}.done" -nt "$ruta" ]
+    exacto="$marcadores/${sat}_d${BASH_REMATCH[2]}_t${BASH_REMATCH[3]}.done"
+    [ -e "$exacto" ] && { [ "$exacto" -nt "$ruta" ]; return; }
+
+    # Sin marcador con la hora exacta: el de la pasada más cercana.
+    t=$(date -u -d "${BASH_REMATCH[2]} ${BASH_REMATCH[3]:0:2}:${BASH_REMATCH[3]:2:2}:${BASH_REMATCH[3]:4:2}" +%s) || return 1
+    if [ -z "${_MARCADORES_SAT["$marcadores $sat"]+x}" ]; then
+        _MARCADORES_SAT["$marcadores $sat"]=""
+        for m in "$marcadores/${sat}"_d*_t*.done; do
+            [ -e "$m" ] || continue
+            [[ "$(basename "$m")" =~ _d([0-9]{8})_t([0-9]{2})([0-9]{2})([0-9]{2})\.done$ ]] || continue
+            e=$(date -u -d "${BASH_REMATCH[1]} ${BASH_REMATCH[2]}:${BASH_REMATCH[3]}:${BASH_REMATCH[4]}" +%s) || continue
+            _MARCADORES_SAT["$marcadores $sat"]+="$e:$m "
+        done
+    fi
+    for r in ${_MARCADORES_SAT["$marcadores $sat"]}; do
+        e="${r%%:*}"; m="${r#*:}"
+        [ $(( t > e ? t - e : e - t )) -le "$MARGEN_S" ] || continue
+        [ "$m" -nt "$ruta" ]
+        return
+    done
+    return 1
 }
 
 # Poda: lo que pasó de la retención, y temporales huérfanos de un tic que murió

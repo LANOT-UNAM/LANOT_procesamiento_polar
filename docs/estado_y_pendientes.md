@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-10-23**
+**Última actualización: 2026-11-03**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -22,6 +22,37 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 
 ---
+
+## 2026-11-03: revisión de lo instalado el 2026-10-23
+
+Diez días después de instalar, en tahan:
+
+- **AFMOD**: bien. Las diez últimas pasadas dicen "N AFIMG, N AFMOD" con N igual, y hay 84
+  `*_confidence_pct_*_750m.tif`.
+- **EVI**: bien. Las pasadas diurnas de los tres satélites tienen vista en `vistas/lsr/`.
+- **`limpiar.sh`**: corre en cron; la del 2026-11-02 borró 5037 entradas (320 GB).
+- **Duración de `run_polar2grid_edr.sh`**: entre 1m15s y 3m07s, contra 6–8 min antes del
+  filtro por fecha. Pero **las mismas pasadas reportan 3 vistas de día y 1 de noche**, y las
+  de la tabla del 2026-10-23 eran de 20. Falta ver la línea `ÉXITO` completa para saber de qué
+  familia faltan, antes de dar el arreglo por bueno: un arranque más rápido que además hace
+  menos no prueba nada.
+- **`publicar_dataservice.sh`**: la carga terminó, `fallos: 0` en todos los tics y las
+  carpetas de `level2/` y `vistas/` pobladas. Pero cada tic decía **"GeoTIFF esperando su
+  marcador: ~400"**, sin bajar nunca. Eran los GeoTIFF de **sondeos, MiRS y ozono**, que no se
+  publicaban: `geotiff_listo()` exigía `_viirs_` en el nombre (los suyos son `_atms-cris_`,
+  `_atms_` y `_omps_`) y, aunque lo hubiera aceptado, la hora del nombre es la del primer
+  gránulo de su sensor y no la clave de la pasada, que sale de VIIRS. Arreglado el 2026-11-03:
+  si no hay marcador con la hora exacta, cuenta el del mismo satélite a menos de 30 min
+  (`PUB_DS_MARGEN_S`). Probado en seco con un árbol simulado. Tras instalar, el contador del
+  log tiene que bajar a casi cero en un tic y `level2/{sounder,mirs,omps}` crecer en GeoTIFF.
+- **Fallos de ATMOS y LSR**: los seis `atmos_edr_*` fallidos de la última semana son de la
+  primera corrida de pasadas que empiezan entre las 09:03 y las 09:24 UTC (más una de las
+  20:54), lanzada a los pocos minutos: es el hueco del GFS 06Z (y 18Z) que ya se conocía. Cada
+  uno deja su `atmos_work_*` y el `lsr_work_*` de detrás (20 en `/data/tmp`). No hay
+  `.fallido` nuevo desde el 2026-09-28, así que los reintentos parecen terminar bien; falta
+  confirmarlo en el log del segundo intento de alguna de esas pasadas. Si es así, el siguiente
+  paso es que el primer intento ni se lance antes de que el ciclo esté publicado, en vez de
+  fallar y conservar el trabajo.
 
 ## 2026-10-23: el arranque de P2G crecía con la historia, y el `.sif` de `fa99373` verificado
 
