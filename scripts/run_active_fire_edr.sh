@@ -216,11 +216,15 @@ trap 'rm -rf "$STAGING_DIR" "$REF_FILE"' EXIT
 mkdir -p "$WORK_DIR/img" "$WORK_DIR/mod"
 
 # correr_fire <subdirectorio> <etiqueta> [opciones del driver]
-# Deja en CODIGO_<etiqueta> el código de salida y en N_<etiqueta> los .nc movidos.
+# Deja en CODIGO_<etiqueta> el código de salida, en N_<etiqueta> los .nc movidos,
+# en G_<etiqueta> los gránulos que el dispatcher despachó y en MAL_<etiqueta> los
+# que remató con afire_rc o problem_rc distinto de 0. El driver no escribe un
+# "M of N"; lo más parecido es esa línea, una por gránulo, al final de cada corrida.
 correr_fire() {
     local sub="$1" etiqueta="$2"; shift 2
-    local codigo=0 n
+    local codigo=0 n desde tramo g mal
 
+    desde=$(( $(wc -l < "$LOG_FILE") + 1 ))
     echo "--- $etiqueta ${*:-} --- $(date +%H:%M:%S)" >> "$LOG_FILE"
     apptainer exec \
         --env LC_ALL=C \
@@ -239,8 +243,17 @@ correr_fire() {
         mv -f "$f" "$OUTPUT_DIR"/ && n=$((n + 1))
     done < <(find "$WORK_DIR/$sub" -maxdepth 1 -name "${etiqueta}_*.nc" -print0)
 
+    tramo="$(tail -n +"$desde" "$LOG_FILE" | grep -aoE 'granule_id [A-Z0-9]+: afire_rc = [0-9-]+, problem_rc = [0-9-]+' || true)"
+    g=0; mal=0
+    if [ -n "$tramo" ]; then
+        g=$(awk '{ print $2 }' <<< "$tramo" | sort -u | wc -l)
+        mal=$(awk '$5 != "0," || $8 != "0"' <<< "$tramo" | awk '{ print $2 }' | sort -u | wc -l)
+    fi
+
     printf -v "CODIGO_${etiqueta}" '%s' "$codigo"
     printf -v "N_${etiqueta}" '%s' "$n"
+    printf -v "G_${etiqueta}" '%s' "$g"
+    printf -v "MAL_${etiqueta}" '%s' "$mal"
 }
 
 correr_fire img AFIMG
@@ -266,6 +279,18 @@ for etiqueta in AFIMG AFMOD; do
     elif [ "${!n_var}" -eq 0 ]; then
         echo "❌ ERROR: $etiqueta terminó sin error pero no generó productos" | tee -a "$LOG_FILE"
         FALLO=1
+    else
+        # Más de 0 no basta: ningún gránulo con código distinto de 0, y un .nc
+        # por cada gránulo despachado. Lo que salió se queda en la salida (el
+        # barrido no retoma Fire), pero sin marcador.
+        g_var="G_${etiqueta}"; mal_var="MAL_${etiqueta}"
+        if [ "${!g_var}" -eq 0 ]; then
+            echo "⚠  $etiqueta: el log no trae las líneas 'afire_rc' del dispatcher; no se pudo comprobar que salió todo." | tee -a "$LOG_FILE"
+        elif [ "${!mal_var}" -gt 0 ] || [ "${!n_var}" -lt "${!g_var}" ]; then
+            echo "❌ ERROR: $etiqueta salió a medias: ${!n_var} productos de ${!g_var} gránulos, ${!mal_var} con código distinto de 0" | tee -a "$LOG_FILE"
+            echo "   grep -n 'afire_rc' $LOG_FILE" | tee -a "$LOG_FILE"
+            FALLO=1
+        fi
     fi
 done
 

@@ -72,6 +72,33 @@ Diez días después de instalar, en tahan:
   (pasada de 09:04 a las 09:27 → pospone; a las 09:50, o con el f006 del 06Z en el caché → corre)
   y con `run_atmos_edr.sh` sobre un árbol falso; falta verlo en tahan una mañana.
 
+### "Más de 0 productos" ya no es éxito en ningún EDR
+
+Pendiente desde el 2026-09-24. Lo que cada driver escribe al terminar, leído en tahan sobre
+los dos últimos logs buenos de cada uno, y lo que ahora se exige:
+
+| EDR | remate del driver | se exige | si falta |
+|---|---|---|---|
+| CRYO | `completed M products of N` | M = N | se descarta; el barrido la retoma |
+| LSR | `Number of Granules: N` | N `SurfRefl` | se descarta; el barrido la retoma |
+| OMPS | `completed M products of N`, uno por algoritmo | M = N en los dos | se entrega sin marcador |
+| MiRS | `mirs X out of Y granules processed` | X = Y | se entrega sin marcador |
+| Fire | `granule_id …: afire_rc = R, problem_rc = P` por gránulo, en cada corrida | todos en 0 y un `.nc` por gránulo | se entrega sin marcador |
+| Flood | `VIIRS Flood output files = [...]` por gránulo | un `.nc` por inventario no vacío | se entrega sin marcador |
+| HEAP | solo `EXECUTION COMPLETED SUCCESSFULLY` | las cinco familias con la misma cuenta | se entrega sin marcador |
+| ACSPO | nada; un archivo por pasada | sigue "más de 0" | — |
+
+Descartar solo tiene sentido donde hay reintento: el barrido retoma ATMOS, LSR y CRYO, nada
+más. A los otros, borrarles lo parcial sería perderlo; sin marcador, el resumen de la pasada
+los cuenta como fallo, que es lo que faltaba. Si el remate no aparece en el log (el driver
+cambió), se avisa y no se tumba la etapa. Lo que **no** se atrapa: un gránulo diurno de Flood
+que falle callado deja `[]` igual que uno nocturno, y HEAP no dice cuántos gránulos esperaba
+—el caso de 14 de 15 del 2026-08-15 tendría las cinco familias parejas—.
+
+**Antes de instalar**: `probar_remates.sh` aplica las mismas reglas a las 30 últimas corridas
+buenas de cada EDR en tahan (solo lectura, desde el clon). Tiene que dar cero "fuera de ok",
+o, si da alguno, que sea una pasada que de verdad salió a medias.
+
 ## 2026-10-23: el arranque de P2G crecía con la historia, y el `.sif` de `fa99373` verificado
 
 ### La duración de `run_polar2grid_edr.sh` subía sola

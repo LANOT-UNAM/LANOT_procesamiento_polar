@@ -401,6 +401,18 @@ if [ "$NC_COUNT" -eq 0 ] && [ "$PRODUJO" -eq 1 ]; then
     exit 1
 fi
 
+# Y si produjo, que esté todo: un .nc en la salida por cada gránulo cuyo
+# inventario no salió vacío. Lo que llegó se queda (el barrido no retoma Flood),
+# pero sin marcador. Un gránulo diurno que falle callado deja "[]" igual que uno
+# nocturno, así que esto no lo atrapa: atrapa lo que se pierde en el traslado.
+GRANULOS_CON_SALIDA=$(grep -acE "VIIRS Flood output files = \[.+\]" "$LOG_FILE" || true)
+if [ "$NC_COUNT" -gt 0 ] && [ "$NC_COUNT" -lt "$GRANULOS_CON_SALIDA" ]; then
+    echo "❌ ERROR: Flood salió a medias: $NC_COUNT productos de $GRANULOS_CON_SALIDA gránulos con salida." | tee -a "$LOG_FILE"
+    echo "   Lo que llegó quedó en $OUTPUT_DIR, sin marcador."                  | tee -a "$LOG_FILE"
+    echo "   grep 'output files' $LOG_FILE"                                     | tee -a "$LOG_FILE"
+    exit 1
+fi
+
 # ==============================================================================
 # MARCADOR
 # ==============================================================================

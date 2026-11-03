@@ -351,6 +351,22 @@ if [ "$NC_COUNT" -eq 0 ]; then
     exit 1
 fi
 
+# Más de 0 no basta: el driver remata con "completed M products of N", y con M < N
+# la pasada salió a medias (CRYO lo hizo el 2026-09-24 sobre un ATMOS a medias).
+# Lo parcial se borra: sin marcador, barrer_pendientes.sh retoma la pasada, y
+# conservarlo duplicaría los productos en el reintento.
+RC_MN=0
+m_de_n "$LOG_FILE" 'completed [0-9]+ products of [0-9]+' 2 5 || RC_MN=$?
+if [ "$RC_MN" -eq 1 ]; then
+    find "$OUTPUT_CRYO_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" -delete 2>/dev/null || true
+    echo "❌ ERROR: CSPP CRYO salió a medias: $M_DE_N_CORTOS productos."   | tee -a "$LOG_FILE"
+    echo "   Se descartó lo parcial; barrer_pendientes.sh la reintenta."  | tee -a "$LOG_FILE"
+    echo "   grep -n 'products of' $LOG_FILE"                             | tee -a "$LOG_FILE"
+    exit 1
+elif [ "$RC_MN" -eq 2 ]; then
+    echo "⚠  El log no trae 'completed M products of N': no se pudo comprobar que salió todo." | tee -a "$LOG_FILE"
+fi
+
 {
     echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "pasada:    $CLAVE"

@@ -290,6 +290,20 @@ fi
 
 mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
 
+# El par no basta si la pasada venía en varios grupos de gránulos: el driver
+# remata con "mirs X out of Y granules processed". Con X < Y lo que salió se
+# entrega —el barrido no retoma MiRS—, pero sin marcador.
+RC_MN=0
+m_de_n "$LOG_FILE" 'mirs [0-9]+ out of [0-9]+ granules' 2 5 || RC_MN=$?
+if [ "$RC_MN" -eq 1 ]; then
+    echo "❌ ERROR: MiRS salió a medias: $M_DE_N_CORTOS grupos de gránulos." | tee -a "$LOG_FILE"
+    echo "   Lo que salió quedó en $HOST_EDR_OUT, sin marcador."           | tee -a "$LOG_FILE"
+    echo "   grep -n 'out of' $LOG_FILE"                                   | tee -a "$LOG_FILE"
+    exit 1
+elif [ "$RC_MN" -eq 2 ]; then
+    echo "⚠  El log no trae 'mirs X out of Y granules': no se pudo comprobar que salió todo." | tee -a "$LOG_FILE"
+fi
+
 {
     echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "pasada:    $CLAVE"

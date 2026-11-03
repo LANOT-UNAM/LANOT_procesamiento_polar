@@ -622,6 +622,20 @@ if [ "$RECUPERACION" -eq 0 ]; then
     exit 1
 fi
 
+# Con EDR tampoco basta: el wrapper no dice cuántos gránulos esperaba
+# ("EXECUTION COMPLETED SUCCESSFULLY" y nada más), pero cada gránulo procesado
+# deja un archivo de CADA familia, así que familias desparejas son una corrida a
+# medias (16 ALL-HR y 10 EDR, por ejemplo). Más abajo, como en los demás que el
+# barrido no retoma, lo que salió se entrega igual pero sin marcador.
+DISPAREJAS=0
+MAX_FAM=0; MIN_FAM=""
+for fam in "${!FAMILIAS[@]}"; do
+    n=${FAMILIAS[$fam]}
+    if [ "$n" -gt "$MAX_FAM" ]; then MAX_FAM=$n; fi
+    if [ -z "$MIN_FAM" ] || [ "$n" -lt "$MIN_FAM" ]; then MIN_FAM=$n; fi
+done
+[ "$MIN_FAM" -eq "$MAX_FAM" ] || DISPAREJAS=1
+
 # ------------------------------------------------------------------------------
 # Rescate de los logs propios de HEAP, ANTES de borrar el directorio de trabajo.
 #
@@ -646,6 +660,16 @@ if [ "${#LOGS_CSPP[@]}" -gt 0 ]; then
 fi
 
 mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
+
+if [ "$DISPAREJAS" -eq 1 ]; then
+    echo "❌ ERROR: HEAP salió a medias: las familias no traen los mismos gránulos." | tee -a "$LOG_FILE"
+    for fam in $(printf '%s\n' "${!FAMILIAS[@]}" | sort); do
+        echo "     $fam: ${FAMILIAS[$fam]}"                                          | tee -a "$LOG_FILE"
+    done
+    echo "   Lo que salió quedó en $HOST_EDR_OUT, sin marcador."                     | tee -a "$LOG_FILE"
+    echo "   Los logs de HEAP, en ${RESCATE}: grep -iE 'reject|quality|gfs'"         | tee -a "$LOG_FILE"
+    exit 1
+fi
 
 {
     echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"

@@ -396,6 +396,20 @@ if [ "$NC_COUNT" -eq 0 ]; then
     exit 1
 fi
 
+# Más de 0 no basta. El driver anuncia "Number of Granules: N" (los cuenta por los
+# JRR-AOD) y saca un SurfRefl por gránulo: con menos, la pasada salió a medias. Lo
+# parcial se borra porque barrer_pendientes.sh la retoma y lo duplicaría.
+GRANULOS_LSR=$(grep -aoE 'Number of Granules: *[0-9]+' "$LOG_FILE" | tail -n 1 | grep -oE '[0-9]+$' || true)
+if [ -z "$GRANULOS_LSR" ]; then
+    echo "⚠  El log no trae 'Number of Granules': no se pudo comprobar que salió todo." | tee -a "$LOG_FILE"
+elif [ "$NC_COUNT" -lt "$GRANULOS_LSR" ]; then
+    find "$OUTPUT_LSR_DIR" -maxdepth 1 -name '*.nc' -newer "$REF_FILE" -delete 2>/dev/null || true
+    echo "❌ ERROR: CSPP LSR salió a medias: $NC_COUNT productos de $GRANULOS_LSR gránulos." | tee -a "$LOG_FILE"
+    echo "   Se descartó lo parcial; barrer_pendientes.sh la reintenta."                   | tee -a "$LOG_FILE"
+    echo "   El directorio de trabajo se conserva: $WORK_DIR"                              | tee -a "$LOG_FILE"
+    exit 1
+fi
+
 {
     echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "pasada:    $CLAVE"
