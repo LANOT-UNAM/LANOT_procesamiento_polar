@@ -96,9 +96,9 @@ RAW (CCSDS de antena)
             │
             ├─ VIIRS  SV*, GMTCO*, GITCO*, GDNBO*
             │    ├─ polar2grid_v3.2-mapdrawer.sif ► geotiff/{m_bands,i_bands,dnb,rgb} + vistas/{dnb,rgb}
-            │    ├─ cspp_atmos_edr_v1.0.sif ──► Level 2 atmosphere (JRR-*.nc)
+            │    ├─ cspp_atmos_edr_v1.0.sif ──► Level 2 atmos (JRR-*.nc)
             │    │    ├─ cspp_lsr_v2.0.sif ───► Level 2 lsr (SurfRefl_*.nc)   [SDR + ATMOS]
-            │    │    └─ cspp_cryo_edr_v1.0.sif ► Level 2 cryosphere          [SDR + ATMOS]
+            │    │    └─ cspp_cryo_edr_v1.0.sif ► Level 2 cryo                [SDR + ATMOS]
             │    ├─ cspp_acspo_v3.0.sif ──────► Level 2 acspo (SST)
             │    ├─ cspp_active_fire_v2.1.sif ► Level 2 fires (AFIMG_*.nc)
             │    └─ cspp_flood_v2.0.sif ──────► Level 2 flood (VIIRS-Flood_v2r0*.nc)
@@ -132,7 +132,7 @@ RAW (CCSDS de antena)
   del propio bundle de CSPP, en run_flood_edr.sh, y aquí solo se viste; el de
   ozono (V8TOz) lo hace scripts/omps_a_geotiff.py, porque el lector de OMPS llega
   en Polar2Grid 3.3 —al pasar a 3.3, se borra—. Sin renderizar queda solo
-  cryosphere, que no tiene lector. Los sondeos van con el lector `nucaps`, a la
+  cryo, que no tiene lector. Los sondeos van con el lector `nucaps`, a la
   rejilla wgs84_geo_5km y una CPT por nivel de presión; el ozono, a esa misma.
 ```
 

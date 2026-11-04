@@ -11,7 +11,7 @@
 # LANOT - UNAM | CSPP Land Surface Reflectance (LSR) EDR v2.0
 # ==============================================================================
 #
-# Level 1 (SDR de VIIRS) + Level 2 atmosphere → SurfRefl_*.nc
+# Level 1 (SDR de VIIRS) + Level 2 atmos → SurfRefl_*.nc
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue procesada con éxito, avisa y no hace nada. Una pasada se identifica
@@ -27,7 +27,7 @@
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   LSR_SDR_IN     Entrada Level 1   (def. /data/output/jpss/level1/viirs)
-#   LSR_ATMOS_IN   Entrada atmosphere(def. /data/output/jpss/level2/atmosphere)
+#   LSR_ATMOS_IN   Entrada atmos     (def. /data/output/jpss/level2/atmos)
 #   LSR_OUT        Salida            (def. /data/output/jpss/level2/lsr)
 #   LSR_STATE_DIR  Marcadores .done  (def. /data/output/jpss/state/cspp-lsr)
 #   LSR_CONTAINER  Imagen .sif       (def. /opt/containers/cspp_lsr_edr_v2.0.sif)
@@ -41,7 +41,7 @@ set -euo pipefail
 SIF_IMAGE="${LSR_CONTAINER:-/opt/containers/cspp_lsr_edr_v2.0.sif}"
 
 INPUT_SDR_DIR="${LSR_SDR_IN:-/data/output/jpss/level1/viirs}"
-INPUT_ATMOS_DIR="${LSR_ATMOS_IN:-/data/output/jpss/level2/atmosphere}"
+INPUT_ATMOS_DIR="${LSR_ATMOS_IN:-/data/output/jpss/level2/atmos}"
 OUTPUT_LSR_DIR="${LSR_OUT:-/data/output/jpss/level2/lsr}"
 STATE_DIR="${LSR_STATE_DIR:-/data/output/jpss/state/cspp-lsr}"
 

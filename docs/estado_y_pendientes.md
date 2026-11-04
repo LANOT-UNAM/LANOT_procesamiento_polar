@@ -62,6 +62,39 @@ Uriel, que ya lo tiene resuelto por su lado.
 El crontab de `lanotadm` no cambia: la línea de `publicar_kawak.sh` es la misma. Solo su
 comentario seguía diciendo "provisional, solo NOAA-21"; se corrige a mano en tahan.
 
+### `level2/atmosphere` → `level2/atmos`, `level2/cryosphere` → `level2/cryo`
+
+Eran las dos únicas carpetas de `level2/` con nombre largo, el del paquete de CSPP ("VIIRS
+Atmosphere EDR"), mientras que `geotiff/` y `vistas/` siempre dijeron `atmos`: el mismo producto
+con dos nombres según el árbol. Nunca hubo una razón; venía del primer commit de ATMOS
+(2026-05-08). Se unifica ahora porque la cadena nueva no se ha anunciado y nadie de fuera
+depende todavía de `/dataservice/jpss/level2/atmosphere`.
+
+`publicar_dataservice.sh` compara por nombre, tamaño y mtime dentro de cada carpeta, y `mv` los
+conserva, así que renombrando en `/data` y en `/dataservice` a la vez no se recopia nada. Los
+marcadores (`state/cspp-atmos`, `state/cspp-cryo`) no dependen de la ruta. El AFAI de Uriel
+(`/opt/lanot_shared`) usa copias viejas de `run_atmos_edr.sh` y `run_polar2grid_edr.sh`, pero
+les pasa sus rutas por `ATMOS_OUT` y `P2G_EDR_IN`: no le afecta.
+
+En tahan, desde el clon ya actualizado, con los candados de la cadena y del publicador tomados
+para que nada escriba en la ruta vieja entre el `mv` y la instalación (`-w` espera a que
+termine la pasada en curso, si la hay):
+
+```bash
+sudo flock -w 3600 /data/tmp/lanot_polares.lock \
+     flock -w 600 /data/tmp/publicar_dataservice.lock bash -c '
+  set -e
+  sudo -u lanotadm mv /data/output/jpss/level2/atmosphere  /data/output/jpss/level2/atmos
+  sudo -u lanotadm mv /data/output/jpss/level2/cryosphere  /data/output/jpss/level2/cryo
+  sudo -u lanotadm mv /dataservice/jpss/level2/atmosphere  /dataservice/jpss/level2/atmos
+  sudo -u lanotadm mv /dataservice/jpss/level2/cryosphere  /dataservice/jpss/level2/cryo
+  ./scripts/instalar.sh'
+```
+
+`/dataservice` es NFS: el `mv` va como `lanotadm`, dueño de esas carpetas, por si el servidor
+aplica `root_squash`. Si alguna carpeta destino ya existe, `set -e` detiene todo antes de
+instalar.
+
 ---
 
 ## 2026-11-03: revisión de lo instalado el 2026-10-23

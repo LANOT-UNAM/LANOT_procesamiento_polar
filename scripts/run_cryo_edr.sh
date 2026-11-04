@@ -11,7 +11,7 @@
 # LANOT - UNAM | CSPP VIIRS Cryosphere EDR v1.0
 # ==============================================================================
 #
-# Level 1 (SDR de VIIRS) + Level 2 atmosphere → productos de criósfera
+# Level 1 (SDR de VIIRS) + Level 2 atmos → productos de criósfera
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue procesada con éxito, avisa y no hace nada. Una pasada se identifica
@@ -28,8 +28,8 @@
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   CRYO_SDR_IN     Entrada Level 1   (def. /data/output/jpss/level1/viirs)
-#   CRYO_ATMOS_IN   Entrada atmosphere(def. /data/output/jpss/level2/atmosphere)
-#   CRYO_OUT        Salida            (def. /data/output/jpss/level2/cryosphere)
+#   CRYO_ATMOS_IN   Entrada atmos     (def. /data/output/jpss/level2/atmos)
+#   CRYO_OUT        Salida            (def. /data/output/jpss/level2/cryo)
 #   CRYO_STATE_DIR  Marcadores .done  (def. /data/output/jpss/state/cspp-cryo)
 #   CRYO_CONTAINER  Imagen .sif       (def. /opt/containers/cspp_cryo_edr_v1.0.sif)
 #   CRYO_WORK_BASE  Raíz de staging   (def. /data/tmp)
@@ -42,8 +42,8 @@ set -euo pipefail
 SIF_IMAGE="${CRYO_CONTAINER:-/opt/containers/cspp_cryo_edr_v1.0.sif}"
 
 INPUT_SDR_DIR="${CRYO_SDR_IN:-/data/output/jpss/level1/viirs}"
-INPUT_ATMOS_DIR="${CRYO_ATMOS_IN:-/data/output/jpss/level2/atmosphere}"
-OUTPUT_CRYO_DIR="${CRYO_OUT:-/data/output/jpss/level2/cryosphere}"
+INPUT_ATMOS_DIR="${CRYO_ATMOS_IN:-/data/output/jpss/level2/atmos}"
+OUTPUT_CRYO_DIR="${CRYO_OUT:-/data/output/jpss/level2/cryo}"
 STATE_DIR="${CRYO_STATE_DIR:-/data/output/jpss/state/cspp-cryo}"
 
 WORK_BASE="${CRYO_WORK_BASE:-/data/tmp}"

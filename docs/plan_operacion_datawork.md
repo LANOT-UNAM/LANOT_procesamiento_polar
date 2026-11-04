@@ -463,7 +463,7 @@ boletos en `fallidos/`.
 ### 1. Tres raíces en lugar de ~200 rutas literales
 
 Hoy cada script declara sus rutas por omisión completas
-(`ATMOS_OUT:-/data/output/jpss/level2/atmosphere`). Se agregan tres variables al principio del
+(`ATMOS_OUT:-/data/output/jpss/level2/atmos`). Se agregan tres variables al principio del
 bloque de configuración, y las rutas por etapa se derivan de ellas:
 
 ```bash
@@ -471,7 +471,7 @@ JPSS_SALIDA="${JPSS_SALIDA:-/datawork/output/jpss}"
 JPSS_ESTATICOS="${JPSS_ESTATICOS:-/datawork/opt}"
 JPSS_ANCILLARY="${JPSS_ANCILLARY:-/datawork/ancillary}"
 
-HOST_EDR_OUT="${ATMOS_OUT:-$JPSS_SALIDA/level2/atmosphere}"
+HOST_EDR_OUT="${ATMOS_OUT:-$JPSS_SALIDA/level2/atmos}"
 ```
 
 Los overrides por etapa (`ATMOS_*`, `P2G_*`, …) siguen funcionando igual. La decisión de qué se

@@ -19,8 +19,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 |---|---|---|
 | `level0/` | 14 días | no se publica |
 | `level1/` | 7 días | `level1/atms`, `level1/cris`, `level1/omps`, `level1/viirs` |
-| `level2/` | 14 días | `level2/acspo`, `level2/atmosphere`, `level2/cryosphere`, `level2/fires`, `level2/flood`, `level2/lsr`, `level2/mirs`, `level2/omps`, `level2/sounder` |
-| `geotiff/` | 14 días | `geotiff/acspo` → `level2/acspo`, `geotiff/atmos` → `level2/atmosphere`, `geotiff/dnb` → `level1/viirs`, `geotiff/fire` → `level2/fires`, `geotiff/flood` → `level2/flood`, `geotiff/i_bands` → `level1/viirs`, `geotiff/lsr` → `level2/lsr`, `geotiff/m_bands` → `level1/viirs`, `geotiff/mirs` → `level2/mirs`, `geotiff/omps` → `level2/omps`, `geotiff/rgb` → `level1/viirs`, `geotiff/sounder` → `level2/sounder` |
+| `level2/` | 14 días | `level2/acspo`, `level2/atmos`, `level2/cryo`, `level2/fires`, `level2/flood`, `level2/lsr`, `level2/mirs`, `level2/omps`, `level2/sounder` |
+| `geotiff/` | 14 días | `geotiff/acspo` → `level2/acspo`, `geotiff/atmos` → `level2/atmos`, `geotiff/dnb` → `level1/viirs`, `geotiff/fire` → `level2/fires`, `geotiff/flood` → `level2/flood`, `geotiff/i_bands` → `level1/viirs`, `geotiff/lsr` → `level2/lsr`, `geotiff/m_bands` → `level1/viirs`, `geotiff/mirs` → `level2/mirs`, `geotiff/omps` → `level2/omps`, `geotiff/rgb` → `level1/viirs`, `geotiff/sounder` → `level2/sounder` |
 | `vistas/` | 90 días | `vistas/acspo`, `vistas/atmos`, `vistas/dnb`, `vistas/fire`, `vistas/flood`, `vistas/lsr`, `vistas/mirs`, `vistas/omps`, `vistas/rgb`, `vistas/sounder`, `vistas/sounder/skewt` |
 
 ## Resumen
@@ -207,7 +207,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/atmosphere/` · patrón `JRR-<producto>_v3r2_{sat}_s*_e*_c*.nc (CloudCoverLayers es v2r0); NOAA20_VIIRS_750M_*_NWP_GFS-*.nc`
+- Ruta: `level2/atmos/` · patrón `JRR-<producto>_v3r2_{sat}_s*_e*_c*.nc (CloudCoverLayers es v2r0); NOAA20_VIIRS_750M_*_NWP_GFS-*.nc`
 - Origen: CSPP ATMOS 1.0 → run_atmos_edr.sh
 - Depende de: l1-viirs-sdr + GFS
 
@@ -245,7 +245,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/cryosphere/` · patrón `JRR-IceAge_v3r2_{sat}_*.nc, JRR-IceConcentration_v3r3_{sat}_*.nc`
+- Ruta: `level2/cryo/` · patrón `JRR-IceAge_v3r2_{sat}_*.nc, JRR-IceConcentration_v3r3_{sat}_*.nc`
 - Origen: CSPP Cryosphere 1.0 → run_cryo_edr.sh
 - Depende de: l1-viirs-sdr + l2-atmos (CloudMask, CloudHeight)
 

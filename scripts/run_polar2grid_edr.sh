@@ -3,7 +3,7 @@
 # LANOT - UNAM | Visualización de productos Nivel 2 con Polar2Grid v3.2
 # ==============================================================================
 #
-# Level 2 (atmosphere, LSR, ACSPO, Active Fire, sondeos, ozono, microondas) → GeoTIFF de datos + vistas
+# Level 2 (ATMOS, LSR, ACSPO, Active Fire, sondeos, ozono, microondas) → GeoTIFF de datos + vistas
 #
 # Sin argumentos toma la PASADA más reciente que haya en el directorio de SDR y,
 # si ya fue renderizada con éxito, avisa y no hace nada. Una pasada se
@@ -39,7 +39,7 @@
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   P2G_SDR_IN      Entrada Level 1   (def. /data/output/jpss/level1/viirs)
-#   P2G_EDR_IN      Entrada atmosphere(def. /data/output/jpss/level2/atmosphere)
+#   P2G_EDR_IN      Entrada ATMOS     (def. /data/output/jpss/level2/atmos)
 #   P2G_LSR_IN      Entrada LSR       (def. /data/output/jpss/level2/lsr)
 #   P2G_ACSPO_IN    Entrada ACSPO/SST (def. /data/output/jpss/level2/acspo)
 #   P2G_FIRE_IN     Entrada incendios (def. /data/output/jpss/level2/fires)
@@ -69,7 +69,7 @@ set -euo pipefail
 SIF_P2G="${P2G_CONTAINER:-/opt/containers/polar2grid_v3.2-mapdrawer.sif}"
 
 HOST_SDR_IN="${P2G_SDR_IN:-/data/output/jpss/level1/viirs}"
-HOST_EDR_IN="${P2G_EDR_IN:-/data/output/jpss/level2/atmosphere}"
+HOST_EDR_IN="${P2G_EDR_IN:-/data/output/jpss/level2/atmos}"
 HOST_LSR_IN="${P2G_LSR_IN:-/data/output/jpss/level2/lsr}"
 HOST_ACSPO_IN="${P2G_ACSPO_IN:-/data/output/jpss/level2/acspo}"
 HOST_FIRE_IN="${P2G_FIRE_IN:-/data/output/jpss/level2/fires}"

@@ -164,7 +164,7 @@ exportar_arbol() {
     export HEAP_CRIS_IN="$O/level1/cris"
     export HEAP_ATMS_IN="$O/level1/atms"
 
-    export ATMOS_OUT="$O/level2/atmosphere"
+    export ATMOS_OUT="$O/level2/atmos"
     export ACSPO_OUT="$O/level2/acspo"
     export FIRE_OUT="$O/level2/fires"
     export FLOOD_OUT="$O/level2/flood"
@@ -172,7 +172,7 @@ exportar_arbol() {
     export HEAP_OUT="$O/level2/sounder"
     export MIRS_OUT="$O/level2/mirs"
     export LSR_OUT="$O/level2/lsr"
-    export CRYO_OUT="$O/level2/cryosphere"
+    export CRYO_OUT="$O/level2/cryo"
     export LSR_ATMOS_IN="$ATMOS_OUT"
     export CRYO_ATMOS_IN="$ATMOS_OUT"
 

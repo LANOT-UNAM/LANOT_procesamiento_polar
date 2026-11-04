@@ -1,7 +1,7 @@
 # Cuántos días se conserva cada cosa. La lee scripts/limpiar.sh, en cron diario.
 #
 # Antes del 2026-10-23 no había ninguna retención: /data/output/jpss crecía unos
-# 2.4 TB por semana (level2/atmosphere solo, ~1 TB) y con 11 TB libres el disco
+# 2.4 TB por semana (level2/atmos solo, ~1 TB) y con 11 TB libres el disco
 # se llenaba en un mes. Además, lo que recorre esos directorios se iba frenando
 # con la historia (el arranque de run_polar2grid_edr.sh, de 1m44s a 5m00s).
 #

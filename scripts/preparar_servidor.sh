@@ -70,9 +70,9 @@ DIRS_775=(
     /data/output/jpss/level1/atms
     /data/output/jpss/level1/cris
     /data/output/jpss/level1/omps
-    /data/output/jpss/level2/atmosphere
+    /data/output/jpss/level2/atmos
     /data/output/jpss/level2/lsr
-    /data/output/jpss/level2/cryosphere
+    /data/output/jpss/level2/cryo
     /data/output/jpss/level2/acspo
     /data/output/jpss/level2/fires
     /data/output/jpss/level2/flood

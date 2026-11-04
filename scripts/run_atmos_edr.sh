@@ -38,7 +38,7 @@
 #
 # Variables de entorno (para pruebas o rutas alternas):
 #   ATMOS_SDR_IN     Entrada Level 1  (def. /data/output/jpss/level1/viirs)
-#   ATMOS_OUT        Salida Level 2   (def. /data/output/jpss/level2/atmosphere)
+#   ATMOS_OUT        Salida Level 2   (def. /data/output/jpss/level2/atmos)
 #   ATMOS_STATE_DIR  Marcadores .done (def. /data/output/jpss/state/cspp-atmos)
 #   ATMOS_CACHE      Caché dinámico   (def. /data/ancillary/atmos)
 #   ATMOS_STATIC     Ancillary fijo   (def. /data/opt/CSPP_ATMOS_1_0/anc/static)
@@ -58,7 +58,7 @@ SIF_ATMOS="${ATMOS_CONTAINER:-/opt/containers/cspp_atmos_edr_v1.0.sif}"
 HOST_STATIC="${ATMOS_STATIC:-/data/opt/CSPP_ATMOS_1_0/anc/static}"
 HOST_CACHE="${ATMOS_CACHE:-/data/ancillary/atmos}"
 HOST_SDR_IN="${ATMOS_SDR_IN:-/data/output/jpss/level1/viirs}"
-HOST_EDR_OUT="${ATMOS_OUT:-/data/output/jpss/level2/atmosphere}"
+HOST_EDR_OUT="${ATMOS_OUT:-/data/output/jpss/level2/atmos}"
 STATE_DIR="${ATMOS_STATE_DIR:-/data/output/jpss/state/cspp-atmos}"
 
 WORK_BASE="${ATMOS_WORK_BASE:-/data/tmp}"
