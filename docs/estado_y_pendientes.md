@@ -55,9 +55,12 @@ done
 carpetas de `viirs/` y en `sounder/`, y `fallos: 0`.
 
 **Pendiente fuera del repositorio**: que la página de kawak muestre los sondeos de NOAA-20;
-anunciar el cambio de las nubes (JRR en vez de CLAVR-x); decidir si AFAI se trae o se deja,
-porque kawak dejó de recibirlo; retirar los symlinks `polar/npp-jpss1/{atms,cris,omps}` de los
-quicklooks.
+anunciar el cambio de las nubes (JRR en vez de CLAVR-x); retirar los symlinks
+`polar/npp-jpss1/{atms,cris,omps}` de los quicklooks. **AFAI no es de esta cadena**: se encarga
+Uriel, que ya lo tiene resuelto por su lado.
+
+El crontab de `lanotadm` no cambia: la línea de `publicar_kawak.sh` es la misma. Solo su
+comentario seguía diciendo "provisional, solo NOAA-21"; se corrige a mano en tahan.
 
 ---
 
@@ -854,7 +857,8 @@ stratus) y **METOP** (`metop2.sh`, en tsom03). Aqua no entra en ninguna: ya no s
    de ACSPO y Active Fire con dos corridas).
 3. **Cubre todo lo que publica la vieja, o se decide dejarlo.** Hoy la cadena nueva tiene su
    equivalente de todo menos **AFAI** (índice de algas flotantes, `jpss/viirs/afai` en kawak), que
-   no produce en operación. Hay que traerlo o decidir explícitamente que se deja. Las nubes
+   no produce en operación. Hay que traerlo o decidir explícitamente que se deja. **Decidido el
+   2026-11-04: AFAI queda a cargo de Uriel**, fuera de esta cadena. Las nubes
    cambian de producto (JRR en vez de CLAVR-x): eso es un cambio de producto, y se anuncia.
 
    **El AFAI histórico ya corre con nuestros contenedores** (verificado en tahan el 2026-09-26),
