@@ -76,24 +76,27 @@ marcadores (`state/cspp-atmos`, `state/cspp-cryo`) no dependen de la ruta. El AF
 (`/opt/lanot_shared`) usa copias viejas de `run_atmos_edr.sh` y `run_polar2grid_edr.sh`, pero
 les pasa sus rutas por `ATMOS_OUT` y `P2G_EDR_IN`: no le afecta.
 
-En tahan, desde el clon ya actualizado, con los candados de la cadena y del publicador tomados
-para que nada escriba en la ruta vieja entre el `mv` y la instalación (`-w` espera a que
-termine la pasada en curso, si la hay):
+En tahan, desde el clon ya actualizado. Primero los `mv`, con el candado del publicador tomado
+para que no vea una carpeta a medio renombrar; luego `instalar.sh`, que toma por su cuenta el de
+la cadena y espera a la pasada en curso:
 
 ```bash
-sudo flock -w 3600 /data/tmp/lanot_polares.lock \
-     flock -w 600 /data/tmp/publicar_dataservice.lock bash -c '
+sudo flock -w 600 /data/tmp/publicar_dataservice.lock bash -c '
   set -e
   sudo -u lanotadm mv /data/output/jpss/level2/atmosphere  /data/output/jpss/level2/atmos
   sudo -u lanotadm mv /data/output/jpss/level2/cryosphere  /data/output/jpss/level2/cryo
   sudo -u lanotadm mv /dataservice/jpss/level2/atmosphere  /dataservice/jpss/level2/atmos
-  sudo -u lanotadm mv /dataservice/jpss/level2/cryosphere  /dataservice/jpss/level2/cryo
-  ./scripts/instalar.sh'
+  sudo -u lanotadm mv /dataservice/jpss/level2/cryosphere  /dataservice/jpss/level2/cryo'
+sudo ./scripts/instalar.sh
 ```
 
+**No envolver `instalar.sh` en `flock /data/tmp/lanot_polares.lock`**: él mismo toma ese candado,
+así que se queda esperándose a sí mismo los 45 min de `INSTALAR_ESPERA` y sale sin instalar. Así
+se propuso primero, y así pasó el 2026-11-04. Los `mv` alcanzaron a hacerse; la instalación se
+corrió aparte.
+
 `/dataservice` es NFS: el `mv` va como `lanotadm`, dueño de esas carpetas, por si el servidor
-aplica `root_squash`. Si alguna carpeta destino ya existe, `set -e` detiene todo antes de
-instalar.
+aplica `root_squash`. Si alguna carpeta destino ya existe, `set -e` se detiene ahí.
 
 ---
 
