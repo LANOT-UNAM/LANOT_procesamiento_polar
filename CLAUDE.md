@@ -35,6 +35,10 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-04", "2026-11-03" y
    `publicar_kawak.sh` ya copia todos los satélites y los sondeos de NOAA-20 se llaman
    `noaa20_…`. Tras reinstalar y hacer el renombrado único (sección "2026-11-04"), ver en
    `cadena/publicar_kawak.log` que salga NOAA-20 con `fallos: 0`.
+6. **`level2/atmos` y `level2/cryo`** (renombradas el 2026-11-04, en `/data` y en `/dataservice`):
+   la pasada de NOAA-20 de las 19:56 UTC del 4 fue la primera con las rutas nuevas. Ver que
+   ATMOS, LSR y CRYO hayan salido completos, que no reaparezcan `level2/atmosphere` ni
+   `level2/cryosphere`, y que el publicador no haya recopiado nada.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 
