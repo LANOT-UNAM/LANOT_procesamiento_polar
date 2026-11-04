@@ -874,6 +874,20 @@ if [ "$SOUNDER_COUNT" -gt 0 ]; then
 
     en_contenedor "Sondeos (NUCAPS)" \
         "cd /output_sounder_tif && polar2grid.sh -v -r nucaps -w geotiff -p $SOUNDER_DATOS $P2G_SOUNDER_DATOS -f /input_sounder/NUCAPS-EDR*.nc"
+
+    # Polar2Grid nombra el archivo con el platform_name del NetCDF, pasado por
+    # su tabla de alias (polar2grid/glue.py). HEAP marca NOAA-21 como n21, que
+    # la tabla traduce a noaa21, pero NOAA-20 como j01, que no está: salía
+    # j01_atms-cris_… en vez de noaa20_…, y eso lo dejaba fuera de todo lo que
+    # filtra por satélite. Se renombra aquí, antes de vestir, para que la vista
+    # nazca con el nombre bueno. mv conserva el mtime, así que el filtro de
+    # "solo lo de esta corrida" de vestir() lo sigue viendo como nuevo.
+    while IFS= read -r -d '' tif; do
+        nombre="$(basename "$tif")"
+        sat="${nombre%%_*}"
+        mv -f "$tif" "$(dirname "$tif")/$(sat_polar2grid "$sat")_${nombre#*_}"
+    done < <(find "$HOST_SOUNDER_TIF_OUT" -maxdepth 1 -type f \
+                  \( -name 'j01_*.tif' -o -name 'j02_*.tif' \) -newer "$REF_FILE" -print0)
 else
     echo "  ⚠ Sin sondeos para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi

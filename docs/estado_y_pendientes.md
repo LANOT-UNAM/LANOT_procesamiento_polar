@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-11-03**
+**Última actualización: 2026-11-04**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,44 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-11-04: la rama JPSS de la cadena vieja, apagada; kawak lo publicamos todo
+
+La rama JPSS de la cadena vieja (`cspp.sh` en stratus) ya no corre. METOP sigue aparte, en la
+vieja, y en kawak vive en otro árbol: `polar/jpss` es solo nuestro. En `/dataservice` no cambia
+nada, porque `publicar_dataservice.sh` ya publicaba todo.
+
+- **`publicar_kawak.sh` deja de ser provisional**: copia las vistas de todos los satélites, no
+  solo de NOAA-21. Como solo mira los últimos 2 días (`PUB_KAWAK_DIAS`), en el primer tic sube
+  la NOAA-20 de ayer y hoy, y reemplaza los archivos de la vieja que se llamen igual.
+- **Sondeos de NOAA-20: `noaa20_atms-cris_…`, no `j01_atms-cris_…`.** Polar2Grid nombra el
+  archivo con el `platform_name` del NetCDF pasado por su tabla de alias (`polar2grid/glue.py`).
+  HEAP marca NOAA-21 como `n21`, que está en la tabla, pero NOAA-20 como `j01`, que no está.
+  `run_polar2grid_edr.sh` los renombra justo después de Polar2Grid y antes de vestir, así que la
+  vista ya nace con el nombre bueno. Se prefirió eso a parchear la tabla dentro del `.sif`, que
+  obligaba a recompilar y a cargar un segundo parche hasta Polar2Grid 3.3. La etiqueta de la
+  imagen ya salía bien: `metadata.py` reconoce `j01`. Lo que ya existía en tahan se renombra a
+  mano, una sola vez (abajo). `publicar_dataservice.sh` sigue aceptando `j01_` hasta que se poden
+  las copias viejas de `/dataservice`, a los 5 días.
+
+Renombrado único, en tahan, como `lanotadm` (`mv` conserva el mtime, así que ni el publicador
+ni `limpiar.sh` los ven como nuevos):
+
+```bash
+for d in /data/output/jpss/geotiff/sounder /data/output/jpss/vistas/sounder; do
+    for f in "$d"/j01_atms-cris_*; do [ -e "$f" ] && mv -n "$f" "$d/noaa20_${f##*/j01_}"; done
+done
+```
+
+**Por verificar** en `cadena/publicar_kawak.log`: el primer tic con `noaa20_*` en todas las
+carpetas de `viirs/` y en `sounder/`, y `fallos: 0`.
+
+**Pendiente fuera del repositorio**: que la página de kawak muestre los sondeos de NOAA-20;
+anunciar el cambio de las nubes (JRR en vez de CLAVR-x); decidir si AFAI se trae o se deja,
+porque kawak dejó de recibirlo; retirar los symlinks `polar/npp-jpss1/{atms,cris,omps}` de los
+quicklooks.
 
 ---
 
@@ -844,7 +882,9 @@ stratus) y **METOP** (`metop2.sh`, en tsom03). Aqua no entra en ninguna: ya no s
    y lo humano son cuatro direcciones —dos de la UNAM, una de LANOT y una doméstica— que abrieron
    **5 PNG en catorce meses**, todas entrando por el listado de Apache y ninguna desde una página
    del sitio. `nucaps/` está vacío desde 2022. Al apagar se pueden retirar los symlinks.
-4. **Publica sola en kawak**, con las categorías de la página, sin pisar nada y a tiempo — hoy la
+4. ~~**Publica sola en kawak**~~ **Hecho el 2026-11-04, ya con la vieja apagada** (sección de
+   ese día): `publicar_kawak.sh` publica todo y los sondeos de NOAA-20 ya se llaman `noaa20_…`.
+   Lo de abajo queda como registro. Con las categorías de la página, sin pisar nada y a tiempo — hoy la
    copia es manual. Y **la página muestra lo nuevo**: `noaa21`, `sounder/` y los nombres de nube
    de JRR. Los mapas de sondeo de NOAA-20 existen en tahan pero no se publican, porque salen
    como `j01_atms-cris_…` y no `noaa20_…`: hay que corregir ese nombre antes de publicarlos.
@@ -2507,7 +2547,7 @@ las de la instalación, `/opt/lanot/polares/scripts/`, no las del clon.
 | `update_atmos_ancillary.sh` | 4× al día (`17 0,6,12,18 * * *`) | CMCSST, GFS y mapa de nieve de ATMOS. El manual pide cuatro por las cuatro corridas del GFS. Incluye el podado a 14 días. | **Activa** |
 | `update_heap_ancillary.sh` | semanal (`40 3 * * 0`) | **Solo poda** (14 días). HEAP baja su GFS por su cuenta al correr, pero el manual (§1.6.3) avisa que no lo borra nunca. | **Activa** |
 | `barrer_pendientes.sh` | cada 15 min (`7-59/15`) | Recoge los RAW que se quedaron atrás y retoma ATMOS/LSR/CRYO de las últimas 24 h. | **Activa** |
-| `publicar_kawak.sh` | cada 15 min (`12-59/15`, con `flock`) | Publicación provisional en kawak: vistas de NOAA-21, sondeos y Skew-T, lo que la cadena vieja no publica. | **Activa** |
+| `publicar_kawak.sh` | cada 15 min (`12-59/15`, con `flock`) | Publica en kawak todas las vistas de JPSS: VIIRS, sondeos, Skew-T, ozono y MiRS, de todos los satélites. Hasta el 2026-11-04 solo publicaba lo que la cadena vieja no producía. | **Activa** |
 | `publicar_dataservice.sh` | cada 5 min (toma su propio candado) | Copia Level 1 —SDR y GeoTIFF— a `/dataservice/jpss` para los FTP, y poda a 5 días. | **Activa** desde el 2026-10-16 |
 | `obtener_tarballs.sh --novedades` | mensual | CSPP no tiene lista de correo ni RSS: de una versión nueva uno se entera si entra a la página. | **No está en cron** |
 | Rotación de logs | diaria | `/var/log/lanot/polares/*/*.log` crece sin límite. Hay una configuración de `logrotate` propuesta en `README_SCRIPTS.md`. | **Pendiente de aplicar** |

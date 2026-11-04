@@ -12,9 +12,9 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-03): revisar al retomar
+## Pendiente abierto (2026-11-04): revisar al retomar
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-03" y "2026-10-16".
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-04", "2026-11-03" y "2026-10-16".
 
 1. **¿ACSPO, Active Fire y MiRS son deterministas?** La prueba de dos turnos dio 9 GeoTIFF
    distintos de 132 con la misma entrada. El control, `scripts/control_determinismo.sh
@@ -31,6 +31,10 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-03" y "2026-10-16".
    un solo valor, 8, válido: preguntarle con qué lo leyó (seguramente la vista JPG); (b) los
    `surf_refl_*` salen en porcentaje porque así los entrega Satpy: decidir con él si se pasan
    a 0–1.
+5. **kawak, todo nuestro** (2026-11-04, con la rama JPSS de la cadena vieja apagada):
+   `publicar_kawak.sh` ya copia todos los satélites y los sondeos de NOAA-20 se llaman
+   `noaa20_…`. Tras reinstalar y hacer el renombrado único (sección "2026-11-04"), ver en
+   `cadena/publicar_kawak.log` que salga NOAA-20 con `fallos: 0`.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

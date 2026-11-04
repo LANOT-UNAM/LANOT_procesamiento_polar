@@ -195,7 +195,9 @@ geotiff_listo() {
     local ruta="$1" origen_rel="$2" nombre sat marcadores exacto t m e r
     nombre="$(basename "$ruta")"
     # La hora va seguida de "_" (los de Polar2Grid) o de ".tif" (el de flood).
-    # Los sondeos de NOAA-20 salen como j01_atms-cris_…, no noaa20_ (2026-11-03).
+    # Los sondeos de NOAA-20 salían como j01_atms-cris_…, no noaa20_, hasta que
+    # run_polar2grid_edr.sh los renombró (2026-11-04). j01|j02 se pueden quitar
+    # cuando el último j01_ haya salido de la ventana de PUB_DS_DIAS.
     [[ "$nombre" =~ ^(npp|noaa20|noaa21|j01|j02)_[a-z-]+_.*_([0-9]{8})_([0-9]{6})[_.] ]] || return 1
     case "${BASH_REMATCH[1]}" in
         noaa20|j01) sat=j01 ;;

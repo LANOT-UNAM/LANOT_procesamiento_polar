@@ -1,26 +1,16 @@
 #!/bin/bash
 # ==============================================================================
-# publicar_kawak.sh — copia a kawak las vistas de la cadena nueva. PROVISIONAL.
+# publicar_kawak.sh — copia a kawak las vistas de la cadena nueva.
 #
 # Para cron, cada 15 minutos:
 #   12-59/15 * * * * flock -n /data/tmp/publicar_kawak.lock /opt/lanot/polares/scripts/publicar_kawak.sh
 #
-# Provisional porque la página de kawak se alimenta hoy de la cadena vieja, y las
-# dos nombran igual sus vistas de NPP y NOAA-20 (convención de Polar2Grid): una
-# copia de esos satélites PISARÍA las de la vieja. Así que mientras convivan:
-#
-#   - de las vistas de VIIRS, solo NOAA-21, que la cadena vieja no procesa;
-#   - de los sondeos, solo NOAA-21 en los mapas (los de NOAA-20 salen como
-#     j01_atms-cris_…, un nombre que falta corregir), y TODOS los Skew-T, que
-#     la cadena vieja no produce;
-#   - del ozono, TODOS los satélites: la cadena vieja tampoco lo produce, así
-#     que no hay nombre con el cual chocar;
-#   - de las microondas de ATMS (MiRS), TODOS, por lo mismo. Los quicklooks de
-#     ATMS de la cadena vieja van a otro árbol (polar/npp-jpss1/atms) y se
-#     llaman SATMS_*, así que tampoco chocan.
-#
-# Cuando la cadena vieja se apague (ver estado_y_pendientes.md, "Condiciones para
-# jubilar la cadena vieja"), esto se sustituye por la publicación de todo.
+# Publica TODO lo de JPSS, de todos los satélites. Hasta el 2026-11-04 fue
+# provisional y solo copiaba lo que la cadena vieja no producía —VIIRS y sondeos
+# de NOAA-21, ozono, MiRS y Skew-T—, porque las dos nombraban igual sus vistas
+# de NPP y NOAA-20 y una copia habría pisado las de la otra. Con la rama JPSS de
+# la cadena vieja apagada, polar/jpss en kawak es solo nuestro. METOP sigue en
+# la cadena vieja, pero en otro árbol de kawak.
 #
 # La correspondencia de carpetas es la de la página, no la de vistas/:
 #
@@ -99,15 +89,15 @@ copia() {
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Publicación en $DEST${DRY_RUN:+ (dry-run)}"
 
-copia dnb           viirs/dnb       'noaa21_*'
-copia rgb           viirs/rgb       'noaa21_*'
-copia flood         viirs/flood     'noaa21_*'
-copia acspo         viirs/sst       'noaa21_*'
-copia fire          viirs/fires     'noaa21_*'
-copia atmos         viirs/aerosols  'noaa21_*AOD550*'
-copia atmos         viirs/clouds    'noaa21_*' '*AOD550*'
-copia lsr           viirs/vegindex  'noaa21_*'
-copia sounder       sounder         'noaa21_*'
+copia dnb           viirs/dnb       '*.jpg'
+copia rgb           viirs/rgb       '*.jpg'
+copia flood         viirs/flood     '*.jpg'
+copia acspo         viirs/sst       '*.jpg'
+copia fire          viirs/fires     '*.jpg'
+copia atmos         viirs/aerosols  '*AOD550*.jpg'
+copia atmos         viirs/clouds    '*.jpg' '*AOD550*'
+copia lsr           viirs/vegindex  '*.jpg'
+copia sounder       sounder         '*.jpg'
 copia sounder/skewt sounder/skewt   '*.svg'
 copia omps          omps            '*.jpg'
 copia mirs          atms            '*.jpg'
