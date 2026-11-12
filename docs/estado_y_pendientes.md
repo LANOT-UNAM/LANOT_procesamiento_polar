@@ -65,6 +65,29 @@ Ocho días de operación, revisados en tahan sobre los logs de `cadena/`, `cspp-
   Que las dos clases de pérdida caigan en las mismas pasadas apunta a recepción. No se ha
   preguntado por la antena.
 
+### Reflectancia de superficie como fracción, no en %
+
+Las dos notas que quedaban de Víctor (junta del 2026-10-23) quedaron aclaradas con él. La de
+`surf_refl_*` cambia los datos: **se publican como fracción (0–1), igual que vienen en el
+`SurfRefl_*.nc`**, y no en porcentaje.
+
+El ×100 no es de CSPP ni de Polar2Grid sino de Satpy: su `viirs_edr.yaml` declara
+`units: '%'` para los doce `surf_refl_*`, y `get_dataset()` multiplica cuando el archivo dice
+`unitless`. En vez de dividir los GeoTIFF después, se le quita la causa:
+`config/satpy_viirs_edr.yaml` redeclara esos doce con `units: '1'`.
+`run_polar2grid_edr.sh` lo monta en `/config/satpy/readers/viirs_edr.yaml` y se lo pasa
+solo a la llamada de LSR con `--extra-config-path /config/satpy`. Satpy combina los dos YAML
+campo por campo. Verificado con el Satpy del bundle 3.2: cambian los doce datasets, solo en
+`units`, y NDVI y EVI (que ya eran `1`) no se tocan. Sin recompilar el `.sif`.
+
+**Vistas: ninguna cambia.** Los `surf_refl_*` no tienen vista; las de LSR son NDVI y EVI.
+
+**Por verificar en tahan** tras reinstalar, con la primera pasada diurna:
+`gdalinfo -mm` (no `-stats`, que deja un `.aux.xml`) de un `geotiff/lsr/*_surf_refl_m05_*.tif`
+tiene que dar un máximo cercano a 1 y no a 100. Lo anterior sigue en % hasta que lo pode la
+retención (14 días en `geotiff/`, 5 en `/dataservice`). Al pasar a Polar2Grid 3.3, revisar
+si el YAML sigue haciendo falta.
+
 ---
 
 ## 2026-11-04: la rama JPSS de la cadena vieja, apagada; kawak lo publicamos todo
@@ -337,9 +360,11 @@ Sus notas, una por una:
 3. **`confidence_cat` con valores 43–74**: el GeoTIFF que citó
    (`noaa20_viirs_confidence_cat_20261023_091135`) tiene un solo valor, 8, que es válido.
    Falta preguntarle con qué lo leyó; probablemente la vista, donde los números son colores.
+   **Aclarado con él (2026-11-12).**
 4. **Unidades de `surf_refl_*`**: Satpy las entrega en **porcentaje** (`viirs_edr.py:139`
    multiplica por 100). El i01 de NPP del 22: mínimo -1, máximo 159.99, media 20.8; los extremos
-   son el rango válido del producto ×100. **Pendiente**: decidir con él si se pasan a 0–1.
+   son el rango válido del producto ×100. **Decidido el 2026-11-12: el dato se publica como
+   fracción, sin multiplicar.** Ver la sección "2026-11-12".
 5. **EVI sin GeoTIFF**: el GeoTIFF existía pero **vacío, en todas las pasadas desde mayo**, y
    por eso nunca hubo vista (código 3). La culpa no era de Polar2Grid: en los `SurfRefl_*.nc`
    el EVI valía 9.97e36 (el relleno por omisión de NetCDF) en cada píxel, con el NDVI del

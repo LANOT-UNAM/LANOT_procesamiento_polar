@@ -26,11 +26,9 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-12", "2026-11-03" y
    por borde de la pasada, pero un hueco a media pasada agrega dos bordes, y tres pasadas
    (4, 8 y 9 de noviembre) salieron "a medias" por eso. Falta tolerar uno por borde de cada
    tramo continuo. Las otras etapas no dieron falsos "a medias" en ocho días.
-3. **Dos notas de Víctor (junta del 2026-10-23) que esperan respuesta suya** (sección "Revisión
-   de Level 2 de Víctor" del estado): (a) el `confidence_cat` que vio con valores 43–74 tiene
-   un solo valor, 8, válido: preguntarle con qué lo leyó (seguramente la vista JPG); (b) los
-   `surf_refl_*` salen en porcentaje porque así los entrega Satpy: decidir con él si se pasan
-   a 0–1.
+3. **`surf_refl_*` como fracción** (2026-11-12, `config/satpy_viirs_edr.yaml`): tras
+   reinstalar, `gdalinfo -mm` de un `geotiff/lsr/*_surf_refl_m05_*.tif` de una pasada diurna
+   tiene que dar un máximo cercano a 1, no a 100.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 
@@ -161,6 +159,8 @@ Cada `run_*.sh` sigue el mismo patrón: `apptainer exec` con los binds, y dentro
 **Imagen base común**: todas las recetas parten de `lanot_base_rocky8.sif` o `lanot_base_rocky9.sif` (`Bootstrap: localimage`), que concentran las decisiones que antes estaban repetidas: registro (Quay, porque las imágenes de Docker Hub están congeladas en 9.3 y 8.9), versión menor fijada, repositorios EPEL/CRB/PowerTools y las utilidades comunes. Cada receta instala solo lo suyo (perl, Java, GDAL, mesa-libGL). Consecuencia: **hay orden de compilación** — la base antes que el resto, y el `.sif` de la base debe estar en el directorio desde donde se ejecuta `apptainer build`. Eso es lo que resuelve `contenedores/construir.sh`.
 
 Cada `.def` crea un symlink genérico (`/opt/cspp_sdr` → `SDR_4_1`, `/opt/polar2grid` → `polar2grid_v_3_2`, …) para que los scripts no dependan del nombre exacto de la carpeta que produce el tarball.
+
+**Un ajuste a Satpy que no es parche**: `config/satpy_viirs_edr.yaml` declara los `surf_refl_*` en unidades `1` para que el lector no los multiplique por 100, y entra por `--extra-config-path` solo en la llamada de LSR. Viaja con el repositorio, no en la imagen. Revisarlo al pasar a 3.3.
 
 `polar2grid_v3.2-mapdrawer.def` es especial: además de Polar2Grid clona `github.com/asierra/LANOT_tools` (mapdrawer/geotiff2view, para logos y timestamps sobre las imágenes) y copia `/usr/local/share/lanot/{colortables,gpkg,logos,docs}` **desde el host de compilación**, así que solo se puede construir en una máquina que ya tenga esos recursos instalados. También compila **MetaGráfica** (`github.com/asierra/Metagrafica`, pin `MG_COMMIT`), porque `skewt` —los Skew-T de NUCAPS, en LANOT_tools— no dibuja pixeles: escribe un `.mg` y llama a `mg`, y sin él deja el `.mg` y avisa en vez de fallar; por eso `%post` y `%test` compilan una figura de prueba. Mismo trato que LANOT_tools: empujar, mover el pin (y su etiqueta en `%labels`), recompilar. Es además el único `.def` que **parchea el software que instala**: aplica [pytroll/satpy#3450](https://github.com/pytroll/satpy/pull/3450) —dos líneas en `satpy/readers/nucaps.py`— porque sin él una pasada de sondeos muere entera en cuanto un producto no trae `valid_range`, y el bundle 3.2 lleva su Satpy congelado dentro. El parche se ancla con `grep` y tumba la compilación si el archivo deja de ser el que espera; **al pasar a Polar2Grid 3.3 hay que quitarlo**, de `%post` y de `%test`.
 

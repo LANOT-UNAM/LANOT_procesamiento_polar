@@ -693,7 +693,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 `gt-lsr-surfrefl` · VIIRS · Suomi-NPP, NOAA-20, NOAA-21
 
-- **Contenido**: surf_refl I01–I03, M01–M05, M07, M08, M10, M11 [%] (el NetCDF la trae como fracción; Polar2Grid la entrega en %)
+- **Contenido**: surf_refl I01–I03, M01–M05, M07, M08, M10, M11 [1] (fracción, como en el NetCDF; Satpy la daría en %, y config/satpy_viirs_edr.yaml lo evita. En % hasta el 2026-11-12)
 - **Formato**: GeoTIFF float32
 - **Resolución**: wgs84_geo_750m
 - **Notas**: Dato, sin vista.

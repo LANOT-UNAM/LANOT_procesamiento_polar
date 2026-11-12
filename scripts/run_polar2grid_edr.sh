@@ -52,6 +52,7 @@
 #   P2G_STATE_DIR   Marcadores .done  (def. /data/output/jpss/state/polar2grid)
 #   P2G_CONTAINER   Imagen .sif       (def. …/polar2grid_v3.2-mapdrawer.sif)
 #   P2G_GRID_CONFIG Rejillas propias  (def. <repo>/config/grid.yaml)
+#   P2G_SATPY_LSR   Ajuste al lector  (def. <repo>/config/satpy_viirs_edr.yaml)
 #   P2G_GRID        Rejilla a usar    (def. wgs84_geo_750m)
 #   P2G_GRID_375    Rejilla incendios (def. wgs84_geo_375m)
 #   P2G_GRID_5KM    Rejilla sondeos   (def. wgs84_geo_5km)
@@ -531,6 +532,16 @@ if [ ! -f "$GRID_CONFIG" ]; then
     exit 1
 fi
 GRID_CONFIG=$(realpath "$GRID_CONFIG")
+# La reflectancia de superficie como fracción: sin este ajuste, Satpy la
+# multiplica por 100 (config/satpy_viirs_edr.yaml explica por qué). Va aparte de
+# grid.yaml porque Satpy lo busca en un árbol readers/, que se arma al montar.
+SATPY_LSR="${P2G_SATPY_LSR:-$SCRIPT_DIR/../config/satpy_viirs_edr.yaml}"
+if [ ! -f "$SATPY_LSR" ]; then
+    echo "ERROR: No se encontró el ajuste al lector viirs_edr: $SATPY_LSR" >&2
+    echo "       Sin él, los surf_refl_* saldrían en porcentaje y no como fracción." >&2
+    exit 1
+fi
+SATPY_LSR=$(realpath "$SATPY_LSR")
 # Dónde se dibuja un Skew-T: las estaciones de radiosondeo del SMN, para poder
 # comparar contra el globo. Se lee en el host; al contenedor solo van lat y lon.
 SITIOS_SKEWT="${P2G_SITIOS_SKEWT:-$SCRIPT_DIR/../config/sitios_skewt.tsv}"
@@ -594,6 +605,7 @@ BINDS_P2G=(
     --bind "$HOST_ACSPO_IN:$HOST_ACSPO_IN"
     --bind "$HOST_FIRE_IN:$HOST_FIRE_IN"
     --bind "$GRID_CONFIG:/config/grid.yaml:ro"
+    --bind "$SATPY_LSR:/config/satpy/readers/viirs_edr.yaml:ro"
     # omps_a_geotiff.py viaja con el repositorio, no en la imagen: así se puede
     # corregir sin recompilar, y se tira el día que llegue Polar2Grid 3.3.
     --bind "$SCRIPT_DIR:/lanot_scripts:ro"
@@ -779,8 +791,11 @@ if [ "$LSR_COUNT" -gt 0 ]; then
     LSR_DATOS="$LSR_DATOS surf_refl_m01 surf_refl_m02 surf_refl_m03 surf_refl_m04 surf_refl_m05"
     LSR_DATOS="$LSR_DATOS surf_refl_m07 surf_refl_m08 surf_refl_m10 surf_refl_m11 NDVI EVI"
 
+    # --extra-config-path: los surf_refl_* como fracción (0–1), no en %. Solo
+    # aquí: ATMOS también usa viirs_edr y no debe ver el ajuste, aunque hoy no
+    # le cambiaría nada.
     en_contenedor "Productos de superficie (LSR)" \
-        "cd /output_lsr_tif && polar2grid.sh -v -r viirs_edr -w geotiff -p $LSR_DATOS $P2G_DATOS -f /input_lsr/SurfRefl_*.nc"
+        "cd /output_lsr_tif && polar2grid.sh -v -r viirs_edr -w geotiff --extra-config-path /config/satpy -p $LSR_DATOS $P2G_DATOS -f /input_lsr/SurfRefl_*.nc"
 else
     echo "  ⚠ Sin productos de LSR para esta pasada: se omite ese renderizado" | tee -a "$LOG_FILE"
 fi

@@ -1,0 +1,31 @@
+# Ajuste al lector viirs_edr de Satpy: la reflectancia de superficie, como
+# fracción (0–1) y no en porcentaje.
+#
+# El NetCDF de CSPP LSR la trae como fracción (units = "unitless"), pero el YAML
+# del lector declara units: '%' y get_dataset() multiplica por 100 al ver esa
+# combinación (satpy/readers/viirs_edr.py, "turn into percentages"). Declarando
+# '1' no multiplica, y el GeoTIFF sale con el valor del archivo. Decidido con
+# Víctor el 2026-11-12: los datos se publican sin multiplicar.
+#
+# Satpy combina este archivo con el suyo campo por campo (recursive_dict_update):
+# solo cambia units, y file_key, resolución, coordenadas, etc. siguen saliendo
+# del original. Verificado con el Satpy del bundle 3.2 (0.59.1.dev110).
+#
+# run_polar2grid_edr.sh lo monta en /config/satpy/readers/viirs_edr.yaml y se lo
+# pasa SOLO a la llamada de LSR con --extra-config-path /config/satpy. Si un
+# Polar2Grid futuro deja de multiplicar, o renombra estos datasets, este archivo
+# sobra: revisarlo al pasar a 3.3.
+
+datasets:
+  surf_refl_I01: {units: '1'}
+  surf_refl_I02: {units: '1'}
+  surf_refl_I03: {units: '1'}
+  surf_refl_M01: {units: '1'}
+  surf_refl_M02: {units: '1'}
+  surf_refl_M03: {units: '1'}
+  surf_refl_M04: {units: '1'}
+  surf_refl_M05: {units: '1'}
+  surf_refl_M07: {units: '1'}
+  surf_refl_M08: {units: '1'}
+  surf_refl_M10: {units: '1'}
+  surf_refl_M11: {units: '1'}
