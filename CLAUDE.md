@@ -26,9 +26,6 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-12", "2026-11-03" y
    por borde de la pasada, pero un hueco a media pasada agrega dos bordes, y tres pasadas
    (4, 8 y 9 de noviembre) salieron "a medias" por eso. Falta tolerar uno por borde de cada
    tramo continuo. Las otras etapas no dieron falsos "a medias" en ocho días.
-3. **`surf_refl_*` como fracción** (2026-11-12, `config/satpy_viirs_edr.yaml`): tras
-   reinstalar, `gdalinfo -mm` de un `geotiff/lsr/*_surf_refl_m05_*.tif` de una pasada diurna
-   tiene que dar un máximo cercano a 1, no a 100.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

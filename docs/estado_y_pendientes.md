@@ -82,11 +82,20 @@ campo por campo. Verificado con el Satpy del bundle 3.2: cambian los doce datase
 
 **Vistas: ninguna cambia.** Los `surf_refl_*` no tienen vista; las de LSR son NDVI y EVI.
 
-**Por verificar en tahan** tras reinstalar, con la primera pasada diurna:
-`gdalinfo -mm` (no `-stats`, que deja un `.aux.xml`) de un `geotiff/lsr/*_surf_refl_m05_*.tif`
-tiene que dar un máximo cercano a 1 y no a 100. Lo anterior sigue en % hasta que lo pode la
-retención (14 días en `geotiff/`, 5 en `/dataservice`). Al pasar a Polar2Grid 3.3, revisar
-si el YAML sigue haciendo falta.
+**Verificado en tahan el mismo día**, tras instalar `7c49b32`: se volvió a renderizar
+`j02_d20261112_t195012` desde el clon con `--force`. El `surf_refl_m05` sale de −0.010 a 1.600,
+contra −1.0 a 159.38 del de la víspera: el mismo dato entre 100. NDVI sigue en −1 a 1. Lo
+anterior sigue en % hasta que lo pode la retención (14 días en `geotiff/`, 5 en `/dataservice`).
+Al pasar a Polar2Grid 3.3, revisar si el YAML sigue haciendo falta.
+
+**Volver a renderizar desde el clon solo funciona a medias.** Estar en el grupo de `lanotadm`
+alcanza para crear y borrar en los directorios de salida, que son `775`, pero no para
+sobrescribir los archivos que ya existen, que son `644`. GDAL borra el GeoTIFF y lo crea de
+nuevo, así que los 41 se reemplazaron, aunque quedaron como de `aguilars`. Las vistas, el
+marcador y el ozono se abren para sobrescribirlos, así que fallaron con `Permission denied` y
+quedaron los de la corrida de operación (el ozono, además, porque `geotiff/omps` es `755`).
+Para una prueba que reemplace productos de operación: correrla como `lanotadm`, o devolverle
+los archivos después con `chown`.
 
 ---
 
