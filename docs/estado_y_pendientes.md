@@ -49,13 +49,12 @@ Ocho días de operación, revisados en tahan sobre los logs de `cadena/`, `cspp-
   `/` para el 2026-11-13 a las 10:00 CST (job 3), con `--un-hilo`.**
 - **"¿Salió todo?": cinco "a medias", todas pérdidas reales de datos.**
   - **OMPS V8Pro, tres veces**: 13 de 16 (j02, 4 a las 20:40), 10 de 13 (j01, 8 a las 09:11) y
-    8 de 12 (j02, 9 a las 20:48). En las tres, la serie de SOMPS tiene un hueco a media pasada
-    (20:44:11 → 20:46:04, 09:13:07 → 09:14:59, 20:49:40 → 20:53:25) y el gránulo que sigue al
-    hueco sale sin producto. Es el mismo efecto que se tolera en los bordes desde `79d9b1b`
-    (un gránulo por borde), pero un hueco a media pasada crea dos bordes más. De las otras 23
-    corridas de OMPS desde el 4, 17 salieron completas y 5 con uno de menos, que se tolera.
-    **Ajuste pendiente**: tolerar un gránulo por borde **de cada tramo continuo**, no de la
-    pasada.
+    8 de 12 (j02, 9 a las 20:48). Las tres tienen un hueco de recepción a media pasada, pero
+    no siempre en el perfilador, como se anotó primero: en la del 4, los 16 `SOMPS` llegaron
+    seguidos y el hueco estaba en el **mapeador** (`SOMTC` de 20:44:45 a 20:46:38). V8Pro
+    necesita un gránulo de cada uno, y los del perfilador que caen en el hueco del otro
+    terminan en `Does not meet data requirments`; el siguiente, como borde, a veces tampoco
+    sale. **Arreglado el mismo día** (sección siguiente).
   - **CrIS SDR, dos veces**, en dos de esas mismas pasadas (8 a las 09:11, 9 a las 20:48):
     `PRO_CROSSGRAN_FAIL`, falta un `CRIS-SCIENCE-RDR`. Con la ventana de ±4 de CrIS, ese hueco
     tumba la pasada entera (`Failed to generate any SDR granules`) y la pasada se queda sin
@@ -64,6 +63,24 @@ Ocho días de operación, revisados en tahan sobre los logs de `cadena/`, `cspp-
 
   Que las dos clases de pérdida caigan en las mismas pasadas apunta a recepción. No se ha
   preguntado por la antena.
+
+### OMPS: la tolerancia de V8Pro, por tramo y con los dos instrumentos
+
+La regla de "¿salió todo?" (`79d9b1b`) le pasaba a V8Pro 2 gránulos de menos, uno por
+extremo, y eso solo vale para una pasada sin huecos. Ahora `run_omps_edr.sh` calcula con
+`tramos_con_pareja` (en `pasadas.sh`), sobre los `SOMPS` y `SOMTC` del staging, dos cosas:
+
+- los gránulos del perfilador que **no tienen mapeador encima**, que no pueden salir nunca;
+- en cuántos **tramos continuos** se parten los que sí lo tienen. Hay corte con más de 30 s
+  entre uno y el siguiente, o con un huérfano en medio.
+
+La tolerancia queda en 2 por tramo más los huérfanos, con un mínimo de 2, y el log de la
+etapa dice los dos números. Se probó contra las 232 corridas de OMPS que hay en tahan, de
+agosto a hoy, recalculada desde sus logs: las 222 que pasaban siguen pasando; 8 que salían "a
+medias" pasan, todas con un hueco (perdieron 3 o 4 con tolerancia de 6 a 8); y siguen
+fallando las dos del 2026-08-13 con 0 de 19, que eran el fallo real del montaje. El mapeador
+tuvo hueco en las ocho, y en cinco (3, 11 dos veces y 19 de octubre, 4 de noviembre) el
+perfilador venía completo: contar solo los tramos del perfilador no habría bastado.
 
 ### Reflectancia de superficie como fracción, no en %
 

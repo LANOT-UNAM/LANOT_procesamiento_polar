@@ -28,6 +28,7 @@
 #   archivos_de_pasada <dir> <patrón>          los archivos de la pasada resuelta
 #   pasada_que_traslapa <dir> <geo> <sat> <ini> <fin>
 #                                              la clave de otro instrumento
+#   tramos_con_pareja <hueco_s> <A> <B>       tramos y huérfanos de A respecto de B
 #
 # Variables de entorno:
 #   PASADA_HUECO_S   Hueco que separa dos pasadas, en segundos (def. 1200).
@@ -270,6 +271,46 @@ pasada_que_traslapa() {
 # Devuelve 0 si todos los remates dicen M = N; 1 si alguno se quedó corto (y
 # deja en M_DE_N_CORTOS cuáles, "M de N"); 2 si el log no trae ninguno, que es
 # un cambio del driver y no se da por fallo: quien llama avisa y sigue.
+# tramos_con_pareja <hueco_s> <nombres_A> <nombres_B>
+#
+# Para un algoritmo que necesita dos instrumentos a la vez: V8Pro de OMPS come
+# del perfilador (A: SOMPS) y del mapeador (B: SOMTC), y un gránulo de A sin un
+# gránulo de B encima termina en "Does not meet data requirments". Los nombres
+# van SIN directorio (_intervalos parte por "_"), uno por línea.
+#
+# Escribe "TRAMOS SIN_PAREJA":
+#   SIN_PAREJA  gránulos de A que no se traslapan con la cobertura de B: no pueden
+#               salir nunca.
+#   TRAMOS      en cuántos tramos continuos se parten los gránulos de A que sí la
+#               tienen. Hay corte donde uno empieza más de <hueco_s> después de que
+#               terminó el anterior con pareja, o donde hubo uno sin pareja en
+#               medio. Cada tramo tiene dos bordes, y el gránulo de borde, sin
+#               vecino de un lado, no siempre sale.
+# 30 s es menos que un gránulo de OMPS (37.5 s): basta con que falte uno.
+tramos_con_pareja() {
+    local h="$1"
+    { printf '%s\n' "$2" | _intervalos | sed 's/^/A /'
+      printf '%s\n' "$3" | _intervalos | sed 's/^/B /'; } |
+    sort -n -k3,3 | awk -v h="$h" '
+        $1 == "B" { bi[++nb] = $3; bf[nb] = $4; next }
+        $1 == "A" { if (!vista[$3]++) { ai[++na] = $3; af[na] = $4 } }
+        END {
+            # Cobertura de B, fundida en segmentos continuos.
+            for (k = 1; k <= nb; k++) {
+                if (ns == 0 || bi[k] > sf[ns] + h) { si[++ns] = bi[k]; sf[ns] = bf[k] }
+                else if (bf[k] > sf[ns]) sf[ns] = bf[k]
+            }
+            for (k = 1; k <= na; k++) {
+                par = 0
+                for (s = 1; s <= ns; s++) if (ai[k] < sf[s] && af[k] > si[s]) { par = 1; break }
+                if (!par) { huerfanos++; corte = 1; continue }
+                if (tramos == 0 || corte || ai[k] > fin + h) tramos++
+                corte = 0; fin = af[k]
+            }
+            print tramos + 0, huerfanos + 0
+        }'
+}
+
 M_DE_N_CORTOS=""
 m_de_n() {
     local log="$1" ere="$2" cm="$3" cn="$4" tol="${5:-0}" pares

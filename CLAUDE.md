@@ -22,10 +22,10 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-12", "2026-11-03" y
    `/` (job 3) para el **2026-11-13 a las 10:00 CST**, con `--un-hilo`, sobre NOAA-20 y
    NOAA-21: leer `/data/tmp/control_determinismo_*/informe.txt`. Si no existe, el `at` volvió
    a morir sin avisar (tahan no tiene `mail`).
-2. **La regla de "¿salió todo?" de OMPS cuenta mal los huecos.** Tolera un gránulo de V8Pro
-   por borde de la pasada, pero un hueco a media pasada agrega dos bordes, y tres pasadas
-   (4, 8 y 9 de noviembre) salieron "a medias" por eso. Falta tolerar uno por borde de cada
-   tramo continuo. Las otras etapas no dieron falsos "a medias" en ocho días.
+2. **OMPS, tolerancia de V8Pro por tramo** (2026-11-12, sección "OMPS: la tolerancia de V8Pro"
+   del estado): tras reinstalar, el log de cada corrida de OMPS dice "Para V8Pro: N tramo(s)…,
+   M gránulo(s) del perfilador sin mapeador". Ver que la primera pasada con hueco salga `ok`
+   y que ninguna sin hueco cambie de veredicto.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

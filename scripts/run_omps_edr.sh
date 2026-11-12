@@ -223,7 +223,14 @@ fi
 LOG_FILE="$LOG_DIR/omps_${TIMESTAMP}_${CLAVE}.log"
 
 echo "  Nadir Mapper:   $NM_COUNT archivos" | tee -a "$LOG_FILE"
+# V8Pro come de los dos instrumentos: cuántos gránulos del perfilador no tienen
+# encima uno del mapeador, y en cuántos tramos continuos se parten los que sí.
+# Lo usa la tolerancia de V8Pro, abajo.
+read -r PRO_TRAMOS PRO_HUERFANOS < <(tramos_con_pareja 30 \
+    "$(find "$STAGING_DIR" -maxdepth 1 -name 'SOMPS_*' -printf '%f\n')" \
+    "$(find "$STAGING_DIR" -maxdepth 1 -name 'SOMTC_*' -printf '%f\n')")
 echo "  Nadir Profiler: $NP_COUNT archivos" | tee -a "$LOG_FILE"
+echo "  Para V8Pro:     $PRO_TRAMOS tramo(s) con los dos instrumentos, $PRO_HUERFANOS gránulo(s) del perfilador sin mapeador" | tee -a "$LOG_FILE"
 echo "  Salida:         $HOST_EDR_OUT"      | tee -a "$LOG_FILE"
 
 if [ "$NP_COUNT" -eq 0 ]; then
@@ -301,13 +308,24 @@ mv "${PRODUCTOS[@]}" "$HOST_EDR_OUT/"
 # M < N lo que salió se entrega igual —el barrido no retoma OMPS, así que
 # borrarlo sería perderlo—, pero sin marcador, para que el resumen lo cuente.
 #
-# V8Pro, con tolerancia de dos: uno por borde de la pasada. En 30 pasadas buenas
-# (27 oct a 1 nov) a V8TOZ no le faltó nada y a V8Pro, 0 en 19, 1 en 10 y 2 en
-# una sola, la más corta (11 de 13): el gránulo de cada extremo del perfilador,
-# que no tiene vecino. Exigirle M = N habría tumbado un tercio de las pasadas
-# sin que faltara nada que se pudiera tener; de tres para arriba, sí es fallo.
+# V8Pro, con tolerancia de uno por borde. En 30 pasadas buenas (27 oct a 1 nov)
+# a V8TOZ no le faltó nada y a V8Pro, 0 en 19, 1 en 10 y 2 en una sola, la más
+# corta (11 de 13): el gránulo de cada extremo del perfilador, que no tiene
+# vecino. Exigirle M = N habría tumbado un tercio de las pasadas sin que faltara
+# nada que se pudiera tener.
+#
+# Pero los bordes no son solo los de la pasada. V8Pro necesita un gránulo del
+# perfilador con uno del mapeador encima, y un hueco de recepción en CUALQUIERA
+# de los dos —con más frecuencia en el mapeador— parte la pasada en dos tramos:
+# los gránulos del hueco no pueden salir ("Does not meet data requirments") y el
+# que lo sigue, como borde, a veces tampoco. Con 2 fijos, 8 de 232 corridas
+# (agosto a noviembre de 2026) salieron "a medias" sin que faltara nada
+# recuperable; las 8, con un hueco. Por eso: 2 por tramo con los dos
+# instrumentos, más los gránulos del perfilador que se quedaron sin mapeador.
+TOL_PRO=$((2 * PRO_TRAMOS + PRO_HUERFANOS))
+[ "$TOL_PRO" -ge 2 ] || TOL_PRO=2
 FALTA_OMPS=""
-for alg_tol in "V8TOZ 0" "V8Pro 2"; do
+for alg_tol in "V8TOZ 0" "V8Pro $TOL_PRO"; do
     read -r ALG TOL <<< "$alg_tol"
     RC_MN=0
     m_de_n "$LOG_FILE" "$ALG Processing completed [0-9]+ products of [0-9]+" 4 7 "$TOL" || RC_MN=$?
