@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-11-04**
+**Última actualización: 2026-11-12**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,50 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-11-12: revisión de lo instalado el 2026-11-03 y el 4
+
+Ocho días de operación, revisados en tahan sobre los logs de `cadena/`, `cspp-edr/` y
+`cspp-sdr/`.
+
+- **ATMOS pospuesto: bien.** Las pasadas de las 09 UTC del 5, 6, 8, 9, 10 y 11 salieron
+  "pospuesto" y el reintento del barrido, una hora después, las completó (9 GeoTIFF de atmos,
+  como cualquier otra). No queda ningún `atmos_work_*` ni `lsr_work_*` en `/data/tmp`.
+- **kawak: bien.** Ningún tic con `fallos` distinto de 0 desde el 4. NOAA-20 sale en todas las
+  carpetas, sondeos incluidos, y en `geotiff/sounder` y `vistas/sounder` ya no queda ningún
+  `j01_`: el renombrado único se hizo.
+- **`level2/atmos` y `level2/cryo`: bien.** No reaparecieron los nombres largos ni en `/data`
+  ni en `/dataservice`. Desde la pasada de las 19:56 UTC del 4, ATMOS y LSR salen completos y
+  CRYO produce. El primer tic de `publicar_dataservice.sh` tras el renombrado (14:55, después de
+  50 min sin tics por el candado de `instalar.sh`) copió 0: no recopió nada.
+- **El control de determinismo no corrió.** El `at` arrancó el 4 a las 10:00 como `lanotadm` y
+  murió en el mismo segundo, sin crear `<base>`. Se había programado desde el clon
+  (`/home/aguilars/LANOT_procesamiento_polar`). `at` guarda ese directorio y entra en él antes
+  de ejecutar nada, pero `/home/aguilars` tiene 700 y `lanotadm` no puede entrar. El error iba
+  al correo, y tahan no tiene `mail` (`atd: Exec failed for mail command`): no quedó rastro.
+  Se descartaron las otras salidas tempranas: el script estaba instalado desde el 3 a las 12:32
+  y las revisiones previas al `mkdir` pasan. Es la misma trampa del `pwd` escribible de
+  `apptainer`. El ejemplo de la cabecera del script lleva ahora `cd /`. **Reprogramado desde
+  `/` para el 2026-11-13 a las 10:00 CST (job 3), con `--un-hilo`.**
+- **"¿Salió todo?": cinco "a medias", todas pérdidas reales de datos.**
+  - **OMPS V8Pro, tres veces**: 13 de 16 (j02, 4 a las 20:40), 10 de 13 (j01, 8 a las 09:11) y
+    8 de 12 (j02, 9 a las 20:48). En las tres, la serie de SOMPS tiene un hueco a media pasada
+    (20:44:11 → 20:46:04, 09:13:07 → 09:14:59, 20:49:40 → 20:53:25) y el gránulo que sigue al
+    hueco sale sin producto. Es el mismo efecto que se tolera en los bordes desde `79d9b1b`
+    (un gránulo por borde), pero un hueco a media pasada crea dos bordes más. De las otras 23
+    corridas de OMPS desde el 4, 17 salieron completas y 5 con uno de menos, que se tolera.
+    **Ajuste pendiente**: tolerar un gránulo por borde **de cada tramo continuo**, no de la
+    pasada.
+  - **CrIS SDR, dos veces**, en dos de esas mismas pasadas (8 a las 09:11, 9 a las 20:48):
+    `PRO_CROSSGRAN_FAIL`, falta un `CRIS-SCIENCE-RDR`. Con la ventana de ±4 de CrIS, ese hueco
+    tumba la pasada entera (`Failed to generate any SDR granules`) y la pasada se queda sin
+    sondeos. Es lo esperado del contexto entre gránulos. Quedan dos `sdr_work_cris_*` vacíos en
+    `/data/tmp`, que `limpiar.sh` se lleva a los 7 días.
+
+  Que las dos clases de pérdida caigan en las mismas pasadas apunta a recepción. No se ha
+  preguntado por la antena.
 
 ---
 
@@ -409,7 +453,7 @@ Pendiente:
    y la de NOAA-21 (NPP, donde difirieron la SST y MiRS, ya no se recibe) (salida en `/data/tmp/control_determinismo_<sello>`), compara los `.nc` dataset
    por dataset con `h5diff` sin contar atributos y deja `informe.txt` con un veredicto.
    `--un-hilo` agrega un par a un solo hilo para ver si la causa es el paralelismo. Probado con
-   EDR y `h5diff` simulados; falta la corrida real. Si difieren igual, la diferencia no es de la prueba y el
+   EDR y `h5diff` simulados; falta la corrida real (la del 2026-11-04 no corrió; reprogramada para el 13, ver "2026-11-12"). Si difieren igual, la diferencia no es de la prueba y el
    comparador debería tolerarla en esos productos; si no, sí es de encimar y hay que
    entender por qué.
 3. ~~Los `.log` de Active Fire se acumulan en `level2/fires`~~. **Arreglado el 2026-10-23**:

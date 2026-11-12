@@ -34,8 +34,14 @@
 # 13–15 en tahan) y de sus reintentos (hasta ~1 h después). Dura ~20 min, el
 # doble con --un-hilo. Por ejemplo:
 #
-#   echo /opt/lanot/polares/scripts/control_determinismo.sh \
+#   cd / && echo /opt/lanot/polares/scripts/control_determinismo.sh \
 #       | sudo -u lanotadm at 10:00
+#
+# El `cd /` no es adorno: `at` guarda el directorio desde el que se programa y
+# entra ahí antes de ejecutar nada. Desde el clon, en un /home/<persona> con
+# 700, lanotadm no puede entrar y el trabajo muere en el primer segundo; el
+# aviso iría por correo, y tahan no tiene `mail`, así que no queda rastro. Así
+# se perdió la corrida del 2026-11-04.
 #
 # El informe queda en <base>/informe.txt.
 #
@@ -104,7 +110,7 @@ source "$SCRIPTS_DIR/pasadas.sh"
 
 if [ -n "$PRUEBA_USUARIO" ] && [ "$(id -un)" != "$PRUEBA_USUARIO" ]; then
     echo "❌ Hay que correrlo como $PRUEBA_USUARIO (dueño de los cachés de ancillary):" >&2
-    echo "   echo $0 | sudo -u $PRUEBA_USUARIO at <hora>" >&2
+    echo "   cd / && echo $0 | sudo -u $PRUEBA_USUARIO at <hora>" >&2
     exit 2
 fi
 if ! command -v "$H5DIFF" > /dev/null; then

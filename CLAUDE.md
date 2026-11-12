@@ -12,33 +12,25 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-04): revisar al retomar
+## Pendiente abierto (2026-11-12): revisar al retomar
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-04", "2026-11-03" y "2026-10-16".
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-12", "2026-11-03" y "2026-10-16".
 
 1. **¿ACSPO, Active Fire y MiRS son deterministas?** La prueba de dos turnos dio 9 GeoTIFF
-   distintos de 132 con la misma entrada. El control, `scripts/control_determinismo.sh
-   --un-hilo`, quedó programado con `at` en tahan para el 2026-11-04 a las 10:00 CST, sobre
-   NOAA-20 y NOAA-21: leer `/data/tmp/control_determinismo_*/informe.txt`.
-2. **ATMOS pospuesto** (instalado el 2026-11-03): la pasada de las 09 UTC del 4 tiene que salir
-   "pospuesto" en el log de la cadena, completarse en el reintento del barrido y no dejar
-   `atmos_work_*` ni `lsr_work_*` en `/data/tmp`.
-3. **"¿Salió todo?" en los EDR** (instalado el 2026-11-03, tras pasar la prueba contra 210
-   corridas reales): en los próximos días, si alguna etapa sale "a medias" en el resumen de la
-   cadena, ver si fue real o si la regla necesita ajuste.
-4. **Dos notas de Víctor (junta del 2026-10-23) que esperan respuesta suya** (sección "Revisión
+   distintos de 132 con la misma entrada. El control del 2026-11-04 **no corrió**: el `at` se
+   programó desde el clon y `lanotadm` no puede entrar a `/home/aguilars`. Se reprogramó desde
+   `/` (job 3) para el **2026-11-13 a las 10:00 CST**, con `--un-hilo`, sobre NOAA-20 y
+   NOAA-21: leer `/data/tmp/control_determinismo_*/informe.txt`. Si no existe, el `at` volvió
+   a morir sin avisar (tahan no tiene `mail`).
+2. **La regla de "¿salió todo?" de OMPS cuenta mal los huecos.** Tolera un gránulo de V8Pro
+   por borde de la pasada, pero un hueco a media pasada agrega dos bordes, y tres pasadas
+   (4, 8 y 9 de noviembre) salieron "a medias" por eso. Falta tolerar uno por borde de cada
+   tramo continuo. Las otras etapas no dieron falsos "a medias" en ocho días.
+3. **Dos notas de Víctor (junta del 2026-10-23) que esperan respuesta suya** (sección "Revisión
    de Level 2 de Víctor" del estado): (a) el `confidence_cat` que vio con valores 43–74 tiene
    un solo valor, 8, válido: preguntarle con qué lo leyó (seguramente la vista JPG); (b) los
    `surf_refl_*` salen en porcentaje porque así los entrega Satpy: decidir con él si se pasan
    a 0–1.
-5. **kawak, todo nuestro** (2026-11-04, con la rama JPSS de la cadena vieja apagada):
-   `publicar_kawak.sh` ya copia todos los satélites y los sondeos de NOAA-20 se llaman
-   `noaa20_…`. Tras reinstalar y hacer el renombrado único (sección "2026-11-04"), ver en
-   `cadena/publicar_kawak.log` que salga NOAA-20 con `fallos: 0`.
-6. **`level2/atmos` y `level2/cryo`** (renombradas el 2026-11-04, en `/data` y en `/dataservice`):
-   la pasada de NOAA-20 de las 19:56 UTC del 4 fue la primera con las rutas nuevas. Ver que
-   ATMOS, LSR y CRYO hayan salido completos, que no reaparezcan `level2/atmosphere` ni
-   `level2/cryosphere`, y que el publicador no haya recopiado nada.
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 
