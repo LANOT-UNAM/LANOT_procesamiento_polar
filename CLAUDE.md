@@ -23,9 +23,11 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-12", "2026-11-03" y
    NOAA-21: leer `/data/tmp/control_determinismo_*/informe.txt`. Si no existe, el `at` volvió
    a morir sin avisar (tahan no tiene `mail`).
 2. **OMPS, tolerancia de V8Pro por tramo** (2026-11-12, sección "OMPS: la tolerancia de V8Pro"
-   del estado): tras reinstalar, el log de cada corrida de OMPS dice "Para V8Pro: N tramo(s)…,
-   M gránulo(s) del perfilador sin mapeador". Ver que la primera pasada con hueco salga `ok`
-   y que ninguna sin hueco cambie de veredicto.
+   del estado): instalada en tahan el 2026-11-12 a las 21:36 UTC (`c34aaa4`). Desde ahí, el
+   log de cada corrida de OMPS (`cspp-edr/omps_*.log`) dice "Para V8Pro: N tramo(s)…, M
+   gránulo(s) del perfilador sin mapeador". Ver que la primera pasada con hueco salga `ok` y
+   que ninguna sin hueco cambie de veredicto (con 1 tramo y 0 huérfanos, la regla es la de
+   antes).
 
 Al resolverlos, anotar lo que salga en `docs/estado_y_pendientes.md` y borrar esta sección.
 

@@ -82,6 +82,10 @@ fallando las dos del 2026-08-13 con 0 de 19, que eran el fallo real del montaje.
 tuvo hueco en las ocho, y en cinco (3, 11 dos veces y 19 de octubre, 4 de noviembre) el
 perfilador venía completo: contar solo los tramos del perfilador no habría bastado.
 
+Instalada en tahan el mismo día a las 21:36 UTC (`c34aaa4`). **Por verificar** con las
+pasadas siguientes: la primera con hueco tiene que salir `ok`, y ninguna sin hueco debe
+cambiar de veredicto.
+
 ### Reflectancia de superficie como fracción, no en %
 
 Las dos notas que quedaban de Víctor (junta del 2026-10-23) quedaron aclaradas con él. La de
