@@ -62,6 +62,10 @@ python3 scripts/generar_xml.py
 python3 scripts/generar_catalogo.py
 python3 scripts/generar_catalogo.py --verificar  # TSV ÷ -p, PALETAS, product_map, rutas
 
+# Resumen del proyecto en PDF, para mandar fuera (el repo es privado): sin rutas
+# ni instrucciones. Fuentes en docs/resumen/; el PDF no se versiona
+./docs/resumen/generar.sh
+
 # Inventario de tarballs: qué falta, qué sobra, qué no cuadra (sin red)
 ./contenedores/obtener_tarballs.sh
 ./contenedores/obtener_tarballs.sh --novedades   # ¿hay versión nueva arriba?

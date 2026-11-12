@@ -27,3 +27,5 @@ __pycache__/
 
 # Se rehace con scripts/generar_catalogo.py --pdf; es para mandar, no se versiona
 docs/catalogo_productos.pdf
+# Resumen del proyecto para mandar fuera: se rehace con docs/resumen/generar.sh
+docs/resumen_procesamiento_polar.pdf

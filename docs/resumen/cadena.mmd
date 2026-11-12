@@ -1,0 +1,34 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 20, "rankSpacing": 36, "padding": 10}, "themeVariables": {"fontFamily": "DejaVu Sans", "fontSize": "15px", "primaryColor": "#f6f8fa", "primaryBorderColor": "#9aa4b2", "primaryTextColor": "#1f2328", "lineColor": "#7a8594", "clusterBkg": "#fbfbf6", "clusterBorder": "#d8d4b0", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart TD
+    A["<b>Antena del LANOT</b><br/>NOAA-20 · NOAA-21"] -->|"&nbsp;crudo CCSDS&nbsp;"| B["<b>RT-STPS 7.0</b><br/>Level 0 · RDR"]
+    B --> C["<b>CSPP SDR 4.1.1</b><br/>Level 1 · radiancias calibradas"]
+
+    subgraph L2["Level 2"]
+        direction TB
+        V1["<b>ATMOS</b><br/>nubes · aerosoles"]
+        V1 --> V2["<b>LSR</b> · vegetación<br/><b>CRYO</b> · hielo"]
+        V3["<b>ACSPO</b> · temp. del mar<br/><b>Active Fire</b> · incendios<br/><b>Flood</b> · inundaciones"]
+        M["<b>MiRS</b><br/>lluvia · agua<br/>precipitable"]
+        N["<b>HEAP · NUCAPS</b><br/>sondeos"]
+        O["<b>OMPS L2</b><br/>ozono total"]
+    end
+
+    C -->|"&nbsp;VIIRS&nbsp;"| V1
+    C -->|"&nbsp;VIIRS&nbsp;"| V3
+    C -->|"&nbsp;ATMS&nbsp;"| M
+    C -->|"&nbsp;CrIS + ATMS&nbsp;"| N
+    C -->|"&nbsp;OMPS&nbsp;"| O
+
+    L2 --> P["<b>Polar2Grid 3.2</b><br/>rejilla geográfica · GeoTIFF"]
+    C -.->|"&nbsp;Level 1&nbsp;"| P
+    P --> T["<b>LANOT_tools</b><br/>vistas JPG · Skew-T"]
+    T --> S["<b>Publicación</b><br/>servicio de datos · portal web"]
+    P -->|"&nbsp;GeoTIFF&nbsp;"| S
+    L2 -->|"&nbsp;NetCDF&nbsp;"| S
+
+    classDef l2 fill:#e8f0fe,stroke:#4a7fd4,color:#1f2328
+    classDef ent fill:#fff4e5,stroke:#d9a441,color:#1f2328
+    classDef sal fill:#eaf6ec,stroke:#4c9a5b,color:#1f2328
+    class V1,V2,V3,M,N,O l2
+    class A ent
+    class S sal
