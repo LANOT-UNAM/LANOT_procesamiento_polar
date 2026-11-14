@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-11-12**
+**Última actualización: 2026-11-14**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,57 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-11-14: el control de determinismo, y OMPS sin huecos todavía
+
+### ACSPO, Active Fire y MiRS, dos veces en serie
+
+El control (job 3 de `at`, 2026-11-13 a las 10:00 CST, `--un-hilo`) corrió completo, sin
+corridas fallidas, sobre `j02_d20261113_t081952` y `j01_d20261113_t091812`, con el mismo GFS
+citado en las cuatro corridas. Salida en `/data/tmp/control_determinismo_20261113_100000`.
+
+**El veredicto de su `informe.txt` es falso**: "0 iguales" en las tres etapas y las dos
+variantes. El comparador contaba como diferencia la línea final de `h5diff`, *"Some objects
+are not comparable"*, que sale con archivos idénticos en cuanto hay una dimensión de NetCDF
+sin variable de coordenada (`h5diff -v` las nombra: `</ni> … is an empty dataset`), y los tres
+EDR las tienen. Corregido en `control_determinismo.sh` (se ignoran esa línea y los datasets
+vacíos; un *not comparable* por forma distinta sigue contando) y probado sobre esos mismos
+`.nc` en tahan. Rehecha la comparación a mano, dataset por dataset:
+
+| Etapa | normal (16 núcleos ACSPO, 8 MiRS) | un hilo (`SLURM_CPUS_PER_TASK=1`) |
+|---|---|---|
+| MiRS (4 `.nc`) | idénticos | idénticos |
+| ACSPO N20 | idéntico | idéntico |
+| ACSPO N21 | `l2p_flags` 60 105 px, `quality_level` 31 394 px; SST idéntica | `l2p_flags` 23 107, `quality_level` 11 309; SST idéntica |
+| Fire (32 `.nc`) | 2 `AFIMG` (+ sus `AFMOD`) con un píxel distinto | idénticos |
+
+- **MiRS es determinista.** En el 2026-10-16 solo habían diferido los de NPP (los de NOAA-20
+  no), así que aquello fue de NPP o de encimar, no del algoritmo. NPP ya no se recibe.
+- **Active Fire no es determinista, pero la diferencia es mínima y rara.** En el par normal,
+  un gránulo de cada satélite (`j01 … t0918120`, `j02 … t0824080`) tiene exactamente un píxel
+  que en una corrida es agua (`fire_mask` 3) y en la otra incendio de confianza nominal (8):
+  41 contra 42 detecciones, y cambian con eso `mean_frp`, `total_frp` y el conteo. El par "un
+  hilo" salió idéntico, pero no prueba nada: `run_active_fire_edr.sh` no tiene control de
+  hilos, así que las dos variantes corrieron igual. Es intermitente, sin más. Concuerda con el
+  2026-10-16 (6 de 19 `AFIMG`, "alguna detección de 8 de más").
+- **ACSPO no es determinista en las banderas, ni a un hilo.** La SST sale idéntica entre
+  repeticiones con los mismos núcleos; cambian `l2p_flags` y `quality_level`, y solo en una de
+  las dos pasadas. A un hilo cambian menos, pero cambian. Aparte, **la SST depende del número
+  de núcleos**: la de 16 contra la de 1 difiere en 885 903 píxeles de 24 M (355 325 por más de
+  0.1 %). Es reproducible mientras no cambie `SLURM_CPUS_PER_TASK`.
+
+Consecuencia: los `.nc` de CSPP son reproducibles en datos **salvo** Active Fire (un píxel
+ocasional) y las banderas de calidad de ACSPO. Un comparador entre dos corridas tiene que
+tolerar esas dos cosas. No vale la pena perseguirlo más con CIMSS: son cambios de un píxel en
+el umbral de detección, y de bits de calidad con la SST intacta.
+
+### OMPS: la tolerancia de V8Pro, sin regresiones
+
+Desde la instalación (2026-11-12, 21:36 UTC) han corrido cinco pasadas de OMPS, todas
+`✅ ÉXITO` y todas con "1 tramo(s) …, 0 gránulo(s) del perfilador sin mapeador": ninguna
+cambió de veredicto. **Falta todavía una pasada con hueco** para ver que salga `ok`.
 
 ---
 
@@ -502,7 +553,8 @@ Pendiente:
    CRYO, OMPS y las cinco de NUCAPS son idénticos en datos en las dos fases; los 376 "distintos
    byte a byte" del informe eran atributos de fecha. Difieren 6 de 19 `AFIMG`, la SST de NPP
    (la de NOAA-20 no) y los dos MiRS de NPP, `IMG` y `SND` (los de NOAA-20 no).
-2. **Confirmar el no determinismo con un control limpio**: la misma pasada dos veces en serie,
+2. ~~Confirmar el no determinismo con un control limpio~~ (**hecho el 2026-11-13**, ver
+   "2026-11-14": MiRS determinista, Fire un píxel ocasional, ACSPO las banderas): la misma pasada dos veces en serie,
    solo ACSPO, Fire y MiRS. **Escrito el 2026-11-03: `scripts/control_determinismo.sh`**, que
    toma el candado de producción, corre los tres EDR dos veces sobre la última pasada de NOAA-20
    y la de NOAA-21 (NPP, donde difirieron la SST y MiRS, ya no se recibe) (salida en `/data/tmp/control_determinismo_<sello>`), compara los `.nc` dataset

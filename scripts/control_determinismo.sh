@@ -210,13 +210,20 @@ echo "  candado de producción soltado ($(ahora))"
 # ==============================================================================
 
 # Datasets con diferencias entre dos .nc, "ruta N" por línea. Las líneas de
-# atributo no cuentan; un "not comparable" sí, porque es estructura distinta.
+# atributo no cuentan, y tampoco el "Some objects are not comparable" del final:
+# h5diff lo escribe con archivos idénticos en cuanto hay una dimensión de NetCDF
+# sin variable de coordenada (un dataset vacío: "is an empty dataset"), y los
+# tres EDR las tienen. Contarlo dio el 2026-11-13 un "0 iguales" en las tres
+# etapas cuando MiRS era idéntico. Solo un "not comparable" de otra clase
+# (tipo o forma distintos) es estructura distinta, y ese sí cuenta.
+# El nombre del dataset va completo: los de Fire llevan espacios.
 diferencias() {
-    "$H5DIFF" -r "$1" "$2" 2>&1 | awk '
-        /^dataset: /   { d = $2; next }
+    "$H5DIFF" -r -v "$1" "$2" 2>&1 | awk '
+        /^dataset: /   { d = $0; sub(/^dataset: </, "", d); sub(/> and <.*/, "", d); next }
         /^attribute: / { d = ""; next }
         /differences found/ && d != "" && $1 + 0 > 0 { print d, $1; d = "" }
-        /[Nn]ot comparable/ { print "no-comparable:", $0 }'
+        /^Some objects are not comparable/ { next }
+        /[Nn]ot comparable/ && !/is an empty dataset/ { print "no-comparable:", $0 }'
 }
 
 # Nombre sin el sello de creación, para emparejar las dos corridas.
