@@ -50,6 +50,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 | [Microondas de ATMS (MiRS)](#l2-mirs) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Sondeos NUCAPS (CrIS + ATMS)](#l2-sounder) | CrIS+ATMS | NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Ozono (OMPS)](#l2-omps) | OMPS NM+NP | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
+| [SO₂ y ozono corregido por SO₂ (OMPS)](#l2-omps-tos) | OMPS NM | NOAA-20, NOAA-21 | NetCDF4 | no |
 
 ### GeoTIFF en rejilla
 
@@ -400,6 +401,25 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 - Ruta: `level2/omps/` · patrón `V8TOZ-EDR_*.nc, V8PRO-EDR_*.nc`
 - Origen: CSPP OMPS EDR 1.0 → run_omps_edr.sh
 - Depende de: l1-omps-nm-sdr (+ l1-omps-np-sdr para V8PRO)
+
+</details>
+
+<a id="l2-omps-tos"></a>
+
+#### SO₂ y ozono corregido por SO₂ (OMPS)
+
+`l2-omps-tos` · OMPS NM · NOAA-20, NOAA-21
+
+- **Contenido**: V8TOS-EDR: s_ColumnamountSO2_{PBL,TRL,TRM,STL} (columna de SO₂ supuesta en capa límite, 0–5, 5–10 y 15–19 km) [DU]; s_{TRL,TRM,STL}O3 (ozono total corregido por SO₂) [DU]; copia de ColumnAmountO3, AerosolIndex y Reflectivity331 del V8TOZ
+- **Formato**: NetCDF4
+- **Resolución**: swath: 12×10 km (j02), 12×17 km (j01) en nadir
+- **Notas**: Solo de día. Un V8TOS por V8TOZ. Sin vista todavía: el lector llega en Polar2Grid 3.3; mientras, omps_a_geotiff.py.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `level2/omps/` · patrón `V8TOS-EDR_*.nc`
+- Origen: CSPP OMPS V8TOS 1.0 → run_omps_tos_edr.sh
+- Depende de: l2-omps (V8TOZ)
 
 </details>
 

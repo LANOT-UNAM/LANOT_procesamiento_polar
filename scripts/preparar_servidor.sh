@@ -106,6 +106,7 @@ DIRS_775=(
     /data/output/jpss/state/cspp-active-fire
     /data/output/jpss/state/cspp-flood
     /data/output/jpss/state/cspp-omps
+    /data/output/jpss/state/cspp-omps-tos
     /data/output/jpss/state/cspp-heap
     /data/output/jpss/state/cspp-mirs
     /data/output/jpss/state/polar2grid

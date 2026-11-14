@@ -1,0 +1,92 @@
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios. Hay que construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
+
+%labels
+    Base lanot_base_rocky9.sif
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description CSPP OMPS V8TOS EDR Version 1.0 - SO2 y ozono corregido por SO2 (Rocky 9)
+    Version 1.0-LANOT
+
+%help
+    CSPP OMPS V8TOS EDR v1.0: columna de SO2 en cuatro supuestos de altura
+    (PBL, TRL 0-5 km, TRM 5-10 km, STL 15-19 km) y ozono total corregido por
+    SO2, en unidades Dobson. Anunciado por CIMSS el 2026-11-10.
+
+    NO lee SDR: su entrada son los V8TOZ-EDR*.nc que produce CSPP OMPS EDR
+    (cspp_omps_l2_v1.0.sif), un .nc de salida por cada uno de entrada. Tampoco
+    necesita ancillary dinámico: los coeficientes de absorción vienen en
+    lib/ancillary_data.
+
+    Los dos ejecutables son estáticos —el driver cspp-omps-tos, en Rust, y
+    ozv8lfso2.exe, el de NOAA— así que la receta no instala nada. El manual
+    admite Rocky 8.10 y 9.8; se elige la 9, como los demás EDR.
+
+    El driver parte solo la entrada en tramos continuos ("contiguous
+    runsets") y promedia la corrección dentro de cada uno, así que no hay que
+    separar las pasadas con huecos antes de llamarlo.
+
+    Uso:  cspp-omps-tos.sh -W /work /input
+    Salida: V8TOS-EDR_v4r5_<sat>_s…_e…_c….nc en el directorio de -W
+
+    Verificación tras compilar:  apptainer test cspp_omps_tos_v1.0.sif
+
+%files
+    # Software base (binarios). El nombre lleva guiones, no la convención en
+    # mayúsculas de los paquetes viejos de CSPP.
+    cspp-omps-tos-1.0.tar.gz /opt/
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    cd /opt
+    echo "--- Descomprimiendo CSPP OMPS V8TOS EDR v1.0 ---"
+    tar -zxf cspp-omps-tos-1.0.tar.gz
+    rm -f cspp-omps-tos-1.0.tar.gz
+
+    # El manual (§3) indica que la extracción crea cspp-omps-tos-1.0
+    REAL_FOLDER="cspp-omps-tos-1.0"
+
+    if [ ! -d "$REAL_FOLDER" ]; then
+        echo "ERROR: No se encontró la carpeta $REAL_FOLDER tras la extracción."
+        ls -la
+        exit 1
+    fi
+
+    # Enlace genérico, para que los scripts no dependan del nombre exacto que
+    # produzca el tarball de la siguiente versión
+    ln -s "$REAL_FOLDER" cspp_omps_tos
+
+    # Puntos de montaje genéricos: el script del contenedor no ve rutas del host
+    mkdir -p /input /output /work
+
+%environment
+    export CSPP_OMPS_V8TOS_HOME=/opt/cspp_omps_tos
+    export PATH=$CSPP_OMPS_V8TOS_HOME/bin:$PATH
+
+%test
+    # apptainer test cspp_omps_tos_v1.0.sif
+    #
+    # Cada orden va sola, no encadenada con &&: 'set -e' no aborta cuando falla
+    # el lado izquierdo de un &&.
+    set -e
+
+    test -d /opt/cspp_omps_tos
+    echo "  OK /opt/cspp_omps_tos -> $(readlink /opt/cspp_omps_tos)"
+
+    test -f /opt/cspp_omps_tos/cspp-omps-tos_env.sh
+    echo "  OK cspp-omps-tos_env.sh"
+
+    test -x /opt/cspp_omps_tos/libexec/ozv8lfso2.exe
+    echo "  OK ozv8lfso2.exe"
+
+    # Los siete coeficientes de §2.3 del manual
+    test "$(ls /opt/cspp_omps_tos/lib/ancillary_data | wc -l)" -ge 7
+    echo "  OK lib/ancillary_data"
+
+    . /opt/cspp_omps_tos/cspp-omps-tos_env.sh
+    cspp-omps-tos.sh -V
+    echo "  OK cspp-omps-tos.sh"

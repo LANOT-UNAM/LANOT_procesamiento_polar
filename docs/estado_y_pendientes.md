@@ -66,6 +66,73 @@ ocasional) y las banderas de calidad de ACSPO. Un comparador entre dos corridas 
 tolerar esas dos cosas. No vale la pena perseguirlo más con CIMSS: son cambios de un píxel en
 el umbral de detección, y de bits de calidad con la SST intacta.
 
+### V8TOS: SO₂ de OMPS, un eslabón nuevo
+
+CIMSS anunció el 2026-11-10 CSPP OMPS V8TOS EDR 1.0 (correo de Kathy Strabala a
+cspp_registrants; manual en `docs/manuals/CSPP_OMPS_V8TOS_EDR_Installation_Guide_v1.0.pdf`).
+Calcula la **columna de SO₂** con cuatro supuestos de altura (PBL; TRL 0–5 km; TRM 5–10 km;
+STL 15–19 km) y el ozono total corregido por SO₂. **No lee SDR**: su entrada son nuestros
+`V8TOZ-EDR`, un V8TOS por cada uno. No usa ancillary dinámico. El interés es volcánico: el
+Popocatépetl está a la vista de la antena y el servidor viejo no tiene nada parecido.
+
+Probado en tahan el mismo día:
+
+- **El bundle** (`cspp-omps-tos-1.0.tar.gz`, 9.8 MB) trae dos ejecutables estáticos, el
+  driver `cspp-omps-tos` (Rust) y `ozv8lfso2.exe` (NOAA). La receta
+  `contenedores/cspp_omps_tos_v1.0.def` parte de `lanot_base_rocky9` y no instala nada.
+  **Compiló sin `sudo`** (`apptainer build --fakeroot`, Apptainer 1.5.3) y su `%test` pasa;
+  la imagen está en `/data/tmp/v8tos_prueba_1329692/cspp_omps_tos_v1.0.sif`, por instalar.
+- **El caso del Krakatoa** (`cspp_omps_tos_test_data.tar.gz`, 10 gránulos de NOAA-20 del
+  2026-09-05) sale 10 de 10 en 4 s y 140 MB de RAM. Con `compare_omps_tos.bash` contra la
+  salida de NOAA, de 1 a 42 píxeles por gránulo pasan la tolerancia de 5 DU en `s_STLO3` y
+  `s_ColumnamountSO2_STL`: las "pocas, si acaso" que anuncia el manual. Es de esperar,
+  porque NOAA interpola la corrección entre bloques de 5 gránulos y CSPP la promedia sobre
+  el tramo (§2.2). Dentro del `.sif` sale idéntico, en datos, a la corrida nativa.
+- **Con nuestros V8TOZ**, incluidos los de NOAA-21, que CSPP OMPS nombra `n21` y no `j02`
+  como dice el manual: 19 de 19 en las tres pasadas probadas (13 y 14 de noviembre).
+- **El driver parte la entrada en tramos continuos** ("contiguous runsets") y promedia en
+  cada uno. No hay que separar las pasadas con hueco antes de llamarlo, como se pensó al
+  leer el manual. Una de NOAA-20 sin hueco aparente salió en dos tramos (7 + 12) porque dos
+  gránulos se traslapan 2.5 s; salieron los 19 igual.
+- **La señal del Popocatépetl se ve.** En `j01_d20261114_t201010`, el máximo de SO₂ de toda la
+  pasada cae a menos de 50 km del volcán: PBL 12.6 DU, TRM 4.5 DU, cuando el percentil 99 del
+  resto es 4.0 y 0.76. En NOAA-21 la señal es más débil frente al ruido: su pixel es más chico
+  (12 × 10 km contra 12 × 17) y sus colas son más anchas (TRM p99 2.4 DU, máximo 21 lejos del
+  volcán).
+- **El geolocalizado trae `LatitudeCorners`/`LongitudeCorners`**, igual que el V8TOZ, así que
+  `omps_a_geotiff.py` sirve para rasterizarlo sin cambiar de método.
+
+Lo que quedó en el repositorio:
+
+- `scripts/run_omps_tos_edr.sh`: resuelve la pasada sobre los GOTCO de `level1/omps`, con la
+  misma clave que `run_omps_edr.sh`, y enlaza los V8TOZ de su ventana (de `level2/omps`, uno
+  por gránulo: el más reciente si hay reprocesos). Los V8TOS van a ese mismo directorio y el
+  marcador a `state/cspp-omps-tos`. Para el marcador exige un V8TOS por V8TOZ y `exit:0` en
+  cada tramo; lo parcial se entrega sin marcador, como en OMPS. Sin V8TOZ en la ventana sale
+  en 0. El driver colorea su log aunque no escriba a una terminal y no respeta `NO_COLOR`:
+  los códigos se quitan con `sed`. Probado en tahan con copias en `/data/tmp`: las tres
+  pasadas `ok`, la segunda corrida "ya procesada", y sin contenedor, código 1.
+- `procesar_pasada.sh`: `omps_tos` en el **nivel 3**, con la clave de OMPS, junto a LSR y CRYO.
+  Va ahí porque come Level 2, aunque no necesite ATMOS. Si la pasada no tiene OMPS (de noche),
+  sale "sin datos" igual que OMPS. Comprobado con `--dry-run` en tahan.
+- La fila `bundle omps_tos_edr` en `tarballs.tsv` (slug confirmado en la portada de CSPP), la
+  de `l2-omps-tos` en el catálogo y `state/cspp-omps-tos` en `preparar_servidor.sh`.
+
+**Pendiente:**
+
+1. **Instalar** el `.sif` en `/opt/containers` (el de `/data/tmp` o recompilado con
+   `construir.sh cspp_omps_tos_v1.0`), y `sudo ./scripts/instalar.sh`. Luego, para poblar la
+   historia: `run_omps_tos_edr.sh -p <clave>` sobre las pasadas que sigan en `level1/omps`.
+2. **Vistas.** Extender `omps_a_geotiff.py` a las variables `s_*` y decidir cuáles se
+   publican. TRM es el candidato natural para el Popocatépetl (5.4 km de altura); PBL capta
+   fuentes industriales, como Tula. Hay que consultarlo con quien vaya a usarlo. Cada una
+   necesita su CPT y su entrada en `product_map` de LANOT_tools, y eso significa mover el pin
+   y recompilar el `.sif` de Polar2Grid. Falta también ver qué hacer con `ErrorFlag` y las
+   `s_QualityFlags_*`, y si la vista enmascara los valores negativos, que son ruido
+   (percentil 1 de −0.8 DU en TRM).
+3. Al pasar a **Polar2Grid 3.3**, que trae lector de V8TOS (manual §5), revisarlo junto con el
+   de V8TOZ.
+
 ### OMPS: la tolerancia de V8Pro, sin regresiones
 
 Desde la instalación (2026-11-12, 21:36 UTC) han corrido cinco pasadas de OMPS, todas

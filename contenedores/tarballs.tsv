@@ -50,6 +50,8 @@ bundle	acspo	3.0	CSPP_ACSPO_V3.0.tar.gz	cimss	cspp_acspo_v3.0	-	-	dc74d6ff26aa30
 bundle	viirs_fire	2.1	cspp-active-fire-noaa_2.1.tar.gz	cimss	cspp_active_fire_v2.1	-	-	27dcf1d00afcc3729b4e6dd8e3747bb589c5d20e
 bundle	viirs_flood	2.0	cspp-viirs-flood_2.0.tar.gz	cimss	cspp_flood_v2.0	-	-	ce762fa7e6a0457bf31e114a3a05afa4f3bf24f3
 bundle	omps_edr	1.0	cspp_omps_l2-1.0.tar.gz	cimss	cspp_omps_l2_v1.0	-	-	b59e53010d982f50f37c83c43d26e7feb1c9fc41
+# V8TOS no come SDR sino los V8TOZ del renglón de arriba.
+bundle	omps_tos_edr	1.0	cspp-omps-tos-1.0.tar.gz	cimss	cspp_omps_tos_v1.0	-	-	382695a80b5eebf276047c71b510040981b342e5
 # MiRS trae su estático (anc/static, 1.2 GB) DENTRO del bundle, no en un tarball
 # aparte como SDR o ATMOS, y ese estático es de la versión: no se actualiza por
 # separado. Así que entra entero al .sif y no hay fila de estático.

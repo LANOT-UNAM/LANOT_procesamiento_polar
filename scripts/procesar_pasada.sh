@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# procesar_pasada.sh — encadena los trece run_*.sh de una pasada.
+# procesar_pasada.sh — encadena los catorce run_*.sh de una pasada.
 #
 # Hasta ahora el encadenamiento era un humano: ningún run_*.sh invoca a otro y
 # las dependencias solo existían como mensajes de error dirigidos al operador.
@@ -15,7 +15,8 @@
 #   RT-STPS(raw)
 #     └─ nivel 1: SDR de cada RDR que RT-STPS haya producido
 #          ├─ nivel 2: ATMOS · ACSPO · FIRE · FLOOD · OMPS · HEAP · MIRS · P2G_L1
-#          │     └─ nivel 3: LSR · CRYO            (necesitan ATMOS)
+#          │     └─ nivel 3: LSR · CRYO · OMPS_TOS (LSR y CRYO comen ATMOS;
+#          │          │                              OMPS_TOS, los V8TOZ de OMPS)
 #          │          └─ nivel 4: P2G_EDR          (rinde todo lo anterior)
 #
 # Tres a la vez y no cinco: tahan tiene 64 CPU y los hilos que ya pide cada
@@ -27,7 +28,7 @@
 # nocturna. No es así: de noche termina bien y escribe sus .nc sin un solo
 # píxel válido, y es vestir() quien los descarta — tahan, 2026-09-22.)
 #
-# Variables de entorno: las de los doce run_*.sh se respetan tal cual, y este
+# Variables de entorno: las de los run_*.sh se respetan tal cual, y este
 # script lee las mismas *_STATE_DIR para poder leer los marcadores.
 #   MAX_PARALELO   Etapas simultáneas por nivel (def. 3)
 #   LOCK_FILE      Candado global (def. /data/tmp/lanot_polares.lock)
@@ -68,6 +69,7 @@ DIR_ACSPO="${ACSPO_STATE_DIR:-$ESTADO/cspp-acspo}"
 DIR_FIRE="${FIRE_STATE_DIR:-$ESTADO/cspp-active-fire}"
 DIR_FLOOD="${FLOOD_STATE_DIR:-$ESTADO/cspp-flood}"
 DIR_OMPS="${OMPS_STATE_DIR:-$ESTADO/cspp-omps}"
+DIR_OMPS_TOS="${OMPS_TOS_STATE_DIR:-$ESTADO/cspp-omps-tos}"
 DIR_HEAP="${HEAP_STATE_DIR:-$ESTADO/cspp-heap}"
 DIR_MIRS="${MIRS_STATE_DIR:-$ESTADO/cspp-mirs}"
 DIR_LSR="${LSR_STATE_DIR:-$ESTADO/cspp-lsr}"
@@ -273,6 +275,7 @@ marcador_de() {
         fire)     echo "$DIR_FIRE/$CLAVE.done"               ;;
         flood)    echo "$DIR_FLOOD/$CLAVE.done"              ;;
         omps)     echo "$DIR_OMPS/$CLAVE_OMPS.done"         ;;
+        omps_tos) echo "$DIR_OMPS_TOS/$CLAVE_OMPS.done"     ;;
         heap)     echo "$DIR_HEAP/$CLAVE_HEAP.done"         ;;
         mirs)     echo "$DIR_MIRS/$CLAVE_MIRS.done"         ;;
         lsr)      echo "$DIR_LSR/$CLAVE.done"                ;;
@@ -543,6 +546,7 @@ else
         echo "  Clave OMPS:  $CLAVE_OMPS"
     else
         SIN_DATOS[omps]="sin SDR de OMPS en la ventana (de noche no hay: miden luz solar)"
+        SIN_DATOS[omps_tos]="${SIN_DATOS[omps]}"
         echo "  Clave OMPS:  —  ${SIN_DATOS[omps]}"
     fi
     if CLAVE_HEAP="$(pasada_que_traslapa "$LEVEL1_CRIS" GCRSO "$SAT" "$VENTANA_INI" "$VENTANA_FIN")"; then
@@ -599,9 +603,14 @@ if [ "$DRY_RUN" -eq 0 ] && [ ! -f "$(marcador_de atmos)" ]; then
     SIN_DATOS[cryo]="${SIN_DATOS[lsr]}"
 fi
 
-ejecutar_nivel "Nivel 3 — los que necesitan ATMOS" \
-    "$(tarea lsr  run_lsr_edr.sh  "$CLAVE")" \
-    "$(tarea cryo run_cryo_edr.sh "$CLAVE")"
+# V8TOS entra el 2026-11-14: SO2 y ozono corregido por SO2, a partir de los
+# V8TOZ de OMPS, no de SDR. Por eso va aquí y no en el nivel 2, aunque no
+# necesite ATMOS. Usa la clave de OMPS. Si OMPS salió a medias, V8TOS procesa
+# los V8TOZ que haya; si no dejó ninguno, termina en 0 sin marcador.
+ejecutar_nivel "Nivel 3 — los que comen Level 2" \
+    "$(tarea lsr      run_lsr_edr.sh       "$CLAVE")" \
+    "$(tarea cryo     run_cryo_edr.sh      "$CLAVE")" \
+    "$(tarea omps_tos run_omps_tos_edr.sh  "$CLAVE_OMPS")"
 
 # El renderizado se rehace si alguna de sus entradas tardías acaba de salir.
 # Pasa al retomar una pasada con --clave —el barrido lo hace cuando ATMOS falló
