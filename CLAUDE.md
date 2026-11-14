@@ -12,14 +12,26 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-14): revisar al retomar
+## Pendiente abierto (2026-11-14): revisar al retomar el lunes 2026-11-16
 
-**OMPS, tolerancia de V8Pro por tramo** (`docs/estado_y_pendientes.md`, secciones "2026-11-14"
-y "2026-11-12"): instalada en tahan el 2026-11-12 a las 21:36 UTC (`c34aaa4`). Las cinco
-pasadas hasta el 14 salieron `ok` con 1 tramo y 0 huérfanos: sin regresiones. Falta **la
-primera pasada con hueco**: buscar en `cspp-edr/omps_*.log` un "Para V8Pro: N tramo(s)" con
-N > 1 o huérfanos > 0, y ver que salga `ok`. Al verlo, anotarlo en el estado y borrar esta
-sección.
+Detalle en `docs/estado_y_pendientes.md`, sección "2026-11-14".
+
+1. **V8TOS (SO₂ de OMPS) en operación desde el 2026-11-14 a las 15:18 CST.** Ver en los
+   resúmenes de `cadena/` del fin de semana que las pasadas diurnas den `omps_tos ok` (log en
+   `cspp-edr/omps_tos_*.log`, marcador en `state/cspp-omps-tos/`), que las nocturnas den "sin
+   datos", y que `publicar_dataservice.sh` copie los `V8TOS-EDR`. Luego poblar la historia
+   con `run_omps_tos_edr.sh -p <clave>` como `lanotadm`.
+2. **Vistas de V8TOS: hay que decidir antes de escribir nada.** ¿Cuál de los cuatro SO₂ se
+   publica? TRM (5–10 km) para el Popocatépetl; PBL para fuentes industriales. Hay que
+   consultarlo con Víctor o con quien vaya a usarlo, y decidir también qué se enmascara
+   (`ErrorFlag`, `s_QualityFlags_*`, negativos). Después: extender `omps_a_geotiff.py` a las
+   `s_*`, crear la CPT, la entrada en `product_map` (pin de LANOT_tools y recompilar el
+   `.sif` de Polar2Grid), el filtro de `vestir()` y la fila `gt-` del catálogo.
+3. **OMPS, tolerancia de V8Pro por tramo** (instalada el 2026-11-12, `c34aaa4`): cinco pasadas
+   `ok` sin hueco, sin regresiones. Falta **la primera con hueco**: un "Para V8Pro: N
+   tramo(s)" con N > 1 o huérfanos > 0 en `cspp-edr/omps_*.log`, y que salga `ok`.
+
+Al resolver cada punto, anotarlo en el estado y quitarlo de aquí.
 
 ## Comandos
 

@@ -120,9 +120,13 @@ Lo que quedó en el repositorio:
 
 **Pendiente:**
 
-1. **Instalar** el `.sif` en `/opt/containers` (el de `/data/tmp` o recompilado con
-   `construir.sh cspp_omps_tos_v1.0`), y `sudo ./scripts/instalar.sh`. Luego, para poblar la
-   historia: `run_omps_tos_edr.sh -p <clave>` sobre las pasadas que sigan en `level1/omps`.
+1. ~~Instalar~~ **Hecho el 2026-11-14 a las 15:18 CST**: `cspp_omps_tos_v1.0.sif` en
+   `/opt/containers` y `instalar.sh` con `02a82b3`. **Por verificar el lunes**: que las
+   pasadas diurnas del fin de semana tengan `omps_tos ok` en el resumen de `cadena/` y
+   `state/cspp-omps-tos/<clave>.done`, que de noche salga "sin datos", y que
+   `publicar_dataservice.sh` copie los `V8TOS-EDR` de `level2/omps`. Después, poblar la
+   historia: `run_omps_tos_edr.sh -p <clave>` como `lanotadm` sobre las pasadas que sigan en
+   `level1/omps` (sin GOTCO no se resuelve la pasada, aunque el V8TOZ siga ahí).
 2. **Vistas.** Extender `omps_a_geotiff.py` a las variables `s_*` y decidir cuáles se
    publican. TRM es el candidato natural para el Popocatépetl (5.4 km de altura); PBL capta
    fuentes industriales, como Tula. Hay que consultarlo con quien vaya a usarlo. Cada una
