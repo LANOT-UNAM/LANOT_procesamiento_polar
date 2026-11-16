@@ -48,8 +48,14 @@ tuvieron "1 gránulo(s) del perfilador sin mapeador" y salieron `ok` (16 V8TOz +
 las dos). No ha habido todavía una pasada con más de un tramo, pero el caso que motivó el
 cambio era el del huérfano, y ese pasa.
 
-**Sigue pendiente:** poblar la historia de V8TOS (`run_omps_tos_edr.sh -p <clave>` como
-`lanotadm`) y la decisión de las vistas (punto 2 de la sección siguiente).
+**Instalado y repasado el mismo día.** Con el arreglo en `/opt`, la pasada de madrugada quedó
+con su marcador `noche=16`. La historia se pobló con un bucle sobre las pasadas de
+`run_omps_tos_edr.sh --help`: las 23 con GOTCO en tahan (2026-11-09 a 16) tienen marcador,
+con un V8TOS por V8TOZ en todas —tres en dos tramos—, y los 382 V8TOS están en dataservice.
+Del 2 al 8 hay V8TOZ pero ya no GOTCO, así que el script no resuelve esas pasadas; se dejan
+así salvo que alguien los pida.
+
+**Sigue pendiente:** la decisión de las vistas (punto 2 de la sección siguiente).
 
 ### kawak: "RGB, OMPS y LSR no están actualizados" — falsa alarma, con dos lecciones
 

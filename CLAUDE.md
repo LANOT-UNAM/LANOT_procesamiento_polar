@@ -14,14 +14,10 @@ Todo (comentarios, mensajes de log, documentación) está en español. Mantener 
 
 ## Pendiente abierto (2026-11-16)
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-16" y "2026-11-14".
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-16" y "2026-11-14". V8TOS
+ya opera y tiene su historia desde el 2026-11-09; queda solo decidir sus vistas.
 
-1. **V8TOS: instalar el arreglo de los V8TOZ de noche** (`run_omps_tos_edr.sh`, 2026-11-16)
-   y volver a correr como `lanotadm` `run_omps_tos_edr.sh -p j01_d20261115_t084200`, que
-   quedó en `fallo`; después, borrar `/data/tmp/omps_tos_{work,staging}_1864195`. Luego
-   poblar la historia con `run_omps_tos_edr.sh -p <clave>` sobre las pasadas anteriores
-   al 2026-11-15. Lo demás del fin de semana salió bien: seis `ok`, publicados en dataservice.
-2. **Vistas de V8TOS: hay que decidir antes de escribir nada.** ¿Cuál de los cuatro SO₂ se
+1. **Vistas de V8TOS: hay que decidir antes de escribir nada.** ¿Cuál de los cuatro SO₂ se
    publica? TRM (5–10 km) para el Popocatépetl; PBL para fuentes industriales. Hay que
    consultarlo con Víctor o con quien vaya a usarlo, y decidir también qué se enmascara
    (`ErrorFlag`, `s_QualityFlags_*`, negativos). Después: extender `omps_a_geotiff.py` a las
