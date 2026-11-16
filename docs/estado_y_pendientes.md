@@ -59,6 +59,9 @@ así salvo que alguien los pida.
 
 ### Vistas de SO₂: ejemplos para decidir con Víctor
 
+**Para la junta del miércoles 2026-11-18**: https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue
+(privada: compartirla antes desde el menú Share).
+
 Hechas en tahan, en `/data/tmp/v8tos_vistas/` (`ejemplos.sh`, una copia de
 `omps_a_geotiff.py` con `--bits`/`--bbox` y una CPT provisional `omps_so2.cpt` de 0 a 5
 DU), sobre tres pasadas: NOAA-20 y NOAA-21 del 14 y NOAA-20 del 16. Cuatro alturas, tres

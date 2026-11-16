@@ -17,7 +17,8 @@ Todo (comentarios, mensajes de log, documentación) está en español. Mantener 
 Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-16" y "2026-11-14". V8TOS
 ya opera y tiene su historia desde el 2026-11-09; queda solo decidir sus vistas.
 
-1. **Vistas de V8TOS: hay que decidir antes de escribir nada.** ¿Cuál de los cuatro SO₂ se
+1. **Vistas de V8TOS: se deciden en la junta del miércoles 2026-11-18**, con los ejemplos de
+   https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue (privada: compartirla antes). ¿Cuál de los cuatro SO₂ se
    publica? TRM (5–10 km) para el Popocatépetl; PBL para fuentes industriales. Hay que
    consultarlo con Víctor o con quien vaya a usarlo, y decidir también qué se enmascara
    (`ErrorFlag`, `s_QualityFlags_*`, negativos). Después: extender `omps_a_geotiff.py` a las
