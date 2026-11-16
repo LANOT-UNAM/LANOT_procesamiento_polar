@@ -57,6 +57,28 @@ así salvo que alguien los pida.
 
 **Sigue pendiente:** la decisión de las vistas (punto 2 de la sección siguiente).
 
+### Vistas de SO₂: ejemplos para decidir con Víctor
+
+Hechas en tahan, en `/data/tmp/v8tos_vistas/` (`ejemplos.sh`, una copia de
+`omps_a_geotiff.py` con `--bits`/`--bbox` y una CPT provisional `omps_so2.cpt` de 0 a 5
+DU), sobre tres pasadas: NOAA-20 y NOAA-21 del 14 y NOAA-20 del 16. Cuatro alturas, tres
+máscaras, recorte del centro de México a `wgs84_geo_1000m` y la pasada completa a 5 km. Lo
+que mostraron:
+
+- **TRM separa al Popo del ruido**: p99 de la pasada 0.7–2.2 DU, Popo 3.2–4.5. PBL tiene
+  p99 de 4–7 DU y sin máscara es ruido de borde a borde.
+- **Los bits de `s_QualityFlags_*`** (ATBD V8TOS 1.5a, tabla 2-6) que aparecen son el 0
+  ("SO₂ slant column not good", 80–86 % de los píxeles) y el 3 (R331 > 15 %, nube, 30–56 %).
+  **El bit 0 es buena máscara**: quita el ruido y conserva el máximo del Popo en las tres.
+  **El 3 no**: borra la señal del Popo en NOAA-20 el 14 (TRM de 4.5 a 2.9 DU).
+- **Por verificar**: el 16 a las 19:32Z, NOAA-20 ve una mancha coherente en las cuatro alturas
+  sobre el norte de Puebla y Veracruz (PBL 20–40 DU), sobre nube brillante (R331 72 %, CF
+  0.87) y con `So2Index` alto. Puede ser la pluma sobre nube o un artefacto; NOAA-21 no la
+  cubrió. Comparar con TROPOMI.
+- Detalles de herramienta: `--clip` de `geotiff2view` corta *después* de decorar (logo y fecha
+  a escala de la pasada completa), así que el recorte se hace al rasterizar; y un valor que
+  empieza con `-` va con `=` (`--clip=-104,…`, `--sufijo=-b0`).
+
 ### kawak: "RGB, OMPS y LSR no están actualizados" — falsa alarma, con dos lecciones
 
 Llegó el reporte de que en "JPSS/VIIRS/VISTAS" esos productos no se actualizaban. En kawak
