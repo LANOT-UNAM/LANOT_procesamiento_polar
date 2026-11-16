@@ -300,8 +300,34 @@ fi
 #   Runset k => NOAA20: <ini> -> <fin>, exit:0, inputs/outputs=(7/7)
 # y se exige que todos digan exit:0: un tramo puede caer sin que caiga el resto.
 
+#
+# Salvo los gránulos que el driver descarta por estar de noche (SZA > 90):
+# los anuncia con un WARN cada uno y no les saca V8TOS. OMPS sí deja V8TOZ de
+# alguna pasada de madrugada —j01_d20261115_t084200, los 16 descartados—, así
+# que el "sin datos" de procesar_pasada.sh, que mira si hay SDR, no alcanza.
+# Esos se descuentan de lo esperado; si son todos, la etapa termina bien, con
+# v8tos=0 y la línea "noche" en el marcador para que el resumen diga por qué.
+
 mapfile -t PRODUCTOS < <(find "$HOST_WORK" -maxdepth 1 -type f -name 'V8TOS-EDR*.nc' | sort)
 NC_COUNT=${#PRODUCTOS[@]}
+NOCHE=$(grep -ac 'excluded for SZA>90' "$LOG_FILE" || true)
+ESPERADOS=$(( TOZ_COUNT - NOCHE ))
+
+if [ "$NC_COUNT" -eq 0 ] && [ "$ESPERADOS" -le 0 ]; then
+    {
+        echo "procesado: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "pasada:    $CLAVE"
+        echo "v8toz:     $TOZ_COUNT archivos"
+        echo "v8tos:     0 archivos"
+        echo "noche:     $NOCHE (SZA>90)"
+        echo "duracion:  $DURACION"
+        echo "salida:    $HOST_L2"
+        echo "log:       $LOG_FILE"
+    } > "$MARKER"
+    echo "ℹ  Los $TOZ_COUNT V8TOZ de la pasada $CLAVE son de noche (SZA>90): no hay V8TOS que hacer." | tee -a "$LOG_FILE"
+    echo "   Marcador: $MARKER" | tee -a "$LOG_FILE"
+    exit 0
+fi
 
 if [ "$NC_COUNT" -eq 0 ]; then
     echo "❌ ERROR: V8TOS terminó sin error pero no generó productos." | tee -a "$LOG_FILE"
@@ -319,8 +345,8 @@ mv "${PRODUCTOS[@]}" "$HOST_L2/"
 # Con menos V8TOS que V8TOZ, lo que salió se entrega igual —el barrido no
 # retoma OMPS, así que borrarlo sería perderlo—, pero sin marcador, para que el
 # resumen lo cuente.
-if [ "$NC_COUNT" -lt "$TOZ_COUNT" ] || [ "$TRAMOS_MAL" -gt 0 ]; then
-    echo "❌ ERROR: V8TOS salió a medias: $NC_COUNT de $TOZ_COUNT, $TRAMOS_MAL de $TRAMOS tramo(s) con error." | tee -a "$LOG_FILE"
+if [ "$NC_COUNT" -lt "$ESPERADOS" ] || [ "$TRAMOS_MAL" -gt 0 ]; then
+    echo "❌ ERROR: V8TOS salió a medias: $NC_COUNT de $ESPERADOS ($NOCHE de noche), $TRAMOS_MAL de $TRAMOS tramo(s) con error." | tee -a "$LOG_FILE"
     echo "   Lo que salió quedó en $HOST_L2, sin marcador." | tee -a "$LOG_FILE"
     echo "   grep -n 'Runset' $LOG_FILE"                     | tee -a "$LOG_FILE"
     exit 1
@@ -332,6 +358,7 @@ fi
     echo "v8toz:     $TOZ_COUNT archivos"
     echo "v8tos:     $NC_COUNT archivos"
     echo "tramos:    $TRAMOS"
+    [ "$NOCHE" -eq 0 ] || echo "noche:     $NOCHE (SZA>90)"
     echo "duracion:  $DURACION"
     echo "salida:    $HOST_L2"
     echo "log:       $LOG_FILE"

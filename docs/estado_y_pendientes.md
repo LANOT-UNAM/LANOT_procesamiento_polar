@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-11-14**
+**Última actualización: 2026-11-16**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,36 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-11-16: el fin de semana de V8TOS, y la primera pasada de V8Pro con huérfano
+
+Revisión de las pasadas desde la instalación del 2026-11-14 (15:18 CST). Las dos diurnas
+de ese día corrieron antes, así que la primera con V8TOS es del 15.
+
+**V8TOS, en operación.** Seis pasadas diurnas `omps_tos ok`, con un V8TOS por V8TOZ en
+todas (18, 20, 16, 13, 19 y 19), una de ellas en dos tramos (`j02_d20261115_t185448`). Las
+nocturnas, "sin datos". `publicar_dataservice.sh` copió los 105 a `/dataservice/jpss/level2/omps`.
+
+**Un falso fallo: V8TOZ de noche.** `j01_d20261115_t084200` (02:42 CST) salió `omps_tos fallo,
+código 1`. OMPS sí dejó SDR y 16 V8TOZ de esa pasada de madrugada, así que el "sin datos" de
+`procesar_pasada.sh`, que mira si hay SDR, no la detuvo; y el driver de V8TOS descartó los
+16 con `WARN … excluded for SZA>90`, corrió sobre "0 contiguous runsets" y terminó en 0 sin
+productos, que `run_omps_tos_edr.sh` toma por error. Arreglado: los gránulos con ese aviso se
+descuentan de lo esperado y, si son todos, la etapa sale en 0 con marcador (`v8tos=0`,
+`noche=16 (SZA>90)`). Lo mismo evita un "a medias" falso en una pasada que cruce el
+terminador. Probado en tahan sobre esa pasada con estado y log en `/data/tmp`: código 0 y
+el marcador esperado. **Falta instalarlo** y volver a correr esa pasada como `lanotadm`;
+sus temporales (`/data/tmp/omps_tos_{work,staging}_1864195`) son de `lanotadm` y siguen ahí.
+
+**OMPS, tolerancia de V8Pro: verificada.** `j01_d20261115_t084200` y `j02_d20261115_t203547`
+tuvieron "1 gránulo(s) del perfilador sin mapeador" y salieron `ok` (16 V8TOz + 16 V8PRO
+las dos). No ha habido todavía una pasada con más de un tramo, pero el caso que motivó el
+cambio era el del huérfano, y ese pasa.
+
+**Sigue pendiente:** poblar la historia de V8TOS (`run_omps_tos_edr.sh -p <clave>` como
+`lanotadm`) y la decisión de las vistas (punto 2 de la sección siguiente).
 
 ---
 
