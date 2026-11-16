@@ -51,6 +51,27 @@ cambio era el del huérfano, y ese pasa.
 **Sigue pendiente:** poblar la historia de V8TOS (`run_omps_tos_edr.sh -p <clave>` como
 `lanotadm`) y la decisión de las vistas (punto 2 de la sección siguiente).
 
+### kawak: "RGB, OMPS y LSR no están actualizados" — falsa alarma, con dos lecciones
+
+Llegó el reporte de que en "JPSS/VIIRS/VISTAS" esos productos no se actualizaban. En kawak
+esa ruta es literalmente `polar/npp-jpss1/viirs/vistas/`, el árbol de la **cadena vieja**:
+`rgb` se quedó en el 2026-02-24, `surfreflect` y `vegindex` en el 2025-05-01, y no tiene
+ozono (`npp-jpss1/omps` son quicklooks de SDR, `SOMTC_*.png`). Lo nuestro va a
+`polar/jpss/` y estaba al día: lo de la pasada de las 14:14 CST, copiado a los minutos.
+
+Pero quien entre a `polar/jpss/` también puede creer que no se actualiza: el listado de
+Apache ordena por nombre ascendente y los `npp_` —muertos desde el 2026-11-02— quedan al
+final de `viirs/rgb`, `dnb`, `clouds` y `omps`. Lo reciente está, pero a media lista.
+
+**Pendiente para el portal nuevo** (no se tocó kawak):
+
+1. Que los enlaces del menú apunten a `polar/jpss/…`, no a `npp-jpss1/viirs/vistas`.
+2. Ordenar los listados por fecha, lo más nuevo arriba: `IndexOrderDefault Descending Date`
+   en el `<Directory>` de `polar/jpss` (o enlazar con `?C=M;O=D`). Resuelve también lo de NPP.
+3. Sacar las vistas de NPP a una carpeta aparte (`npp/` o histórico): ya no habrá más.
+4. Dejar en `npp-jpss1/viirs/vistas` un aviso, o un `README`/`HEADER` de autoindex, que mande
+   al árbol nuevo; o retirarlo cuando nada lo enlace.
+
 ---
 
 ## 2026-11-14: el control de determinismo, y OMPS sin huecos todavía
