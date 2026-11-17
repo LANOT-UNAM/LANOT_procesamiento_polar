@@ -74,10 +74,18 @@ que mostraron:
   ("SO₂ slant column not good", 80–86 % de los píxeles) y el 3 (R331 > 15 %, nube, 30–56 %).
   **El bit 0 es buena máscara**: quita el ruido y conserva el máximo del Popo en las tres.
   **El 3 no**: borra la señal del Popo en NOAA-20 el 14 (TRM de 4.5 a 2.9 DU).
-- **Por verificar**: el 16 a las 19:32Z, NOAA-20 ve una mancha coherente en las cuatro alturas
-  sobre el norte de Puebla y Veracruz (PBL 20–40 DU), sobre nube brillante (R331 72 %, CF
-  0.87) y con `So2Index` alto. Puede ser la pluma sobre nube o un artefacto; NOAA-21 no la
-  cubrió. Comparar con TROPOMI.
+- **La mancha del 16 es la pluma, no un artefacto** (verificado el 2026-11-17 con TROPOMI).
+  A las 19:32Z NOAA-20 ve una mancha coherente en las cuatro alturas sobre el norte de Puebla
+  y Veracruz (PBL 20–40 DU), sobre nube brillante (R331 72 %, CF 0.87) y con `So2Index`
+  alto. TROPOMI, a las 19:19Z, ve lo mismo: una pluma que nace en el Popo y se extiende al
+  noreste hacia la costa, saturando la escala de 0 a 13 DU (PBL) de su mapa. MOUNTS
+  (mounts-project.com/timeseries/341090, que se abre por `http://`; por `https` rechaza la
+  conexión) le da al 16 una masa de 5 748 t de SO₂, de las más altas del año (mediana 2026:
+  1 545 t; p90: 3 128 t; 14 nov: 429 t; 15 nov: 3 118 t). El 14, con 429 t, su pluma va al
+  sureste y es corta, como la señal de nuestros ejemplos. Consecuencia para la junta: el SO₂
+  sobre nube es justo lo que hay que publicar, y es otra razón para no enmascarar con el bit
+  3. Para comparaciones futuras, MOUNTS publica un mapa diario de TROPOMI del Popo y la
+  serie de masa, sin cuenta.
 - Detalles de herramienta: `--clip` de `geotiff2view` corta *después* de decorar (logo y fecha
   a escala de la pasada completa), así que el recorte se hace al rasterizar; y un valor que
   empieza con `-` va con `=` (`--clip=-104,…`, `--sufijo=-b0`).
