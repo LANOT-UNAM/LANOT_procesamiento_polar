@@ -50,6 +50,10 @@ de `state/reintentos/` que quedaban del 26 y el 28 de septiembre (ATMOS, LSR y C
 del arreglo del GFS). Ya no bloqueaban nada porque el barrido solo mira 24 h, pero estorbaban
 al revisar. El directorio quedó vacío: no ha habido rendiciones desde entonces.
 
+**Vistas de V8TOS: esperan a Polar2Grid 3.3** (decidido este día). El 3.3 trae lector de
+V8TOS (manual §5), así que no se extiende `omps_a_geotiff.py`, que de todos modos se borra al
+migrar. La elección del SO₂ y de la máscara se puede hacer antes, con los ejemplos.
+
 **Para el portal nuevo**, como lo de kawak del 16: conviene decir junto a las vistas de LSR (y
 de cualquier producto diurno) que solo hay de día, para que su ausencia en la mañana no se
 lea como retraso.

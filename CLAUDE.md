@@ -12,18 +12,15 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-16)
+## Pendiente abierto (2026-11-18)
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-16" y "2026-11-14". V8TOS
-ya opera y tiene su historia desde el 2026-11-09; queda solo decidir sus vistas.
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-18", "2026-11-16" y "2026-11-14".
 
-1. **Vistas de V8TOS: se deciden en la junta del miércoles 2026-11-18**, con los ejemplos de
-   https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue (privada: compartirla antes). ¿Cuál de los cuatro SO₂ se
-   publica? TRM (5–10 km) para el Popocatépetl; PBL para fuentes industriales. Hay que
-   consultarlo con Víctor o con quien vaya a usarlo, y decidir también qué se enmascara
-   (`ErrorFlag`, `s_QualityFlags_*`, negativos). Después: extender `omps_a_geotiff.py` a las
-   `s_*`, crear la CPT, la entrada en `product_map` (pin de LANOT_tools y recompilar el
-   `.sif` de Polar2Grid), el filtro de `vestir()` y la fila `gt-` del catálogo.
+1. **Vistas de V8TOS: esperan a Polar2Grid 3.3** (decidido el 2026-11-18), que trae lector
+   de V8TOS. No se extiende `omps_a_geotiff.py`. Lo que sí se puede decidir antes, con los
+   ejemplos de https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue (privada: compartirla
+   antes): cuál de los cuatro SO₂ se publica (TRM para el Popocatépetl, PBL para fuentes
+   industriales) y qué se enmascara (`ErrorFlag`, `s_QualityFlags_*`, negativos).
 
 Al resolver cada punto, anotarlo en el estado y quitarlo de aquí.
 
