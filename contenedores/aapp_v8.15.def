@@ -1,0 +1,251 @@
+Bootstrap: localimage
+# Se parte de la base común, donde viven el registro, la versión menor
+# fijada y los repositorios (CRB incluido, que trae libfl-static). Hay que
+# construirla antes: ver construir.sh.
+From: lanot_base_rocky9.sif
+
+%labels
+    Base lanot_base_rocky9.sif
+    Author Alejandro Aguilar Sierra - LANOT UNAM
+    Description AAPP 8.15 + OPS-LRS V8.4 + Metopizer 3.57 - METOP-B/C de Level 0 a Level 1 (Rocky 9)
+    Version 1.0-LANOT
+    AAPP 8.15
+    OPS-LRS OPS_V8.4-AAPP-l-20211216
+    Metopizer 3.57
+    libfec quiet/libfec@9750ca0a6d0a
+
+%help
+    Rama METOP de la cadena: del crudo de antena (CADU, chain6) a Level 1 de
+    AMSU-A, MHS, HIRS, AVHRR e IASI. Sustituye a la instalación a mano de
+    stratus (AAPP 8.12 + metopizer 3.51.1) que usa referencia/metop/metop2.sh.
+
+      cadu_to_ccsds   (metopizer)  CADU -> paquetes CCSDS por instrumento
+      ccsds_to_l0     (metopizer)  CCSDS -> EPS Level 0 (usa y genera MMAM)
+      AAPP_RUN_METOP  (AAPP)       Level 0 -> Level 1 (IASI con OPS-LRS)
+      convert_to_hdf5 (AAPP)       binarios de AAPP -> HDF5
+
+    Lo compila el instalador oficial de NWP SAF (install_aapp8_v8.15.sh), con
+    los pasos 1-4, 6-9 y 11. Se saltan el 5 (atlas de MAIA4: no se corre MAIA),
+    el 10 (auxiliares de IASI: van en el host) y del 12 al 14 (netCDF y
+    AAPP-AWS, del Arctic Weather Satellite).
+
+    Dos arreglos que no son de NWP SAF, explicados en contenedores/parches/README.md:
+      - Metopizer: a rs_decode() le falta el return; con gcc >= 8 cadu_to_ccsds
+        muere en el primer CADU. Se parcha (una línea) y se compila con -std=c++14,
+        como pide su INSTALL.rst para gcc >= 11.
+      - libfec: el metopizer la carga con dlopen("libfec.so"), así que no aparece
+        en ldd. No hay paquete en Rocky; se compila quiet/libfec con CMake.
+
+    CONTRATO CON EL HOST. Lo que AAPP escribe o lo que cambia con el tiempo no
+    puede vivir en la imagen. ATOVS_ENV8 toma estas variables del ambiente
+    (todas con ${VAR:=…}), así que el run_*.sh las exporta antes de cargarlo:
+      WRK=/work                          trabajo de AAPP
+      DIR_NAVIGATION=/anc/orbelems       get_tle escribe tle_db/ en cada pasada
+      PAR_CALIBRATION_MONITOR=/anc/calmon  historia de calibración de HIRS
+      DIR_IASICONFIG=/anc/opsaux         BRD/GRD de IASI (get_aux_files.sh)
+    y el caché de MMAM (ccsds_to_l0 -g/-u), que tiene que PERSISTIR entre
+    pasadas: con el caché vacío el HKTM sale distinto (docs/plan_metop.md).
+    Los mpr-config-M01/M03 del Level 0 tampoco van aquí: son de la estación.
+
+    Uso:
+      . /opt/aapp/ATOVS_ENV8
+      cadu_to_ccsds --in <crudo> --out isps
+      ccsds_to_l0 --config-apid $METOPIZER_HOME/config/ccsds.config \
+                  --config-mphr <mpr-config-M0x> -d <l0> -g <mmam> -u <mmam> -t tle -i isps.*.ccsds
+      AAPP_RUN_METOP -i "AMSU-A MHS HIRS IASI AVHRR" -g IASI -o <l1>
+
+    Verificación tras compilar:  apptainer test aapp_v8.15.sif
+
+%files
+    # Entradas en $TARBALLS/aapp_8.15/ (lista y checksums en su SHA256SUMS).
+    # AAPP y OPS-LRS se bajan con cuenta de NWP SAF y el metopizer con cuenta
+    # de EUMETSAT: conservarlos. Los demás son públicos, pero se traen aquí
+    # para que la compilación no dependa de que sigan en línea.
+    aapp_8.15/install_aapp8_v8.15.sh              /opt/aapp/
+    aapp_8.15/AAPP_8.15.tgz                       /opt/aapp/tarfiles/
+    aapp_8.15/OPS_V8.4-AAPP-l-20211216.tgz        /opt/aapp/tarfiles/
+    aapp_8.15/hdf5-1.10.6.tar.gz                  /opt/aapp/tarfiles/
+    aapp_8.15/eccodes-2.38.0-Source.tar.gz        /opt/aapp/tarfiles/
+    aapp_8.15/bufrdc_000409.tar.gz                /opt/aapp/tarfiles/
+    aapp_8.15/fftw-3.0.1.tar.gz                   /opt/aapp/tarfiles/
+    aapp_8.15/xerces-c-src1_7_0.tar.gz            /opt/aapp/tarfiles/
+    aapp_8.15/iostream.h                          /opt/aapp/tarfiles/
+    aapp_8.15/kai_1_12_e8b74685d1.zip             /opt/aapp/tarfiles/
+    aapp_8.15/metopizer_3_57_tar_9b77fef66a.zip   /opt/aapp/tarfiles/
+    # Los dos scripts de NWP SAF que actualizan el estático. No corren aquí:
+    # se dejan en la imagen para que update_aapp_ancillary.sh los llame.
+    aapp_8.15/get_aux_files.sh                    /opt/aapp/bin/
+    aapp_8.15/get_atovs_cal_files.sh              /opt/aapp/bin/
+    # Versionado en el repositorio; construir.sh lo copia a $TARBALLS/parches
+    parches/metopizer-3.57_rs_decode_return.patch /opt/aapp/tarfiles/
+
+%post
+    # Sin esto, un fallo a media receta no detiene la compilación:
+    # Apptainer se queda con el código de la ÚLTIMA orden.
+    set -e
+
+    # --- Herramientas de compilación y lo que piden AAPP y OPS-LRS en ejecución
+    # ksh: casi todos los scripts de AAPP (AAPP_RUN_METOP, get_tle,
+    # convert_to_hdf5) empiezan con #!/bin/ksh. perl: el configure y los
+    # scripts de OPS-LRS. libfl-static (CRB): libfl.a para OPS-LRS (ver abajo);
+    # flex y bison, los programas: OPS-LRS genera con ellos el analizador de
+    # SD_BAS_DECOM (sin ellos, "flex: command not found" en el paso 9).
+    # libnsl2-devel (CRB): OPS-LRS enlaza con -lnsl, que glibc ya no trae
+    # (sin él, "cannot find -lnsl" al enlazar MSGS__Serveur). rsync: con él
+    # copia su árbol de ejecución en 'make install' del paso 9.
+    # libaec-devel (EPEL): ecCodes >= 2.25 se niega a configurar sin AEC, y el
+    # instalador solo la apaga si no existe el programa 'aec'. La base ya lo
+    # trae (libaec viene con su hdf5), así que sin los encabezados el paso 3
+    # muere con "CRITICAL - AEC library was not found" (tahan, 2026-11-18).
+    dnf install -y --setopt=install_weak_deps=False \
+        gcc gcc-c++ gcc-gfortran make cmake patch git unzip \
+        ksh perl bc gawk flex bison rsync \
+        libfl-static libaec-devel libnsl2-devel libxml2-devel libjpeg-turbo-devel zlib-devel xz-devel
+    dnf clean all && rm -rf /var/cache/dnf
+
+    TOP=/opt/aapp
+    AAPP_VERSION=8.15
+    mkdir -p $TOP/build $TOP/install $TOP/bin
+    cd $TOP
+
+    # --- libfl.a, para que el paso 8 no compile flex desde GitHub.
+    # El instalador decide si flex está instalado con 'gcc -lfl' sin archivo
+    # de entrada, que falla siempre ("no input files"), y entonces baja flex y
+    # gettext y los compila. Si encuentra libfl.a en su propio prefijo, se lo
+    # salta y el paso 9 lo copia a OPS-LRS. La ruta es la que arma el
+    # instalador: $OPSLRS_EXT_INSTALL_DIR/flex-$FLEX_VERSION.
+    mkdir -p $TOP/install/opslrs/flex-flex-2.5.39/lib
+    cp /usr/lib64/libfl.a $TOP/install/opslrs/flex-flex-2.5.39/lib/
+
+    # --- AAPP y dependencias, con el instalador oficial
+    # STATION y SITE_ID como en stratus (ATOVS_ENV8 de referencia/metop): la
+    # estación 'exeter' viene de los ejemplos y se conserva para comparar
+    # contra stratus; está por revisar qué usa AAPP de ella (plan_metop.md).
+    export FORTRAN_COMPILER=gfortran
+    export STATION=exeter
+    export SITE_ID=LNT
+    export NTHREADS=8
+    chmod +x install_aapp8_v8.15.sh
+    for paso in 1 2 3 4 6 7 8 9 11; do
+        echo "=== install_aapp8_v8.15.sh $paso ==="
+        ./install_aapp8_v8.15.sh $paso || { echo "ERROR: falló el paso $paso del instalador"; exit 1; }
+    done
+
+    AAPP_PREFIX=$TOP/install/AAPP_$AAPP_VERSION
+    test -f $AAPP_PREFIX/ATOVS_ENV8
+
+    # --- TLE: solo EUMETSAT, solo METOP-B (M01) y METOP-C (M03)
+    # La plantilla de la 8.15 pone primero Space-Track, que pide cuenta (en
+    # stratus la de un particular) y que solo hace falta para NOAA-15/18/19,
+    # FY-3 y Aqua. Se agrega al final, así que gana sobre la de arriba.
+    cat >> $AAPP_PREFIX/ATOVS_ENV8 <<'EOF'
+
+# --- LANOT: TLE de EUMETSAT, sin Space-Track (aapp_v8.15.def) ---
+PAR_NAVIGATION_TLE_URL_DOWNLOAD='https://service.eumetsat.int/tle/data_out/latest_m01_tle.txt'
+PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/latest_m03_tle.txt'
+PAR_NAVIGATION_TLE_CATALOGUE=""
+export PAR_NAVIGATION_TLE_URL_DOWNLOAD PAR_NAVIGATION_TLE_CATALOGUE
+
+# La plantilla REEMPLAZA el PATH entero (PATH=__PATH__, el de la compilación)
+# si no encuentra en él sus propias rutas, y con eso se pierden el metopizer y
+# los scripts de NWP SAF. Se devuelven aquí, para quien cargue este archivo.
+case ":$PATH:" in
+    *:/opt/aapp/metopizer/bin:*) ;;
+    *) PATH=/opt/aapp/metopizer/bin:/opt/aapp/bin:$PATH ;;
+esac
+export PATH
+EOF
+
+    # Enlace genérico: los scripts cargan /opt/aapp/ATOVS_ENV8 sin saber la versión
+    ln -s install/AAPP_$AAPP_VERSION/ATOVS_ENV8 $TOP/ATOVS_ENV8
+
+    # --- libfec, para cadu_to_ccsds
+    # Con CMake y como compartida: con su ./configure clásico mete ensamblador
+    # SIMD de 32 bits y el programa muere con "instrucción ilegal". Hace falta
+    # el libfec.so sin versión, porque es el nombre que pide el dlopen.
+    LIBFEC_COMMIT=9750ca0a6d0a
+    cd $TOP/build
+    git clone -q https://github.com/quiet/libfec.git
+    cd libfec && git checkout -q $LIBFEC_COMMIT
+    mkdir cmake_build && cd cmake_build
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON ..
+    make -j"$(nproc)"
+    make install
+    echo /usr/local/lib > /etc/ld.so.conf.d/lanot-libfec.conf
+    ldconfig
+    test -e /usr/local/lib/libfec.so
+
+    # --- Metopizer 3.57
+    cd $TOP/build
+    unzip -q $TOP/tarfiles/metopizer_3_57_tar_9b77fef66a.zip
+    tar -xf metopizer-3.57.tar
+    cd metopizer-3.57
+    # El parche va anclado: si el archivo deja de ser el que espera (otra
+    # versión del metopizer), la compilación se cae en vez de seguir sin él.
+    grep -q '^	decode_rs_ccsds(data, eras_pos, no_eras, pad);' src/rs.cpp \
+        || { echo "ERROR: src/rs.cpp no es el que espera el parche"; exit 1; }
+    patch -p1 < $TOP/tarfiles/metopizer-3.57_rs_decode_return.patch
+    grep -q 'return decode_rs_ccsds' src/rs.cpp
+    CXXFLAGS="-std=c++14 -O2" ./configure --prefix=$TOP/metopizer
+    make -j"$(nproc)"
+    make install
+    # ccsds.config (APID -> instrumento) no lo instala 'make install'
+    cp -r config $TOP/metopizer/config
+
+    # --- Limpieza: fuentes y tarballs ya no sirven dentro de la imagen
+    rm -rf $TOP/build $TOP/tarfiles
+
+    # Puntos de montaje genéricos: el script del contenedor no ve rutas del host.
+    # /anc lleva el estático y el dinámico de AAPP (ver %help).
+    mkdir -p /input /output /work /anc
+
+%environment
+    export LC_ALL=C
+    export AAPP_HOME=/opt/aapp
+    export METOPIZER_HOME=/opt/aapp/metopizer
+    export PATH=$METOPIZER_HOME/bin:/opt/aapp/bin:$PATH
+    # OPS-LRS (IASI). DIR_IASICONFIG apunta al host; se puede cambiar al llamar.
+    export PATH_OPS=/opt/aapp/install/opslrs/OPS-LRS-run/OPS/perl
+    export DIR_IASICONFIG=${DIR_IASICONFIG:-/anc/opsaux}
+
+%test
+    # apptainer test aapp_v8.15.sif
+    #
+    # Cada orden va sola, no encadenada con &&: 'set -e' no aborta cuando falla
+    # el lado izquierdo de un &&.
+    set -e
+
+    test -f /opt/aapp/ATOVS_ENV8
+    echo "  OK /opt/aapp/ATOVS_ENV8 -> $(readlink /opt/aapp/ATOVS_ENV8)"
+
+    # Con un WRK temporal: el de omisión es $HOME/tmp
+    export WRK=/tmp
+    . /opt/aapp/ATOVS_ENV8
+    for p in AAPP_RUN_METOP get_tle convert_to_hdf5; do
+        command -v $p > /dev/null
+        echo "  OK $p"
+    done
+
+    grep -q 'service.eumetsat.int/tle/data_out/latest_m03_tle.txt' /opt/aapp/ATOVS_ENV8
+    echo "  OK TLE de EUMETSAT"
+
+    test -d "$PATH_OPS"
+    echo "  OK OPS-LRS"
+
+    # Los módulos que usan los scripts de OPS-LRS. XML::Mini, liblog y METOP::*
+    # vienen en su propio árbol; los demás son del Perl del sistema.
+    perl -I"$PATH_OPS/lib" -MXML::Mini -Mliblog -MData::Dumper -MStorable \
+         -MSys::Hostname -MFile::Path -MFileHandle -MPOSIX -e 1
+    echo "  OK módulos de Perl de OPS-LRS"
+
+    for p in cadu_to_ccsds ccsds_to_l0; do
+        command -v $p > /dev/null
+        echo "  OK $p"
+    done
+    ccsds_to_l0 --version
+    test -f $METOPIZER_HOME/config/ccsds.config
+    echo "  OK ccsds.config"
+
+    # El dlopen pide "libfec.so" a secas: tiene que estar en el caché de ldconfig
+    ldconfig -p | grep -q 'libfec.so '
+    echo "  OK libfec.so"
