@@ -1,0 +1,12 @@
+#
+# MetOpizer L0 Production Configuration File
+#
+product_type=HRP
+spacecraft_id=M01
+instrument_model=1
+processing_centre=CGS1
+processing_mode=N
+disposition_mode=O
+processor_major_version=2
+processor_minor_version=0
+receiving_ground_station=SVL

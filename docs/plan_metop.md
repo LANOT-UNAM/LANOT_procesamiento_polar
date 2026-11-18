@@ -176,10 +176,42 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 
   El `%test` comprueba `ATOVS_ENV8`, `AAPP_RUN_METOP`, `get_tle`, `convert_to_hdf5`, los TLE de
   EUMETSAT, el árbol de OPS-LRS y sus módulos de Perl, `cadu_to_ccsds`, `ccsds_to_l0`
-  (`3.57`), `ccsds.config` y `libfec.so` en el caché de `ldconfig`. **No corre ninguna pasada**:
-  que AAPP lleve un Level 0 a Level 1 dentro de la imagen está sin probar. La imagen quedó en
-  `tahan:/data/tmp/aapp_build_20261118_145336/`, con los seis logs; va a `/opt/containers`,
-  que es donde están las de operación (`/opt/contenedores` es el de tarballs y compilación).
+  (`3.57`), `ccsds.config` y `libfec.so` en el caché de `ldconfig`. **No corre ninguna pasada**,
+  y por eso no vio lo que sigue.
+- **La primera pasada dentro de la imagen sacó tres problemas más**, todos ya corregidos en el
+  `.def` (la compilación buena es `tahan:/data/tmp/aapp_build_20261118_bz2/aapp_v8.15.sif`;
+  va a `/opt/containers`, donde están las de operación —`/opt/contenedores` es el de tarballs y
+  compilación—):
+  1. `ccsds_to_l0` abre `libbz2.so` con `dlopen`, igual que el metopizer a libfec, y muere con
+     `Cannot open bz2 library`. En la prueba de la tarde no se vio porque el metopizer corrió en
+     el host, que tiene `bzip2-devel` → `bzip2-devel` (y `bzip2`, que `AAPP_RUN_METOP` usa con
+     HKTM).
+  2. `atovpp -g IASI` llama a `iasi_eigenvectors`, que **la primera vez** convierte los
+     eigenvectores HDF5 a `.dat` dentro de `data/preproc`: en la imagen, `Read-only file system`
+     y la pasada entera abajo. Son de la versión → se generan en `%post`, y el `%test` lo
+     comprueba ya con la imagen de solo lectura.
+  3. `avh_get_vis_coefs` escribe en `data/calibration/coef/avhcl` en cada pasada, y HIRS guarda
+     ahí su historia. **No se puede redirigir con variables**: `ATOVS_ENV8` fija
+     `DIR_CALIBRATION`/`PAR_CALIBRATION_COEF` sin `${VAR:=…}` y cada script de AAPP lo vuelve a
+     cargar vía `ATOVS_CONF`. Se monta `/data/ancillary/aapp/calibration` encima de la ruta
+     interna, como el estático de SDR, y `run_metop_l1.sh` lo siembra desde la imagen la
+     primera vez. Las de navegación y OPSAUX sí llevan `:=` y basta exportarlas.
+
+  Además, `net-tools` (OPS-LRS revisa su puerto con `netstat`; sin él solo avisa), y `HOME`
+  apuntado al trabajo dentro del contenedor, porque `ATOVS_CONF` carga `$HOME/ATOVS_ENV8` si
+  existe y en stratus `lanotadm` tiene uno.
+- **`run_metop_l1.sh` probado en tahan el 2026-11-18** sobre `chain6-2_pass52` (METOP-C) y
+  `chain6-1_pass51` (METOP-B), con todo dirigido a `/data/tmp/metop_prueba_20261118/`: 3 min
+  por pasada, 13 archivos de Level 1 cada una (AMSU-A, MHS, AVHRR, IASI en 1C de EUMETSAT y en
+  formato AAPP, con sus HDF5), cero escrituras en la imagen, y el marcador detiene la segunda
+  corrida. **Falta compararlos con los de stratus** de las mismas pasadas: stratus no
+  respondía por ssh esa tarde.
+- **El HIRS de METOP-B no calibra**: `hirscl_algoV4` da `No enough calib cycles found` (todas
+  las líneas de la pasada sin ciclo de calibración). Como `AAPP_RUN_METOP` aborta en cuanto
+  falla un instrumento, con HIRS en la llamada no sale nada. **Eso explica las cinco llamadas de
+  `metop2.sh`**, que parecían redundantes: la completa revienta y lo publicado sale de las
+  sueltas. `run_metop_l1.sh` hace una llamada con lo exigido y otra, opcional, con HIRS. Falta
+  confirmar en stratus si su `hirs/level1` de METOP-B lleva tiempo vacío.
 - **El metopizer 3.51.1** está compilado en su árbol fuente (`~lanotadm/METOPIZER`), sin
   tarball aparte. Su `config/` va en `referencia/metop/metopizer_config` (sin los
   `IASI_BRD_*` de M02).
@@ -216,7 +248,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Pieza | Estado |
 |---|---|
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | Existe; METOP sale como "no es de esta cadena". Hay que enseñarle una segunda rama. |
-| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor **hecho** (`aapp_v8.15.sif`, 2026-11-18; sin pasada de prueba completa). Faltan `run_metop_l1.sh`, el estático en el host (fase de `preparar_servidor.sh`), `update_aapp_ancillary.sh` y las filas de `tarballs.tsv`. |
+| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Faltan: comparar con stratus, la fase de `preparar_servidor.sh` (`/data/ancillary/aapp/opsaux` con `get_aux_files.sh`), `update_aapp_ancillary.sh`, las filas de `tarballs.tsv`, y que `/data/output/metop` entre en `config/retencion.tsv` y en el catálogo (los dos suponen `/data/output/jpss/`): IASI deja ~800 MB por pasada. |
 | Sondeos (IASI + AMSU-A + MHS) | `cspp_heap_v3.0.sif` soporta `m01`/`m03` (manual §1.2 y §1.6.2); falta la rama METOP de `run_heap_edr.sh`. |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
 | AVHRR a GeoTIFF y vistas | `polar2grid_v3.2-mapdrawer.sif` trae `avhrr_l1b_aapp`, y `wgs84_geo_1000m` ya está en `config/grid.yaml`. Falta el script, las CPT y las entradas de `product_map`. |
@@ -244,6 +276,13 @@ lo que se verá al correr la primera pasada con `run_metop_l1.sh`.
 - `%test` que corra un crudo corto de prueba si hay uno pequeño disponible.
 
 ### 2. `run_metop_l1.sh`
+
+**Hecho el 2026-11-18** (pruebas arriba). Caché en `/data/ancillary/aapp/{mmam,orbelems,
+calibration,opsaux}`, salida en `/data/output/metop/level1/{amsua,mhs,hirs,avhrr,iasi}`,
+marcador en `state/aapp/<crudo>.done` con manifiesto `.l1`. Los `mpr-config-M01`/`M03` van en
+`config/`, todavía con los valores de ejemplo de stratus (`SVL`/`CGS1`) para poder comparar.
+Lo que sigue de esta lista es el diseño original; la clave de pasada para `pasadas.sh` queda
+para la pieza 3.
 
 - Patrón de los `run_*.sh`: marcador por crudo, `--force`, `--help`, autoselección, trabajo en
   `/data/tmp`, overrides `METOP_*`, conteo de productos contra una marca de inicio.
