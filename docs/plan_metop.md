@@ -138,7 +138,16 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
     `return`, y con gcc moderno `cadu_to_ccsds` truena en el primer CADU. Está en
     `contenedores/parches/`. Con eso, probado en tahan (gcc 14) sobre
     `chain6-2_pass52_20261118T161249`: código 0, 13 s, 5 MB de RAM, METOP-C, 12 flujos de
-    instrumento (IASI 117 MB, AVHRR 49 MB). Falta probar `ccsds_to_l0`.
+    instrumento (IASI 117 MB, AVHRR 49 MB).
+  - **`ccsds_to_l0` 3.57 también funciona, sin parche** (mismo crudo, mismos argumentos que
+    `metop2.sh`): código 0 en 0.2 s, los siete Level 0 de METOP-C (AMSA, MHSx, HIRS, AVHR,
+    IASI, HKTM, ADCS). El MMAM y el TLE que extrae de la pasada salieron **idénticos byte a
+    byte** a los de stratus (`…M03_015482…`). Con el caché vacío arranca sin MMAM y lo toma
+    en cuanto aparece en los datos; con el caché lleno lo carga del disco desde el inicio.
+    Entre las dos corridas, los productos difieren solo en la hora de creación de la cabecera
+    (6 bytes), salvo HKTM, que difiere además en sus primeros ~10 KB: son los paquetes
+    anteriores al MMAM. Por eso el caché de MMAM tiene que **persistir** entre pasadas, en
+    el host y escribible, como en stratus.
   - **La 3.57 no trae `mpr-config-M01`/`M03`**: en stratus se escribieron a mano en 2020 y
     están en `referencia/metop/metopizer_config/`. Dicen `receiving_ground_station=SVL`
     (Svalbard) y `processing_centre=CGS1`, que son valores de ejemplo. Van a la cabecera
