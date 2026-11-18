@@ -41,8 +41,13 @@ From: lanot_base_rocky9.sif
     (todas con ${VAR:=…}), así que el run_*.sh las exporta antes de cargarlo:
       WRK=/work                          trabajo de AAPP
       DIR_NAVIGATION=/anc/orbelems       get_tle escribe tle_db/ en cada pasada
-      PAR_CALIBRATION_MONITOR=/anc/calmon  historia de calibración de HIRS
       DIR_IASICONFIG=/anc/opsaux         BRD/GRD de IASI (get_aux_files.sh)
+    y DESPUÉS de cargarlo, porque ATOVS_ENV8 las fija sin ${VAR:=…}:
+      DIR_CALIBRATION=/anc/calibration   avh_get_vis_coefs escribe en coef/avhcl
+      PAR_CALIBRATION_COEF=/anc/calibration/coef   (y get_atovs_cal_files.sh
+      PAR_CALIBRATION_MONITOR=/anc/calibration/coef  lo actualiza; HIRS guarda
+                                         ahí su historia). Se siembra la primera
+                                         vez con una copia de $SOFT/data/calibration.
     y el caché de MMAM (ccsds_to_l0 -g/-u), que tiene que PERSISTIR entre
     pasadas: con el caché vacío el HKTM sale distinto (docs/plan_metop.md).
     Los mpr-config-M01/M03 del Level 0 tampoco van aquí: son de la estación.
@@ -97,10 +102,17 @@ From: lanot_base_rocky9.sif
     # instalador solo la apaga si no existe el programa 'aec'. La base ya lo
     # trae (libaec viene con su hdf5), así que sin los encabezados el paso 3
     # muere con "CRITICAL - AEC library was not found" (tahan, 2026-11-18).
+    # bzip2-devel: ccsds_to_l0 abre "libbz2.so" con dlopen (como libfec), así
+    # que no lo pide ldd ni falla al compilar; sin el enlace sin versión muere
+    # con "Cannot open bz2 library" en la primera pasada (tahan, 2026-11-18).
+    # bzip2, el programa: AAPP_RUN_METOP llama a bunzip2 si se le pide HKTM.
+    # net-tools: ops_process revisa con netstat que el puerto de sus servidores
+    # esté libre; sin él solo avisa "netstat not available cannot check port".
     dnf install -y --setopt=install_weak_deps=False \
         gcc gcc-c++ gcc-gfortran make cmake patch git unzip \
-        ksh perl bc gawk flex bison rsync \
-        libfl-static libaec-devel libnsl2-devel libxml2-devel libjpeg-turbo-devel zlib-devel xz-devel
+        ksh perl bc gawk flex bison rsync bzip2 net-tools \
+        libfl-static libaec-devel libnsl2-devel libxml2-devel libjpeg-turbo-devel zlib-devel xz-devel \
+        bzip2-devel
     dnf clean all && rm -rf /var/cache/dnf
 
     TOP=/opt/aapp
@@ -158,6 +170,19 @@ EOF
 
     # Enlace genérico: los scripts cargan /opt/aapp/ATOVS_ENV8 sin saber la versión
     ln -s install/AAPP_$AAPP_VERSION/ATOVS_ENV8 $TOP/ATOVS_ENV8
+
+    # --- Eigenvectores de IASI, ahora y no en la primera pasada
+    # atovpp -g IASI llama a iasi_eigenvectors, que la PRIMERA vez convierte
+    # los eigenvectores HDF5 de data/preproc a .dat junto a ellos, y de ahí en
+    # adelante solo comprueba que estén y sale. En la imagen, de solo lectura,
+    # esa primera vez muere con "cannot create [Read-only file system]" y con
+    # ella atovpp y la pasada entera (tahan, 2026-11-18). Son de la versión:
+    # se generan aquí, y el %test comprueba que ya no haga falta escribir.
+    (
+        export WRK=/tmp
+        . $TOP/ATOVS_ENV8
+        iasi_eigenvectors
+    )
 
     # --- libfec, para cadu_to_ccsds
     # Con CMake y como compartida: con su ./configure clásico mete ensamblador
@@ -249,3 +274,14 @@ EOF
     # El dlopen pide "libfec.so" a secas: tiene que estar en el caché de ldconfig
     ldconfig -p | grep -q 'libfec.so '
     echo "  OK libfec.so"
+
+    # Lo mismo con libbz2: ccsds_to_l0 la pide con dlopen("libbz2.so")
+    ldconfig -p | grep -q 'libbz2.so '
+    echo "  OK libbz2.so"
+    command -v bunzip2 > /dev/null
+    echo "  OK bunzip2"
+
+    # Con la imagen de solo lectura: si los .dat no se generaron en %post,
+    # intentaría escribirlos y fallaría aquí, no en la primera pasada.
+    iasi_eigenvectors
+    echo "  OK eigenvectores de IASI"
