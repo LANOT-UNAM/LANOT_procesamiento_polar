@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-11-16**
+**Última actualización: 2026-11-18**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -20,6 +20,39 @@ La pregunta de si convenía integrar CSPP Sounder QL a alguno de nuestros conten
 Documento vivo. Sustituye en la práctica a `migracion_polares.md` y `README_SCRIPTS.md`,
 que describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 
+
+---
+
+## 2026-11-18: "retraso en `vistas/lsr`" — otra falsa alarma
+
+Segundo reporte en la semana de que algo no se actualiza, ahora
+`/dataservice/jpss/vistas/lsr`. Revisado en tahan a las 12:06 CST: **estaba al día**, con
+`/dataservice` idéntico a `/data/output/jpss/vistas/lsr` y 6 vistas por día del 13 al 17
+(4 el 14). Lo más nuevo era de la tarde anterior, y así tiene que ser: LSR solo da vista de
+día, así que entre la última pasada de la tarde (~15 h CST) y la primera del día siguiente
+(~13 h) no aparece nada durante unas 22 h. Quien mire en la mañana lo va a ver "atrasado".
+
+Latencia del 17, de la hora de la pasada a la publicación:
+
+| Pasada (CST) | Satélite | Vista publicada | Tiempo |
+|---|---|---|---|
+| 13:12 | NOAA-20 | 14:02 | ~50 min |
+| 13:55 | NOAA-21 | 14:50 | ~55 min |
+| 14:54 | NOAA-20 | 16:55 | ~2 h |
+
+La tercera tardó más **por diseño**: sus gránulos pasan de las 21 UTC y piden el ciclo 18Z
+del GFS, que todavía no salía. ATMOS se pospuso (código 75), y LSR no se lanzó porque
+depende de ATMOS. El barrido la retomó a las 16:37. Es el mecanismo del 2026-11-03 haciendo
+su trabajo: hay pasadas de la tarde que van a tardar unas dos horas, no una.
+
+Se respondió explicando el ciclo diurno. De paso se borraron los seis `.fallido`/`.intentos`
+de `state/reintentos/` que quedaban del 26 y el 28 de septiembre (ATMOS, LSR y CRYO, de antes
+del arreglo del GFS). Ya no bloqueaban nada porque el barrido solo mira 24 h, pero estorbaban
+al revisar. El directorio quedó vacío: no ha habido rendiciones desde entonces.
+
+**Para el portal nuevo**, como lo de kawak del 16: conviene decir junto a las vistas de LSR (y
+de cualquier producto diurno) que solo hay de día, para que su ausencia en la mañana no se
+lea como retraso.
 
 ---
 
