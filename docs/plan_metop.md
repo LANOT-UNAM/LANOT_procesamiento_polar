@@ -156,6 +156,30 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
     "reactivó" la herramienta (3.57), y la 3.54 corrigió dónde busca las BRD de M03 el
     lector de IASI en Python, que nosotros no usamos. El atlas de MAIA4 (987 MB) solo hace
   falta si se corre MAIA (máscara de nubes de AVHRR), y `metop2.sh` no lo corre.
+- **`aapp_v8.15.sif` compila y pasa su `%test`** (tahan, 2026-11-18, 363 MB, sobre
+  `lanot_base_rocky9`; receta en `contenedores/aapp_v8.15.def`). Salió al sexto intento; cada
+  fallo fue algo que el instalador de NWP SAF da por presente en una máquina de escritorio y
+  que la base mínima no trae. Están explicados en los comentarios del `%post`, pero por orden:
+  1. Paso 3 (ecCodes 2.38): `CRITICAL - AEC library was not found`. El instalador solo apaga
+     AEC si no existe el programa `aec`, y la base sí lo tiene (llega con el hdf5 del
+     sistema) pero sin encabezados → `libaec-devel`.
+  2. Paso 9 (OPS-LRS): `flex: command not found` y `bison: command not found` al generar el
+     analizador de `SD_BAS_DECOM`. `libfl-static` no basta: hacen falta los programas.
+  3. Paso 9: `cannot find -lnsl` al enlazar `MSGS__Serveur`; glibc ya no la trae →
+     `libnsl2-devel` (CRB).
+  4. Paso 9: `rsync: command not found` en el `make install` de OPS-LRS.
+  5. `%test`: no encontraba `cadu_to_ccsds`. La plantilla de `ATOVS_ENV8` **reemplaza el PATH
+     entero** por el de la compilación si no ve en él sus propias rutas, y con eso se pierden
+     el metopizer y `/opt/aapp/bin`. Se arregla agregando al final de `ATOVS_ENV8` las rutas
+     que falten. Ojo al escribir `run_metop_l1.sh`: todo lo que se ponga en el PATH antes de
+     cargar `ATOVS_ENV8` puede desaparecer.
+
+  El `%test` comprueba `ATOVS_ENV8`, `AAPP_RUN_METOP`, `get_tle`, `convert_to_hdf5`, los TLE de
+  EUMETSAT, el árbol de OPS-LRS y sus módulos de Perl, `cadu_to_ccsds`, `ccsds_to_l0`
+  (`3.57`), `ccsds.config` y `libfec.so` en el caché de `ldconfig`. **No corre ninguna pasada**:
+  que AAPP lleve un Level 0 a Level 1 dentro de la imagen está sin probar. La imagen quedó en
+  `tahan:/data/tmp/aapp_build_20261118_145336/`, con los seis logs; va a `/opt/containers`,
+  que es donde están las de operación (`/opt/contenedores` es el de tarballs y compilación).
 - **El metopizer 3.51.1** está compilado en su árbol fuente (`~lanotadm/METOPIZER`), sin
   tarball aparte. Su `config/` va en `referencia/metop/metopizer_config` (sin los
   `IASI_BRD_*` de M02).
@@ -192,7 +216,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Pieza | Estado |
 |---|---|
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | Existe; METOP sale como "no es de esta cadena". Hay que enseñarle una segunda rama. |
-| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | **Falta todo**: contenedor, estático y `run_metop_l1.sh`. Es la pieza grande. |
+| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor **hecho** (`aapp_v8.15.sif`, 2026-11-18; sin pasada de prueba completa). Faltan `run_metop_l1.sh`, el estático en el host (fase de `preparar_servidor.sh`), `update_aapp_ancillary.sh` y las filas de `tarballs.tsv`. |
 | Sondeos (IASI + AMSU-A + MHS) | `cspp_heap_v3.0.sif` soporta `m01`/`m03` (manual §1.2 y §1.6.2); falta la rama METOP de `run_heap_edr.sh`. |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
 | AVHRR a GeoTIFF y vistas | `polar2grid_v3.2-mapdrawer.sif` trae `avhrr_l1b_aapp`, y `wgs84_geo_1000m` ya está en `config/grid.yaml`. Falta el script, las CPT y las entradas de `product_map`. |
@@ -201,6 +225,11 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 ## Trabajo, por pieza
 
 ### 1. Contenedor `metop_l1` (metopizer + AAPP + OPS-LRS)
+
+**Hecho el 2026-11-18 como `aapp_v8.15.def`, sobre `_rocky9`** (detalle arriba). Siguen
+pendientes de esta pieza: las filas de `tarballs.tsv` con el origen `nwpsaf` y que
+`construir.sh` la conozca, el estático en el host y comprobar qué escribe AAPP en su árbol,
+lo que se verá al correr la primera pasada con `run_metop_l1.sh`.
 
 - `.def` sobre `lanot_base_rocky8` o `_rocky9`, según lo que AAPP compile limpio. Compila
   AAPP 8.x, OPS-LRS y el metopizer. OPS-LRS es lo más delicado (Fortran, fftw, xerces y
