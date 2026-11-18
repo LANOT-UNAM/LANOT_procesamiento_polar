@@ -100,6 +100,14 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 - **TLE:** `ATOVS_ENV8` las baja de EUMETSAT para M01, M02 y M03 sin credenciales. Space-Track
   (con cuenta: en la copia está censurada) solo es para NOAA-15/18/19, que ya no llegan, así
   que la cadena nueva no la necesita.
+- **Los crudos de METOP ya llegan a tahan.** El reenvío de `recibe.sh` en stratus copia a
+  `/datawork/input/polar/raw` todos los crudos, sin filtrar por cadena, y avisa al `recibe.sh`
+  de tahan, que hoy los deja pasar como "no es de esta cadena". Hay `chain6-*` desde el
+  2026-09-23 (268 al 2026-11-18). No hay que tocar la recepción para empezar: sirven de
+  entrada de prueba, y sus productos viejos están en stratus para comparar.
+- **IPOPP no entra.** En tsom03 IPOPP solo atiende MODIS (Aqua/Terra), que queda fuera de esta
+  cadena. Los sondeos de METOP ya usan CSPP (HEAP 2.0), y aquí van con HEAP 3.0. AAPP sigue
+  siendo necesario porque CSPP no cubre el paso de Level 0 a Level 1 de METOP.
 - **Por revisar:** `STATION=exeter` y `SITE_ID=UKM`, los valores de ejemplo del instalador
   (`ATOVS_ENV8` sí pone `STATION_ID=LNT`). Hay que ver qué usa AAPP de la estación en
   `AAPP_RUN_METOP` antes de copiarlo.
