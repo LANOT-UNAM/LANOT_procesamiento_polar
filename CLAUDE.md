@@ -21,6 +21,8 @@ Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-18", "2026-11-16" y
    ejemplos de https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue (privada: compartirla
    antes): cuál de los cuatro SO₂ se publica (TRM para el Popocatépetl, PBL para fuentes
    industriales) y qué se enmascara (`ErrorFlag`, `s_QualityFlags_*`, negativos).
+2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
+   decidir el canal (tahan no tiene `mail`) y a quién le llega.
 
 Al resolver cada punto, anotarlo en el estado y quitarlo de aquí.
 

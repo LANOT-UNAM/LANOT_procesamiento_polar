@@ -54,6 +54,33 @@ al revisar. El directorio quedó vacío: no ha habido rendiciones desde entonces
 V8TOS (manual §5), así que no se extiende `omps_a_geotiff.py`, que de todos modos se borra al
 migrar. La elección del SO₂ y de la máscara se puede hacer antes, con los ejemplos.
 
+### Pendiente: `vigilar.sh`, para que un fallo no se entere por un reporte
+
+Es la condición 5 para jubilar la cadena vieja ("si una pasada falla, alguien se entera"), que
+quedó sin cumplir cuando la rama JPSS vieja se apagó el 2026-11-04. Hoy no existe ningún aviso
+en `scripts/`: un `.fallido`, una etapa en error o una antena que deja de entregar solo se
+descubren revisando a mano o cuando alguien de fuera reporta, como hoy (y esta vez era falsa
+alarma; la próxima puede no serlo).
+
+**Propuesta**: `scripts/vigilar.sh`, en cron cada hora como `lanotadm`, que revise:
+
+1. **Rendiciones**: un `.fallido` nuevo, de RAW (`state/<etapa>/`) o de pasada
+   (`state/reintentos/`).
+2. **Silencio**: más de ~13 h sin ninguna pasada procesada. Las pasadas llegan en dos bloques
+   (~01–03 y ~13–15 h CST), así que un hueco mayor ya es anómalo. Es lo único que detecta que
+   la antena o la recepción dejaron de entregar.
+3. **Etapas en error o "a medias"** en los resúmenes de `cadena/`, sin contar "pospuesto" ni
+   "sin datos".
+4. **Publicación y disco**: `fallos` distinto de 0 en `publicar_dataservice.sh` o
+   `publicar_kawak.sh`, y `/data` sobre ~90 %.
+
+Avisa **solo al cambiar** (guarda lo ya avisado en `state/vigilar/`), y una vez al día manda
+un "todo bien" corto, para que el silencio del propio vigilante también se note.
+
+**Por decidir: el canal.** tahan no tiene `mail` (por eso el error del `at` del 2026-11-04
+no dejó rastro). Opciones: correo con `msmtp` y una cuenta institucional; bot de Telegram
+(`curl`, sin instalar nada); o webhook de Slack o Discord. Falta también a quién le llega.
+
 **Para el portal nuevo**, como lo de kawak del 16: conviene decir junto a las vistas de LSR (y
 de cualquier producto diurno) que solo hay de día, para que su ausencia en la mañana no se
 lea como retraso.
