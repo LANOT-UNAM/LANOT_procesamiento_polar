@@ -1,3 +1,26 @@
+# Parches
+
+Dos familias: los del Satpy del bundle de Polar2Grid y el del metopizer de la
+rama METOP.
+
+## Metopizer 3.57: `metopizer-3.57_rs_decode_return.patch`
+
+A `rs_decode()` (`src/rs.cpp`) le falta el `return`. Con gcc 8 o más nuevo,
+`cadu_to_ccsds` truena en el primer CADU (SIGILL con `-O0`, SIGSEGV con `-O2`);
+el gcc 6 de stratus lo dejaba pasar. Es una línea y no cambia nada más: con el
+parche, `-std=c++14 -O2` y la libfec de abajo, `cadu_to_ccsds` separa los 12
+instrumentos de un crudo real de METOP-C en 13 s. Lo aplica el `%post` de la
+receta de AAPP con `patch -p1`. Hay que reportarlo a EUMETSAT, y quitarlo cuando
+salga una versión corregida.
+
+**libfec**: el metopizer la carga en tiempo de ejecución con
+`dlopen("libfec.so")`, así que no aparece en `ldd` ni al compilar. Sin ella,
+`cadu_to_ccsds` sale con 255 y "Cannot open Reed-Solomon library libfec". No
+hay paquete en Rocky (BaseOS, AppStream, CRB, EPEL ni ELRepo). Se usa
+`github.com/quiet/libfec` fijado en `9750ca0a6d0a`, compilado **con CMake** y
+`-DBUILD_SHARED_LIBS=ON`, que en x86_64 usa solo C portable. Su `rstest` pasa.
+Hace falta el `libfec.so` sin versión en la ruta de bibliotecas.
+
 # Parches al Satpy del bundle de Polar2Grid
 
 El bundle de Polar2Grid 3.2 trae su propio runtime de Python con

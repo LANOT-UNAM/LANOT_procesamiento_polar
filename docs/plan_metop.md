@@ -131,10 +131,14 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   - **El metopizer no compila con C++17.** Su `enum byte` choca con `std::byte`, y su
     `INSTALL.rst` pide `CXXFLAGS="-std=c++14"` con gcc 11 o más nuevo, que es el de
     `lanot_base_rocky9`.
-  - **El metopizer necesita libfec para `cadu_to_ccsds`**, que es justo lo que usamos.
-    Stratus la tiene compilada a mano en `/usr/local/lib` (2020-03-18) y no quedó el
-    código fuente. La original es la `fec-3.0.1` de ka9q.net; hay que conseguirla, o una
-    variante mantenida fijada a un commit, y compilarla en el `.def`.
+  - **libfec se carga en tiempo de ejecución** (`dlopen("libfec.so")`), por eso no
+    aparece en `ldd`. No hay paquete en Rocky. Se compila `quiet/libfec` (commit
+    `9750ca0a6d0a`) con CMake como biblioteca compartida.
+  - **El metopizer 3.57 necesita un parche de una línea**: a `rs_decode()` le falta el
+    `return`, y con gcc moderno `cadu_to_ccsds` truena en el primer CADU. Está en
+    `contenedores/parches/`. Con eso, probado en tahan (gcc 14) sobre
+    `chain6-2_pass52_20261118T161249`: código 0, 13 s, 5 MB de RAM, METOP-C, 12 flujos de
+    instrumento (IASI 117 MB, AVHRR 49 MB). Falta probar `ccsds_to_l0`.
   - **La 3.57 no trae `mpr-config-M01`/`M03`**: en stratus se escribieron a mano en 2020 y
     están en `referencia/metop/metopizer_config/`. Dicen `receiving_ground_station=SVL`
     (Svalbard) y `processing_centre=CGS1`, que son valores de ejemplo. Van a la cabecera

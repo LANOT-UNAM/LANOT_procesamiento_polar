@@ -1,0 +1,18 @@
+Metopizer 3.57: a rs_decode() le falta el return.
+
+Declarada como int, no devuelve nada. En C++ es comportamiento indefinido, y desde
+gcc 8 el compilador pone ahí una trampa (ud2): cadu_to_ccsds muere con SIGILL (-O0)
+o SIGSEGV (-O2) en cuanto decodifica el primer CADU. Con el gcc 6 de stratus pasaba
+por suerte, porque el valor de decode_rs_ccsds se quedaba en el registro de retorno.
+Encontrado en tahan el 2026-11-18 (gcc 14). Se aplica con `patch -p1` en la raíz
+del metopizer.
+
+--- a/src/rs.cpp	2026-11-18 14:45:29.965677252 -0600
++++ b/src/rs.cpp	2026-11-18 14:45:29.988678224 -0600
+@@ -62,5 +62,5 @@
+ {
+ 	// cout << "rs_decode called\n";
+ 	get_rs_library();
+-	decode_rs_ccsds(data, eras_pos, no_eras, pad);
++	return decode_rs_ccsds(data, eras_pos, no_eras, pad);
+ }
