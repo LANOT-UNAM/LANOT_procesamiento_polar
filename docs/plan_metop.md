@@ -79,7 +79,10 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   `stratus:/data/opt/AAPP/tarfiles` (lista en `tarfiles_stratus.txt`). AAPP y OPS-LRS se
   obtienen con registro en NWP SAF, así que esos tarballs **no se pueden volver a bajar
   libremente**: son la entrada del `.def` y hay que conservarlos en
-  `/opt/contenedores` con su fila en `tarballs.tsv`. El atlas de MAIA4 (987 MB) solo hace
+  `/opt/contenedores` con su fila en `tarballs.tsv`. **Copiados el 2026-11-18** a
+  `tahan:/opt/contenedores/aapp_8.12/` (87 MB, con `SHA256SUMS`), todos menos el atlas de
+  MAIA4. Las filas de `tarballs.tsv` se agregan junto con el `.def`: hace falta un origen
+  nuevo (`nwpsaf`) en el manifiesto y en `obtener_tarballs.sh`. El atlas de MAIA4 (987 MB) solo hace
   falta si se corre MAIA (máscara de nubes de AVHRR), y `metop2.sh` no lo corre.
 - **El metopizer 3.51.1** está compilado en su árbol fuente (`~lanotadm/METOPIZER`), sin
   tarball aparte. Su `config/` va en `referencia/metop/metopizer_config` (sin los
