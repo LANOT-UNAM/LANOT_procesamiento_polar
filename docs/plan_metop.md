@@ -1,7 +1,7 @@
 # Plan: METOP-B/C en la cadena de contenedores
 
 **Escrito el 2026-09-26. Borrador para discutir con quien armó la rama METOP de la cadena
-vieja (`referencia/metop2.sh`); sin implementar.** Lo que ya está decidido va en la primera
+vieja (`referencia/metop/metop2.sh`); sin implementar.** Lo que ya está decidido va en la primera
 sección; lo que depende de esa conversación, en "Preguntas para la rama vieja". Cuando algo
 salga distinto al implementar, se marca aquí con **AL IMPLEMENTAR** en vez de reescribir el
 diseño, como en `plan_operacion_datawork.md`, cuya fase 4 remite aquí.
@@ -38,7 +38,7 @@ metopizer, el sistema viejo no se apaga y stratus y tsom03 siguen atados a ella.
 
 ## Lo que hace hoy la rama vieja
 
-Resumen de `referencia/metop2.sh` (versión del 2026-09-22), que corre en stratus y lo invoca el
+Resumen de `referencia/metop/metop2.sh` (versión del 2026-09-22), que corre en stratus y lo invoca el
 `recibe.sh` de stratus para cada `chain6-*`:
 
 1. `cadu_to_ccsds` (metopizer 3.51.1): CADU → paquetes CCSDS por instrumento (`isps.*`).
@@ -55,6 +55,54 @@ Resumen de `referencia/metop2.sh` (versión del 2026-09-22), que corre en stratu
 Tiene los mismos defectos que ya se corrigieron en la rama JPSS vieja, y no se copian:
 escribe el marcador (`$log/lastch5`) **antes** de procesar; borra el directorio de trabajo con
 `rm -rf *` pase lo que pase; no revisa códigos de salida.
+
+### Lo que hay en stratus y tsom03 (revisado el 2026-11-18)
+
+Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
+
+- **El recorrido:** `recibe.sh` corre en stratus y lanza ahí mismo `metop2.sh` con cada
+  `chain6-*`. Ese escribe en `/data3/output2/noaa_metop`, que es el `/data` de tsom03
+  montado por NFS (`172.16.4.3:/data`), y al terminar dispara por `ssh`
+  `cspp_nucaps_metop.sh` en tsom03.
+- **Qué hace tsom03:** dos cosas, no una. Corre HEAP **2.0** (`run_heap.bash -s m01|m03`) y
+  además **publica**: copia el Level 1 de los cinco instrumentos, los `.tif` de AVHRR y los
+  NUCAPS a `/dataservice/noaa-metop/...` (y los NUCAPS al Peta, `/data2/output2`). Así que
+  al apagar la rama vieja hay que reemplazar también esa publicación, no solo el
+  procesamiento. **NUCAPS de METOP no tiene vista**: la llamada a Polar2Grid está comentada,
+  `nucaps/vistas` está vacío desde junio de 2024, y `CSPP_SOUNDER_QL` se carga pero no se
+  usa. Las "vistas" de AVHRR tampoco son JPG: son los mismos GeoTIFF float32 de `level1`.
+- **Identifica la pasada por el AMSU-A más reciente** (`ls -t … | head -1`) con un marcador de
+  un solo valor por satélite. Si llegan dos pasadas antes de que corra, la primera se pierde.
+- **AAPP 8.12 compilado con su propio instalador** (`install_aapp8_v8.12.sh`, gfortran), con
+  todas las dependencias en tarball: HDF5 1.10.1, eccodes 2.18.0, bufrdc, fftw 3.0.1,
+  xerces-c 1.7.0, kai 1.12 y OPS-LRS V8.4. Los tarballs están en
+  `stratus:/data/opt/AAPP/tarfiles` (lista en `tarfiles_stratus.txt`). AAPP y OPS-LRS se
+  obtienen con registro en NWP SAF, así que esos tarballs **no se pueden volver a bajar
+  libremente**: son la entrada del `.def` y hay que conservarlos en
+  `/opt/contenedores` con su fila en `tarballs.tsv`. El atlas de MAIA4 (987 MB) solo hace
+  falta si se corre MAIA (máscara de nubes de AVHRR), y `metop2.sh` no lo corre.
+- **El metopizer 3.51.1** está compilado en su árbol fuente (`~lanotadm/METOPIZER`), sin
+  tarball aparte. Su `config/` va en `referencia/metop/metopizer_config` (sin los
+  `IASI_BRD_*` de M02).
+- **Estático que envejece y que nadie actualiza:**
+  - `OPSAUX` (`DIR_IASICONFIG`): las BRD/GRD de IASI que publica NWP SAF. Su última
+    actualización fue manual, el 2026-01-15, con `get_aux_files.sh`.
+  - Los coeficientes de calibración de ATOVS, que se actualizan con
+    `get_atovs_cal_files.sh`.
+
+  Ninguno de los dos va en cron. En la cadena nueva es un `update_aapp_ancillary.sh`
+  semanal, como el de HEAP.
+- **Dinámico que se produce solo:**
+  - `MMAM/`: los `MMAM_*.xml` y `TLE_*.tle` que `ccsds_to_l0` extrae de cada pasada
+    (`-g`/`-u`). Lleva 5 712 archivos desde junio de 2024 y nadie lo poda.
+  - `orbelems/tle_db`: lo escribe `get_tle` en cada pasada, **dentro del árbol de AAPP**.
+    Como con HEAP, en el contenedor tiene que ir montado y escribible.
+- **TLE:** `ATOVS_ENV8` las baja de EUMETSAT para M01, M02 y M03 sin credenciales. Space-Track
+  (con cuenta: en la copia está censurada) solo es para NOAA-15/18/19, que ya no llegan, así
+  que la cadena nueva no la necesita.
+- **Por revisar:** `STATION=exeter` y `SITE_ID=UKM`, los valores de ejemplo del instalador
+  (`ATOVS_ENV8` sí pone `STATION_ID=LNT`). Hay que ver qué usa AAPP de la estación en
+  `AAPP_RUN_METOP` antes de copiarlo.
 
 ## Qué ya está y qué falta
 

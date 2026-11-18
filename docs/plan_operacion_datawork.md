@@ -676,7 +676,7 @@ siguen atados a sus instalaciones.
   hoy la cadena vieja ya sale de Polar2Grid con nuestra rejilla.
 - **Lo que hay que construir: un contenedor de Level 0 → Level 1 de METOP**, con AAPP y el
   metopizer, y su `run_metop_l1.sh` con el mismo patrón que los demás (marcador, `--force`,
-  autoselección, trabajo en `/data/tmp`). `referencia/metop2.sh` es la receta de lo que hace hoy:
+  autoselección, trabajo en `/data/tmp`). `referencia/metop/metop2.sh` es la receta de lo que hace hoy:
   `cadu_to_ccsds`, luego el metopizer y AAPP por instrumento.
 
 **Orden sugerido**, después de la fase 3a (stratus como segundo trabajador):

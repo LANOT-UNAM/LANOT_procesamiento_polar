@@ -1,0 +1,19 @@
+total 1052468
+drwxr-xr-x 2 lanotadm lanotadm      4096 Jan  5  2026 .
+drwxr-xr-x 7 lanotadm lanotadm       133 Jun 12  2024 ..
+-rwxr-xr-x 1 lanotadm lanotadm  24822203 Jun 12  2024 AAPP_8.12.tgz
+-rwxr-xr-x 1 lanotadm lanotadm    363714 Jun 12  2024 AAPP_MAIA4_atlas_extra.tgz
+-rwxr-xr-x 1 lanotadm lanotadm 987015897 Jun 12  2024 AAPP_MAIA4_atlas.tgz
+-rwxr-xr-x 1 lanotadm lanotadm    464650 Jun 12  2024 AAPP_MAIA4_thresholds_v8.tgz
+-rw-r--r-- 1 lanotadm lanotadm  13382853 Jan 17  1970 bufrdc_000409.tar.gz
+-rw-r--r-- 1 lanotadm lanotadm  11525701 Jan 19  1970 eccodes-2.18.0-Source.tar.gz
+-rw-r--r-- 1 lanotadm lanotadm   1946361 Sep  2  2020 fftw-3.0.1.tar.gz
+-rwxrwxrwx 1 lanotadm lanotadm      2196 Feb  1  2023 get_atovs_cal_files.sh
+-rwxr-xr-x 1 lanotadm lanotadm      3303 Jun 12  2024 get_aux_files.sh
+-rw-r--r-- 1 lanotadm lanotadm      3303 Feb  1  2023 get_aux_files.sh.1
+-rw-r--r-- 1 lanotadm lanotadm  15052127 Apr 27  2017 hdf5-1.10.1.tar.gz
+-rwxr-xr-x 1 lanotadm lanotadm  14311547 Jun 12  2024 iasi_pca_comp.tar.gz
+-rw-r--r-- 1 lanotadm lanotadm      1891 Sep  2  2020 iostream.h
+-rw-r--r-- 1 lanotadm lanotadm    307694 Feb 26  2024 kai_1_12_e8b74685d1.zip
+-rwxr-xr-x 1 lanotadm lanotadm   1569688 Jun 12  2024 OPS_V8.4-AAPP-l-20211216.tgz
+-rw-r--r-- 1 lanotadm lanotadm   6915708 Sep  2  2020 xerces-c-src1_7_0.tar.gz

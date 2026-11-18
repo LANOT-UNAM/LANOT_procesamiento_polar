@@ -1,0 +1,239 @@
+# MAIN DIRECTORIES
+#=================
+
+# Directories defined during the building of AAPP:
+#-------------------------------------------------
+AAPP_PREFIX=/data/opt/AAPP/install/AAPP_8.12
+SOFT=/data/opt/AAPP/install/AAPP_8.12/AAPP
+
+DIR_STATIONS=$SOFT/data/navigation
+DIR_SATID=$SOFT/data/navigation
+export AAPP_PREFIX SOFT DIR_STATIONS DIR_SATID 
+
+# User specifications: Directories needed at run-time (default values)
+#---------------------------------------------------------------------
+WRK=${WRK:=/data/opt/AAPP/tmp}
+export WRK
+
+# SYSTEM SETTINGS
+#================
+
+FORT=fort.
+FORM_TYPE=LITTLE_ENDIAN
+STATION=${STATION:=exeter}
+STATION_ID=${STATION_ID:=LNT}
+PATH=$SOFT/bin:/data/opt/AAPP/install/AAPP_8.12/metop-tools/bin:/data/opt/AAPP/install/AAPP_8.12/iasi-tools/bin:/home/lanotadm/AAPP/install/AAPP_8.6/AAPP/bin:/home/lanotadm/AAPP/install/AAPP_8.6/metop-tools/bin:/home/lanotadm/AAPP/install/AAPP_8.6/iasi-tools/bin:/home/lanotadm/drl/standalone/mariadb-10.1.8-linux-x86_64/bin:/home/lanotadm/drl/standalone/jdk1.8.0_45/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/data/opt/AAPP/install/kai/kai-1.12/bin
+export FORT FORM_TYPE STATION STATION_ID PATH
+
+# Ensure little endian if using Intel compiler on linux
+F_UFMTENDIAN=little
+export F_UFMTENDIAN
+
+# NAVIGATION DIRECTORIES AND OPTIONS
+#===================================
+
+# Directories defined during the building of AAPP:
+#-------------------------------------------------
+PATH_NAVIGATION=$SOFT/bin
+export PATH_NAVIGATION
+
+# User navigation specifications: Directories needed at run-time (default values)
+#--------------------------------------------------------------------------------
+DIR_NAVIGATION=${DIR_NAVIGATION:=$SOFT/orbelems}
+export DIR_NAVIGATION
+
+# User navigation options (default values):
+#------------------------------------------
+PAR_NAVIGATION_DEFAULT_LISTESAT=${PAR_NAVIGATION_DEFAULT_LISTESAT:='noaa19 noaa18 noaa15 M02 M01 M03'}
+PAR_NAVIGATION_DEFAULT_LISTEBUL=${PAR_NAVIGATION_DEFAULT_LISTEBUL:='tle tle tle tle tle tle'}
+export PAR_NAVIGATION_DEFAULT_LISTESAT PAR_NAVIGATION_DEFAULT_LISTEBUL
+
+# If Two-Line-Element option (TLE) has been chosen: 
+#--------------------------------------------------
+#     1- User specifications for the get_tle script: web site access
+PAR_NAVIGATION_TLE_USER=<censurado: cuenta de Space-Track, ver stratus>
+PAR_NAVIGATION_TLE_PASSWD=<censurado>
+export PAR_NAVIGATION_TLE_USER PAR_NAVIGATION_TLE_PASSWD
+
+# Select the required satellites. Uncomment one of the following options (or create your own):
+#1) Space-track for all satellites. Can use default satellite list in get_tle, or specify them here.
+PAR_NAVIGATION_TLE_URL_DOWNLOAD='https://www.space-track.org'
+PAR_NAVIGATION_TLE_CATALOGUE="25338,28654,33591" #N15,18,19
+
+#2) EUMETSAT for Metop, NOAA and SNPP. This is the preferred option. See https://service.eumetsat.int/tle
+PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/latest_m02_tle.txt'
+PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/latest_m01_tle.txt'
+PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/latest_m03_tle.txt'
+PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/latest_npp_tle.txt'
+PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/latest_n20_tle.txt'
+
+#2a) Optionally add NASA elements for Aqua, Terra, NPP, JPSS-1
+#PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://is.sci.gsfc.nasa.gov/ancillary/ephemeris/tle/drl.tle'
+
+#2b) Optionally add space-track for FY-3B/3D:
+#PAR_NAVIGATION_TLE_CATALOGUE="37214,39260"  #FY-3B/3D
+#PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://www.space-track.org'
+
+#3) Celestrak: weather.txt (e.g. NOAA, MetOp, FY-3) and/or resource.txt (e.g. AQUA, TERRA)
+#PAR_NAVIGATION_TLE_URL_DOWNLOAD='http://ftp.celestrak.com/NORAD/elements/weather.txt'
+#PAR_NAVIGATION_TLE_URL_DOWNLOAD='http://ftp.celestrak.com/NORAD/elements/weather.txt http://ftp.celestrak.com/NORAD/elements/resource.txt'
+
+export PAR_NAVIGATION_TLE_URL_DOWNLOAD PAR_NAVIGATION_TLE_CATALOGUE
+
+#     2- User specifications: Directories needed at run-time (default values)
+DIR_DATA_TLE=${DIR_NAVIGATION}/tle_db
+export DIR_DATA_TLE
+
+# If SPOT option (SPM) has been chosen: 
+#--------------------------------------
+#     1- User specifications: web site access
+PAR_NAVIGATION_TAI_UTC_URL=http://maia.usno.navy.mil/ser7/tai-utc.dat
+PAR_NAVIGATION_UT1_UTC_URL=http://maia.usno.navy.mil/ser7/finals2000A.data
+export PAR_NAVIGATION_TAI_UTC_URL PAR_NAVIGATION_UT1_UTC_URL
+
+#     2- User specifications: Directories needed at run-time (default values)
+DIR_DATA_TAI_UT1_UTC=${DIR_NAVIGATION}/orb_elem
+DIR_DATA_SPM=${DIR_NAVIGATION}/spm_db
+export DIR_DATA_TAI_UT1_UTC DIR_DATA_SPM
+
+#     3- User option:
+PAR_NAVIGATION_TAI_UT1_UTC_TIMEOUT=60
+export PAR_NAVIGATION_TAI_UT1_UTC_TIMEOUT
+
+# CALIBRATION DIRECTORIES AND OPTIONS
+#====================================
+
+# Directories defined during the building of AAPP:
+#-------------------------------------------------
+DIR_CALIBRATION=$SOFT/data/calibration
+PAR_CALIBRATION_COEF=$SOFT/data/calibration/coef
+export DIR_CALIBRATION PAR_CALIBRATION_COEF
+
+# User calibration specifications: Directories needed at run-time (default values)
+#---------------------------------------------------------------------------------
+PAR_CALIBRATION_MONITOR=${PAR_CALIBRATION_MONITOR:=$SOFT/data/calibration/coef}
+export PAR_CALIBRATION_MONITOR
+
+# User calibration options (default values):
+#-------------------------------------------
+# HIRSCL_VERSION=0 for the single HIRS algorithm available in AAPP1/2/3/4
+# HIRSCL_VERSION=1 for the new HIRS algorithm (called algorithm version 4)
+#           (nearly equal to the algorithm version 4 of the NOAA)
+# IPRINT=0 Nothing is printed/No LOG file
+# IPRINT=1 Entering routines, few values of the main parameters 
+#          and error messages are printed
+# IPRINT=2 Computed values are printed (help for debug)
+HIRSCL_VERSION=${HIRSCL_VERSION:=1}
+IPRINT=${IPRINT:=1}
+export HIRSCL_VERSION IPRINT
+
+# If HIRS calibration algorithm version 4 has been chosen:
+#---------------------------------------------------------
+# option to take into account of the hours, minutes in the reference date to
+# compute b1 and the average slope (=1 if hours, minutes are taken into account)
+HCALIB_B1ASLOP_FLAG=1
+export HCALIB_B1ASLOP_FLAG
+# number of considered hours preceeding the date of the data to
+# compute b1 and the average slope
+HCALIB_B1ASLOP_NBHOUR=24
+export HCALIB_B1ASLOP_NBHOUR
+# option to take into account the telescope temperature to compute the intercept
+# =0 the telescope temperature is not taken into account
+# =1 the telescope temperature is taken into account with b1 values for all conditions
+# =2 the telescope temperature is taken into account with b1 values for night/day light conditions
+HCALIB_TT_FLAG=1
+export HCALIB_TT_FLAG
+# Managing the historical file(s)
+HIST_SIZE_HIGH=20000
+HIST_SIZE_LOW=2500
+HIST_NMAX=10
+export HIST_SIZE_HIGH HIST_SIZE_LOW HIST_NMAX
+
+# URL for AVHRR visible calibration files (avh_get_vis_coefs script)
+#----------------------------------------
+# can be commented out if you do not want AAPP to retrieve the NESDIS calibration
+AVHRR_VISIBLE_URL=https://www.star.nesdis.noaa.gov/smcd/spb/fwu/homepage/AVHRR/Op_Cal_AVHRR/Op_Cal_AVHRR.html
+AVHRR_VISIBLE_URL_TIMEOUT=10
+
+# PREPROCESSING (including MAIA) DIRECTORIES AND OPTIONS
+#=======================================================
+
+# Directories defined during the building of AAPP:
+#-------------------------------------------------
+DIR_PREPROC=$SOFT/data/preproc
+DIR_IASI_PREPROC=${DIR_IASI_PREPROC:=$DIR_PREPROC}
+export DIR_PREPROC
+
+# MAIA
+
+# User MAIA specifications: Directories needed at run-time (default values)
+#--------------------------------------------------------------------------
+DIR_FORECAST=${DIR_FORECAST:-$TMP}
+export DIR_FORECAST
+
+# User MAIA options for the forecast files if used
+#-------------------------------------------------
+NFORPERDAY=${NFORPERDAY:=4}
+export NFORPERDAY
+
+# AVHRRIN parametrization    
+#==============================
+FDFunit=10
+AVH1Bunit=30
+AVH1Cunit=31
+AVH1Dunit=32
+AVHRRINDBGunit=40
+PRINT1unit=42
+PRINT2unit=43
+export FDFunit AVH1Bunit AVH1Cunit AVH1Dunit AVHRRINDBGunit
+export PRINT1unit PRINT2unit
+
+AVHRRINidbg=2
+export AVHRRINidbg 
+
+LINE1idbg=100
+LINE2idbg=101
+PIX1idbg=10
+PIX2idbg=13
+export LINE1idbg LINE2idbg PIX1idbg PIX2idbg
+
+# MAIA4 box sizes
+MAP_BOX_PSIZE=16		# box size for environment in pixel
+MAP_BOX_LSIZE=16		# box size for environment in line 
+LOCAL_BOX_NPB=3			# local box size for variance in pixel
+LOCAL_BOX_NLB=3			# local box size for variance in line
+export MAP_BOX_PSIZE MAP_BOX_LSIZE LOCAL_BOX_NPB LOCAL_BOX_NLB
+
+# MAIA4 directory PATH
+#===========
+# Directory
+
+#  DIR_MAIA4_THRESHOLDS=<< directory of the MAIA4 thresholds >>
+export DIR_MAIA4_THRESHOLDS=${AAPP_PREFIX}/AAPP/data_maia4/thresholds
+
+#  DIR_MAIA4_ATLAS=<<directory of the MAIA4 atlas + topography files >>
+export DIR_MAIA4_ATLAS=${AAPP_PREFIX}/AAPP/data_maia4/atlas
+
+# compression of viiCT files (0 : non compression, 1 compression)
+export PAR_MAIA4_COMPRESS=1
+
+#MAIA4 with GFS uncomment and customize the 2 following lines
+#export MAIA4_USE_GFS=yes
+export MAIA4_REMOTE_GFS_DIR="http://jpssdb.ssec.wisc.edu/cspp_v_2_0/ancillary"
+#
+#MAIA4 with ECMWF uncomment and customize the 2 following lines
+#export MAIA4_USE_ECMWF=yes
+export MAIA4_REMOTE_ECMWF_DIR="https://data.ecmwf.int/forecasts"
+
+# HDF libraries (e.g. to use the IASI eigenvector files or ATMS/CrIS decode utilities)
+#==============
+# If you are using dynamic libraries, and libhdf5 files are not centrally installed
+# (e.g. in /lib or /usr/lib), define an environment variable DIR_HDF5 and add it
+# to LD_LIBRARY_PATH. Similarly for ecCodes.
+
+DIR_HDF5=/data/opt/AAPP/install/hdf5       #insert path to hdf5 installation directory (containing "lib")
+DIR_ECCODES=/data/opt/AAPP/install/eccodes
+
+for dir in $DIR_HDF5 $DIR_ECCODES; do
+  [[ $LD_LIBRARY_PATH == *${dir}* ]] || export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${dir}/lib
+done

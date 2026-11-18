@@ -1,0 +1,12 @@
+
+
+if [ -f "$HOME/ATOVS_ENV8" ]
+then
+
+  . "$HOME/ATOVS_ENV8"
+
+else 
+
+  . "$AAPP_PREFIX/ATOVS_ENV8"
+
+fi
