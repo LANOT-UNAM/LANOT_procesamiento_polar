@@ -112,7 +112,36 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   `/opt/contenedores` con su fila en `tarballs.tsv`. **Copiados el 2026-11-18** a
   `tahan:/opt/contenedores/aapp_8.12/` (87 MB, con `SHA256SUMS`), todos menos el atlas de
   MAIA4. Las filas de `tarballs.tsv` se agregan junto con el `.def`: hace falta un origen
-  nuevo (`nwpsaf`) en el manifiesto y en `obtener_tarballs.sh`. El atlas de MAIA4 (987 MB) solo hace
+  nuevo (`nwpsaf`) en el manifiesto y en `obtener_tarballs.sh`.
+- **La receta será con AAPP 8.15 y metopizer 3.57, no con las versiones de stratus**
+  (decidido el 2026-11-18). Las entradas están en `tahan:/opt/contenedores/aapp_8.15/`
+  (85 MB, con `SHA256SUMS`):
+  - `AAPP_8.15.tgz`, bajado del área de usuario de NWP SAF.
+  - `metopizer_3_57_tar_9b77fef66a.zip`, del User Portal de EUMETSAT. Pide cuenta y
+    aceptar la licencia; sin sesión da "acceso denegado".
+  - El instalador `install_aapp8_v8.15.sh`.
+  - HDF5 1.10.6 y ecCodes 2.38.0, que son las dos dependencias que cambian y se bajan de
+    sus sitios públicos.
+  - Lo que no cambia, copiado de `aapp_8.12/`: OPS-LRS V8.4, kai 1.12, fftw 3.0.1,
+    xerces-c 1.7.0, `iostream.h`, bufrdc, `iasi_pca_comp` y los dos scripts de NWP SAF.
+
+  Pasos del instalador que se usan: 1–4, 6–9 y 11. Se saltan el 5 (atlas de MAIA4), el 10
+  (OPSAUX, que va en el host) y del 12 al 14 (netCDF y AAPP-AWS, del Arctic Weather
+  Satellite). Lo que hay que saber al escribir el `.def`:
+  - **El metopizer no compila con C++17.** Su `enum byte` choca con `std::byte`, y su
+    `INSTALL.rst` pide `CXXFLAGS="-std=c++14"` con gcc 11 o más nuevo, que es el de
+    `lanot_base_rocky9`.
+  - **El metopizer necesita libfec para `cadu_to_ccsds`**, que es justo lo que usamos.
+    Stratus la tiene compilada a mano en `/usr/local/lib` (2020-03-18) y no quedó el
+    código fuente. La original es la `fec-3.0.1` de ka9q.net; hay que conseguirla, o una
+    variante mantenida fijada a un commit, y compilarla en el `.def`.
+  - **La 3.57 no trae `mpr-config-M01`/`M03`**: en stratus se escribieron a mano en 2020 y
+    están en `referencia/metop/metopizer_config/`. Dicen `receiving_ground_station=SVL`
+    (Svalbard) y `processing_centre=CGS1`, que son valores de ejemplo. Van a la cabecera
+    MPHR del Level 0; hay que decidir si se ponen los del LANOT.
+  - Cambios de la 3.51 a la 3.57: ninguno en `cadu_to_ccsds`. En `ccsds_to_l0` se
+    "reactivó" la herramienta (3.57), y la 3.54 corrigió dónde busca las BRD de M03 el
+    lector de IASI en Python, que nosotros no usamos. El atlas de MAIA4 (987 MB) solo hace
   falta si se corre MAIA (máscara de nubes de AVHRR), y `metop2.sh` no lo corre.
 - **El metopizer 3.51.1** está compilado en su árbol fuente (`~lanotadm/METOPIZER`), sin
   tarball aparte. Su `config/` va en `referencia/metop/metopizer_config` (sin los
