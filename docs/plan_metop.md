@@ -32,6 +32,36 @@ metopizer, el sistema viejo no se apaga y stratus y tsom03 siguen atados a ella.
   instrumentos (METimage, IASI-NG, MWS…), otro software de Level 1—, así que será otro
   contenedor y otra rama, con la misma recepción, cola, renderizado y publicación. Cuando
   empiece a llegar, se escribe su propio plan.
+
+  **Qué haría falta para recibirlo (revisado el 2026-11-18):**
+
+  - **En polaracq (TeraScan):**
+    - Activar `chain3` (`telemetry.active: no` en `referencia/terascan/system.config`).
+    - Corregir la línea `metop-sg-a1 frequency: 7825.00`, a la que le falta el punto: el
+      formato es `<satélite>.frequency`, y así TeraScan probablemente la ignora. Hay que ver
+      si sigue así en polaracq, porque nuestra copia es del 2026-09-22.
+    - Darle al programador de pasadas los TLE de Metop-SG-A1, que están en la página de TLE
+      de EUMETSAT, y un criterio de prioridad: va en la misma órbita de media mañana que
+      METOP-B/C y puede chocar con `chain6` y con JPSS.
+  - **El riesgo es la antena.** EUMETSAT habla de unos 3 m según las condiciones del sitio,
+    y la nuestra es de 2.4 m (`ANT-24-11P`). Hasta no recibir una pasada no se sabe si
+    alcanza.
+  - **De nuestro lado, nada hasta que llegue un crudo.** `recibe.sh` de stratus ya reenvía
+    todo; al primer crudo se agrega la fila de `chain3` en `cadenas.tsv`.
+  - **Software, de NWP SAF (que distribuye los procesadores de EUMETSAT):**
+    - Level 0 y Level 1 de MWS y de METimage, con scripts envolventes (versión del
+      2026-04-30).
+    - Una configuración de RT-STPS para pasar del crudo a VCDU. Ese paso lo puede hacer
+      nuestro `rt_stps_7.0.sif`.
+    - El procesador de IASI-NG esperaba aprobación de EUMETSAT; está por confirmar si ya
+      salió.
+    - Otra versión hacia principios de 2027, al terminar la puesta en servicio.
+    - Las órbitas para procesar se bajan con `eumdac` del Data Store de EUMETSAT, que pide
+      cuenta.
+    - AAPP-SG 1.0 (MWS e IASI-NG) es posterior al Level 1, no lo sustituye.
+  - **Productos, por verificar:** si MiRS acepta MWS y si el Satpy del bundle lee METimage.
+  - **Primer paso:** pedir a quien maneja polaracq que active `chain3` unos días, solo para
+    ver si llegan crudos completos. Si llegan, se escribe el plan con un crudo real.
 - **Mismas reglas que JPSS**: los `.def` instalan binarios y lo estático o dinámico vive en el
   host; marcador `.done` solo si la etapa produjo **todo** lo esperado; lo intermedio en
   `/data/tmp`; logs en `/var/log/lanot/polares/<etapa>/`.
