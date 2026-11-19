@@ -140,6 +140,8 @@ DIRS_775=(
     /data/output/metop/vistas/avhrr
     /data/output/metop/state/aapp
     /data/output/metop/state/polar2grid_avhrr
+    /data/output/metop/level2/sounder
+    /data/output/metop/state/cspp-heap
     /data/ancillary/aapp
     /data/ancillary/aapp/mmam
     /data/ancillary/aapp/orbelems

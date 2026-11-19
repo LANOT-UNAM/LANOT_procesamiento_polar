@@ -221,7 +221,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   Tamaños idénticos en todo menos `iasil1d_M01…l1d.h5`. Stratus deja **dos** IASI 1C por
   pasada de METOP-C (OPS-LRS corre en dos de sus cinco llamadas); aquí, uno.
 
-  **IASI, sin cerrar.** En el 1C de EUMETSAT de METOP-C difieren 2.1 M de 218 M bytes: los
+  **IASI: cerrado el 2026-11-18, el 1C es equivalente (pieza 5).** En el 1C de EUMETSAT de METOP-C difieren 2.1 M de 218 M bytes: los
   sellos de proceso de la MPHR y, después, bytes contiguos en todos los registros, con
   diferencias casi siempre de pocas unidades. Los auxiliares (BRD/GRD) vigentes son los
   mismos en los dos lados y OPS-LRS es el mismo V8.4, así que lo más probable es redondeo de
@@ -289,7 +289,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 |---|---|
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. Probado con simulados; falta la primera pasada real tras instalar. |
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
-| Sondeos (IASI + AMSU-A + MHS) | `cspp_heap_v3.0.sif` soporta `m01`/`m03` (manual §1.2 y §1.6.2); falta la rama METOP de `run_heap_edr.sh`. |
+| Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T) y decidir la versión de `amsua_clparams.dat` en operación (abajo). |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
 | AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Falta publicarlo (kawak y dataservice) y apagar `crea_vistas_metop.sh` en kawak. |
 | Publicación en kawak | Falta la correspondencia en `publicar_kawak.sh`. |
@@ -381,13 +381,43 @@ barrido llaman a ese orquestador.
 
 ### 5. Sondeos con HEAP
 
-- **Aquí se cierra la comparación de IASI** con stratus (ver "IASI, sin cerrar" arriba): los
-  NUCAPS de una misma pasada, de HEAP 3.0 sobre nuestro 1C, contra los de HEAP 2.0 en tsom03.
-  Son versiones distintas de HEAP, así que una diferencia ahí no culpa todavía al 1C: si sale
-  grande, correr HEAP 3.0 sobre el 1C de stratus para separar las dos causas.
-- `run_heap_edr.sh`: entradas `IASI_xxx_1C_M0{1,3}_*`, `amsual1b_M0{1,3}_*.l1b` y
-  `mhsl1b_M0{1,3}_*.l1b`, misión `m01`/`m03`, emparejadas por tiempo como CrIS ÷ ATMS. HEAP
-  parte solo los IASI de pasada entera en trozos de 22–23 MDR (manual §1.6.2).
+**Hecho el 2026-11-18** con `scripts/run_heap_metop.sh`, aparte de `run_heap_edr.sh`: allá
+el trabajo es emparejar CrIS con ATMS por traslape de intervalos; aquí los tres insumos
+(`IASI_xxx_1C`, `amsual1b`, `mhsl1b`) salen del mismo crudo y vienen en el manifiesto `.l1`.
+Mismo bundle, candado y criterio (exigir `NUCAPS-EDR`, familias parejas). Modo `M_IRMW`.
+METOP-C: 18 productos en ~1 min, 3 gránulos —los mismos 3 que la vieja, que los saca dos
+veces por los dos IASI 1C de stratus—. Probado como `lanotadm`, que es quien puede escribir
+el candado del bundle.
+
+**La comparación con la cadena vieja, y lo que sacó a la luz.** Contra HEAP 2.0 en tsom03
+(mismos gránulos): temperatura con mediana 0.15 K y p99 4.8 K de diferencia, piel 2.2 K. Para
+separar causas se cruzaron insumos con HEAP 3.0 en los dos lados:
+
+| HEAP 3.0 sobre… | contra HEAP 3.0 sobre el L1 de stratus |
+|---|---|
+| nuestro L1 completo | piel 2.2 K, T p99 4.8 K (lo mismo que contra 2.0) |
+| IASI de stratus + nuestro AMSU-A/MHS | igual de distinto |
+| nuestro IASI + AMSU-A/MHS de stratus | ≤ 0.04 K |
+| nuestro L1 con `amsua_clparams.dat` v47 | ≤ 0.04 K, banderas 100 % iguales |
+
+O sea: la versión de HEAP no explica nada, el IASI 1C tampoco; era **AMSU-A**, y dentro de
+AMSU-A, un archivo. AAPP 8.15 trae `amsua_clparams.dat` **versión 46**; stratus tenía la 47
+(2025-09-22, bajada con `get_atovs_cal_files.sh`) y NWP SAF publica la **48** (2026-07-14).
+Entre versiones bajan los límites de conteo del blanco interno y de la vista al espacio de
+AMSU-A1 en METOP-B (canales 1 y 4) y METOP-C (2, 3 y 6): los instrumentos derivaron, y con
+la 46 se rechazaba la calibración de esos canales. MHS, HIRS y AVHRR coinciden con NWP SAF.
+
+Consecuencia: `update_aapp_ancillary.sh` ahora también trae, cada semana, los cuatro
+coeficientes que viven en el host (AMSU-A, MHS, HIRS, AVHRR), validando la cabecera `## LOC`
+y dejando la versión anterior respaldada con fecha. La decisión de la mañana —"esos
+coeficientes casi nunca cambian, no van en cron"— era equivocada.
+
+**Pendiente de decidir:** el caché de operación sigue con la 46 (el cambio no se aplicó sin
+permiso). Con la 48, los sondeos de METOP-C diferirán un poco de los de stratus (47) mientras
+convivan; con la 47, saldrían idénticos pero con límites ya superados por NWP SAF.
+
+- Falta el render: mapas por nivel y Skew-T como los de JPSS (`run_polar2grid_edr.sh`, lector
+  `nucaps`). La vieja no tiene vistas de NUCAPS de METOP, así que no se pierde nada mientras.
 - Los nombres de los mapas y Skew-T hoy dicen `atms-cris`; para METOP, `iasi-amsu` o lo que
   se acuerde, y la entrada correspondiente en `product_map`.
 - Confirmar que el lector `nucaps` de Polar2Grid lee igual la salida de METOP.

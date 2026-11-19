@@ -382,6 +382,12 @@ LOG_FILE="${LOG_DIR}/${TIMESTAMP_FILE}_${FILENAME}.log"
 # ============================================================================
 
 exec 9> "$CANDADO"
+# Lo comparten lanotadm (operación) y quien pruebe a mano desde el clon: si lo
+# crea una persona con su umask, lanotadm ya no puede abrirlo y la siguiente
+# pasada muere aquí (pasó con las pruebas del 2026-11-18: quedó de
+# aguilars:aguilars, así que ni g+w alcanzaba). Es un archivo vacío: escribible
+# para todos no expone nada.
+chmod a+rw "$CANDADO" 2>/dev/null || true
 if ! flock -n 9; then
     echo "[$TIMESTAMP] Otra corrida de AAPP en curso; se espera hasta ${ESPERA_MIN} min..."
     if ! flock -w $((ESPERA_MIN * 60)) 9; then

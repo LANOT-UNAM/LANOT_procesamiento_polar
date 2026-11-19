@@ -2,16 +2,16 @@
 # ==============================================================================
 # procesar_metop.sh — una pasada de METOP-B/C, del crudo a lo que se publica.
 #
-# Es el procesar_pasada.sh de la rama METOP, y mucho más corto: hoy son dos
-# eslabones en serie.
+# Es el procesar_pasada.sh de la rama METOP, y mucho más corto:
 #
-#   1. run_metop_l1.sh        crudo → Level 1 (AMSU-A, MHS, AVHRR, IASI)
+#   1. run_metop_l1.sh          crudo → Level 1 (AMSU-A, MHS, AVHRR, IASI)
 #   2. run_polar2grid_avhrr.sh  AVHRR → GeoTIFF y vistas
+#   3. run_heap_metop.sh        IASI + AMSU-A + MHS → sondeos NUCAPS
 #
-# El 2 corre solo si el 1 dejó marcador, y sobre el hrpt que dice su manifiesto
-# (<crudo>.l1), no sobre "el más reciente": con dos pasadas seguidas, la
-# autoselección podría tomar el de la otra. Aquí se colgará la rama METOP de
-# HEAP (plan_metop.md, pieza 5).
+# El 2 y el 3 corren solo si el 1 dejó marcador, y sobre los archivos que dice
+# su manifiesto (<crudo>.l1), no sobre "el más reciente": con dos pasadas
+# seguidas, la autoselección podría tomar los de la otra. Van en serie aunque no
+# dependan uno del otro: el AVHRR tarda ~20 s y HEAP ~1 min.
 #
 # Lo invocan recibe.sh (rama metop de config/cadenas.tsv) y barrer_pendientes.sh.
 #
@@ -32,6 +32,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 RUN_L1="${SCRIPT_RUN_METOP_L1:-$SCRIPT_DIR/run_metop_l1.sh}"
 RUN_AVHRR="${SCRIPT_RUN_AVHRR:-$SCRIPT_DIR/run_polar2grid_avhrr.sh}"
+RUN_HEAP="${SCRIPT_RUN_HEAP_METOP:-$SCRIPT_DIR/run_heap_metop.sh}"
 STATE_L1="${METOP_STATE_DIR:-/data/output/metop/state/aapp}"
 DIR_L1="${METOP_OUTPUT_DIR:-/data/output/metop/level1}"
 
@@ -73,6 +74,15 @@ else
     if [ "$c" -eq 0 ]; then ESTADO_AVHRR="ok"; else ESTADO_AVHRR="FALLÓ (código $c)"; fi
 fi
 
+# --- 3. Sondeos ----------------------------------------------------------------
+c=0
+"$RUN_HEAP" "$BASE" || c=$?
+case $c in
+    0)  ESTADO_HEAP="ok" ;;
+    75) ESTADO_HEAP="pospuesto (candado de HEAP tomado)" ;;
+    *)  ESTADO_HEAP="FALLÓ (código $c)" ;;
+esac
+
 echo ""
-echo "[$(marca)] === $BASE: Level 1 ok · AVHRR $ESTADO_AVHRR · $(( $(date +%s) - inicio )) s ==="
+echo "[$(marca)] === $BASE: Level 1 ok · AVHRR $ESTADO_AVHRR · sondeos $ESTADO_HEAP · $(( $(date +%s) - inicio )) s ==="
 exit 0
