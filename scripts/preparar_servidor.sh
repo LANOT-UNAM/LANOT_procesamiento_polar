@@ -136,7 +136,10 @@ DIRS_775=(
     # MMAM, TLE y satpos, y los auxiliares de IASI. calibration/ no va aquí: la
     # siembra run_metop_l1.sh desde la imagen la primera vez.
     /data/output/metop/level1
+    /data/output/metop/geotiff/avhrr
+    /data/output/metop/vistas/avhrr
     /data/output/metop/state/aapp
+    /data/output/metop/state/polar2grid_avhrr
     /data/ancillary/aapp
     /data/ancillary/aapp/mmam
     /data/ancillary/aapp/orbelems

@@ -62,8 +62,9 @@
 #
 # TERCERA TAREA: los crudos de la rama METOP (código 4 de consultar_cadena), con
 # las mismas reglas que los de JPSS —orden cronológico, marcador más nuevo que el
-# crudo, MAX_INTENTOS y .fallido— pero con run_metop_l1.sh y sus marcadores, en
-# state/aapp. Van después de los de JPSS y no los esperan: AAPP tiene su propio
+# crudo, MAX_INTENTOS y .fallido— pero con procesar_metop.sh (Level 1 y AVHRR) y
+# los marcadores del Level 1, en state/aapp. Un AVHRR que falle no se reintenta
+# desde aquí, como el render de JPSS. Van después de los de JPSS y no los esperan: AAPP tiene su propio
 # candado, y run_metop_l1.sh sale en 75 si está tomado (METOP_ESPERA_MIN=0, para
 # que el barrido no se quede una hora esperando).
 # ==============================================================================
@@ -80,7 +81,7 @@ MAX_INTENTOS="${MAX_INTENTOS:-3}"
 BARRIDO_LOCK="${BARRIDO_LOCK:-/data/tmp/lanot_barrido.lock}"
 
 PROCESAR_PASADA="$SCRIPTS_DIR/procesar_pasada.sh"
-RUN_METOP="$SCRIPTS_DIR/run_metop_l1.sh"
+RUN_METOP="$SCRIPTS_DIR/procesar_metop.sh"
 STATE_METOP="${METOP_STATE_DIR:-/data/output/metop/state/aapp}"
 
 # Los mismos marcadores que lee procesar_pasada.sh, con las mismas variables.
@@ -321,7 +322,7 @@ m_procesados=0
 m_rendidos=0
 
 if [ ! -x "$RUN_METOP" ]; then
-    echo "  ⚠ no está run_metop_l1.sh ($RUN_METOP): no se barren los crudos de METOP"
+    echo "  ⚠ no está procesar_metop.sh ($RUN_METOP): no se barren los crudos de METOP"
 else
     [ "$DRY_RUN" -eq 1 ] || mkdir -p "$STATE_METOP" 2>/dev/null || true
 

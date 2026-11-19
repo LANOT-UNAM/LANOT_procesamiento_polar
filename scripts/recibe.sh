@@ -14,7 +14,7 @@
 #   config/cadenas.tsv qué satélite es y:
 #
 #   - JPSS (NOAA-20, NOAA-21): lanza procesar_pasada.sh en segundo plano
-#   - METOP-B/C (desde el 2026-11-19): lanza run_metop_l1.sh en segundo plano
+#   - METOP-B/C (desde el 2026-11-19): lanza procesar_metop.sh en segundo plano
 #   - lo que no es de esta cadena (Aqua, que ya no procesa nadie; METOP antes de
 #     esa fecha): lo registra y sale en 0
 #   - una cadena que no esté en la tabla: aviso visible y sale en 0. Puede ser
@@ -28,7 +28,7 @@
 #
 # Ejemplo:
 #   ./recibe.sh chain2-1_pass11                     # NOAA-20 -> procesar_pasada.sh
-#   ./recibe.sh chain6-2_pass52_20261119T161249     # METOP -> run_metop_l1.sh
+#   ./recibe.sh chain6-2_pass52_20261119T161249     # METOP -> procesar_metop.sh
 #   ./recibe.sh /datawork/input/polar/raw/chain5-2_pass42   # Aqua -> no es de aquí
 ################################################################################
 
@@ -50,7 +50,7 @@ mkdir -p "$LOG_DIR" 2>/dev/null || true
 # invoque.
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 SCRIPT_MODERNO="${SCRIPT_MODERNO:-$SCRIPT_DIR/procesar_pasada.sh}"
-SCRIPT_METOP="${SCRIPT_METOP:-$SCRIPT_DIR/run_metop_l1.sh}"
+SCRIPT_METOP="${SCRIPT_METOP:-$SCRIPT_DIR/procesar_metop.sh}"
 INPUT_DIR="${RTSTPS_INPUT_DIR:-/datawork/input/polar/raw}"
 
 source "$SCRIPT_DIR/cadenas.sh"
@@ -107,10 +107,10 @@ case "$CODIGO_CADENA" in
         echo "[$(marca)] Proceso lanzado: PID=$!" >> "$LOG_FILE"
         ;;
     4)
-        # run_metop_l1.sh no escribe un log de cadena como procesar_pasada.sh:
+        # procesar_metop.sh no escribe un log de cadena como procesar_pasada.sh:
         # su salida es el resumen de la corrida, y va a un log propio aquí.
         LOG_METOP="${LOG_DIR}/$(date '+%Y%m%d_%H%M%S')_metop_${FILENAME}.log"
-        echo "[$(marca)] SATÉLITE: $SATELITE -> run_metop_l1.sh (log: $LOG_METOP)" >> "$LOG_FILE"
+        echo "[$(marca)] SATÉLITE: $SATELITE -> procesar_metop.sh (log: $LOG_METOP)" >> "$LOG_FILE"
 
         nohup "$SCRIPT_METOP" "$RAW_FILE" < /dev/null >> "$LOG_METOP" 2>&1 &
 

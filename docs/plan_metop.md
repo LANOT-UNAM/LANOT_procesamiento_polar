@@ -291,7 +291,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
 | Sondeos (IASI + AMSU-A + MHS) | `cspp_heap_v3.0.sif` soporta `m01`/`m03` (manual §1.2 y §1.6.2); falta la rama METOP de `run_heap_edr.sh`. |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
-| AVHRR a GeoTIFF y vistas | `polar2grid_v3.2-mapdrawer.sif` trae `avhrr_l1b_aapp`, y `wgs84_geo_1000m` ya está en `config/grid.yaml`. Falta el script, las CPT y las entradas de `product_map`. |
+| AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Falta publicarlo (kawak y dataservice) y apagar `crea_vistas_metop.sh` en kawak. |
 | Publicación en kawak | Falta la correspondencia en `publicar_kawak.sh`. |
 
 ## Trabajo, por pieza
@@ -355,12 +355,29 @@ para la pieza 3.
 
 ### 4. AVHRR
 
-- Una sección de AVHRR en el renderizador de Level 1 (o un script propio), una llamada a
-  Polar2Grid por conjunto de bandas, GeoTIFF float32 a `geotiff/avhrr` y vistas decoradas a
-  `vistas/avhrr` — hoy la vieja publica los GeoTIFF de datos como vistas.
-- CPT y entradas de `product_map` en LANOT_tools para lo que se decida mostrar: empujar, mover
-  el pin, recompilar (y agregar a `%test` lo nuevo).
-- Comparar contra las vistas que publica hoy la vieja antes de sustituirlas.
+**Hecho el 2026-11-18** con `scripts/run_polar2grid_avhrr.sh`, que junta las dos piezas
+viejas: el `polar2grid.sh` de `metop2.sh` (stratus: GeoTIFF float32, `wgs84_geo_1000m`,
+`nearest`) y `crea_vistas_metop.sh` de LANOT_tools, que corre **en kawak** sobre los GeoTIFF
+que llegan a `/dataservice/noaa-metop/avhrr/vistas`: una vista por banda (las térmicas con
+`-i`) y el RGB 1-2-3a que apila `geotiff2view`. Mismos nombres de archivo que los dos.
+Unidad de trabajo: el `hrpt` de la pasada, con marcador en `state/polar2grid_avhrr`.
+`procesar_metop.sh` lo encadena tras el Level 1 usando el manifiesto `.l1`; `recibe.sh` y el
+barrido llaman a ese orquestador.
+
+- Probado de punta a punta con `chain6-2_pass52` (METOP-C): 3 min 17 s del crudo a 5 GeoTIFF
+  y 6 vistas. Contra kawak, la misma pasada: misma geometría y composición; la nuestra tira
+  algo al amarillo y la de kawak al azul, por el realce (kawak corre un LANOT_tools anterior,
+  sobre GeoTIFF de Polar2Grid 3.0). La rejilla sale 2591×3033 contra 2590×3032 en stratus:
+  Polar2Grid 3.2 redondea distinto el borde de `wgs84_geo_1000m`.
+- **`crea_vistas_metop.sh` pierde pasadas**: toma los 5 archivos más recientes y solo si
+  pasaron más de 10 min desde lo último. La pasada de METOP-B de las 15:40 del 2026-11-18 no
+  está en kawak porque la de METOP-C llegó 20 min después. Con marcador por pasada no pasa.
+- `product_map` no tiene las bandas de AVHRR: las vistas se rotulan "Metop-B BAND4", "Metop-B
+  RGB", como hoy en kawak. Agregarlas (p. ej. "10.8 µm") obliga a empujar LANOT_tools, mover
+  el pin y recompilar `polar2grid_v3.2-mapdrawer.sif`; queda como mejora.
+- Falta publicar: GeoTIFF a `/dataservice/noaa-metop/avhrr` y vistas a
+  `kawak:/var/www/html/polar/noaa-metop/avhrr/vistas`, y entonces apagar `crea_vistas_metop.sh`
+  en kawak. Mientras convivan, los nombres son idénticos: no copiar encima de lo de la vieja.
 
 ### 5. Sondeos con HEAP
 
