@@ -8,7 +8,8 @@
 # Columnas, separadas por tabulador:
 #
 #   ruta    directorio, absoluto. limpiar.sh solo acepta /data/tmp, /data/ancillary
-#           y lo que cuelgue de /data/output/jpss/.
+#           y lo que cuelgue de /data/output/jpss/, /data/output/metop/ o
+#           /data/ancillary/aapp/.
 #   días    edad mínima, por mtime, para borrar. Entero, al menos 1.
 #   modo    archivos        todo archivo debajo de la ruta, a cualquier profundidad.
 #                           Los directorios se quedan: los run_*.sh los esperan.
@@ -19,7 +20,8 @@
 #                           (AAAA_MM_DD_JJJ) del primer nivel. Nada más de esa
 #                           raíz: ahí cuelgan los cachés de los otros programas.
 #           marcadores      archivos de estado, salvo los de state/rt-stps.
-#           marcadores_raw  los de state/rt-stps, y por otra regla: se borran
+#           marcadores_raw  los de state/rt-stps y state/aapp (METOP), que van
+#                           por crudo, y por otra regla: se borran
 #                           cuando su RAW ya no está en el buzón, nunca por edad
 #                           (días es solo la edad mínima del marcador). El barrido
 #                           revisa el buzón entero, sin límite de antigüedad, y un
@@ -36,7 +38,7 @@
 # porque pesa poco (~70 GB por semana) y permite rehacer SDR.
 
 # ruta	días	modo	patrón
-/data/tmp	7	entradas	^((acspo|atmos|cryo|fire|flood|heap|lsr|mirs|omps|p2g|p2g_l1|sdr)_(work|staging)|rt_stps)_
+/data/tmp	7	entradas	^((acspo|atmos|cryo|fire|flood|heap|lsr|mirs|omps|p2g|p2g_l1|sdr)_(work|staging)|rt_stps|aapp)_
 /data/output/jpss/tmp	7	entradas
 /data/output/jpss/level0	14	archivos
 /data/output/jpss/level1	7	archivos
@@ -46,3 +48,13 @@
 /data/output/jpss/state	30	marcadores
 /data/output/jpss/state/rt-stps	1	marcadores_raw
 /data/ancillary	30	dias_anc
+
+# METOP (run_metop_l1.sh), acordado el 2026-11-18. level1 como el de JPSS; pesa
+# ~800 MB por pasada, casi todo IASI (1C de EUMETSAT, AAPP y sus HDF5). Los
+# marcadores van por crudo, como los de RT-STPS. El MMAM solo sirve el reciente
+# (ccsds_to_l0 busca uno vigente para la pasada) y en stratus nadie lo poda: 5 712
+# archivos desde junio de 2024. orbelems/ (TLE y satpos) no se toca todavía: el
+# índice de tleing apunta a los TLE por nombre y no está visto qué pasa si faltan.
+/data/output/metop/level1	7	archivos
+/data/output/metop/state/aapp	1	marcadores_raw
+/data/ancillary/aapp/mmam	30	archivos

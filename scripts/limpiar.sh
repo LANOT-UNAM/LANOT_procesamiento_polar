@@ -100,7 +100,8 @@ informar() {   # ruta modo días n bytes
 ruta_permitida() {
     case "$1" in
         /data/tmp|/data/ancillary) return 0 ;;
-        /data/output/jpss/?*)      [[ "$1" != *..* ]] ;;
+        /data/output/jpss/?*|/data/output/metop/?*|/data/ancillary/aapp/?*)
+                                   [[ "$1" != *..* ]] ;;
         *) return 1 ;;
     esac
 }
@@ -130,8 +131,9 @@ limpiar_marcadores() {   # ruta minutos
     echo "$r"
 }
 
-# Marcadores de RT-STPS: <raw>.done, .rdr, .intentos, .fallido. Se van cuando su
-# RAW ya no está en el buzón. Si el buzón no se ve o está vacío —el NFS de
+# Marcadores por crudo —los de RT-STPS: <raw>.done, .rdr, .intentos, .fallido;
+# los de METOP (state/aapp): <raw>.done, .l1—. Se van cuando su RAW ya no está
+# en el buzón, que es el mismo para las dos ramas. Si el buzón no se ve o está vacío —el NFS de
 # /datawork caído—, TODOS los RAW parecerían borrados y esto se llevaría un mes
 # de marcadores; al volver el montaje, el barrido reprocesaría el mes entero.
 limpiar_marcadores_raw() {   # ruta minutos
@@ -148,7 +150,7 @@ limpiar_marcadores_raw() {   # ruta minutos
         n=$((n + 1)); b=$((b + $(stat -c %s "$m")))
         [ "$DRY_RUN" -eq 1 ] || rm -f -- "$m"
     done < <(find "$ruta" -maxdepth 1 -type f -mmin "+$min" \
-                  \( -name '*.done' -o -name '*.rdr' -o -name '*.intentos' -o -name '*.fallido' \) -print0 2>/dev/null)
+                  \( -name '*.done' -o -name '*.rdr' -o -name '*.l1' -o -name '*.intentos' -o -name '*.fallido' \) -print0 2>/dev/null)
     echo "$n $b"
 }
 
