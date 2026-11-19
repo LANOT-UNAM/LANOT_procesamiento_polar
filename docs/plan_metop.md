@@ -256,8 +256,13 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   - Los coeficientes de calibración de ATOVS, que se actualizan con
     `get_atovs_cal_files.sh`.
 
-  Ninguno de los dos va en cron. En la cadena nueva es un `update_aapp_ancillary.sh`
-  semanal, como el de HEAP.
+  Ninguno de los dos va en cron. En la cadena nueva, `update_aapp_ancillary.sh` (semanal)
+  corre `get_aux_files.sh`, que solo baja lo que falta y es seguro, y revisa que lo nuevo no
+  sea HTML. `get_atovs_cal_files.sh` **no** va en cron: escribe también en `data/preproc` y
+  `data/navigation`, que son de la imagen, y sustituye el archivo local por lo que baje sin
+  validarlo —el mismo riesgo que borró los coeficientes de AVHRR en stratus—. Esos
+  coeficientes se actualizan con la versión de AAPP: recompilar y volver a sembrar
+  `calibration/`.
 - **Dinámico que se produce solo:**
   - `MMAM/`: los `MMAM_*.xml` y `TLE_*.tle` que `ccsds_to_l0` extrae de cada pasada
     (`-g`/`-u`). Lleva 5 712 archivos desde junio de 2024 y nadie lo poda.
@@ -283,7 +288,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Pieza | Estado |
 |---|---|
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. Probado con simulados; falta la primera pasada real tras instalar. |
-| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Faltan: comparar con stratus, la fase de `preparar_servidor.sh` (`/data/ancillary/aapp/opsaux` con `get_aux_files.sh`), `update_aapp_ancillary.sh`, las filas de `tarballs.tsv`, y que `/data/output/metop` entre en `config/retencion.tsv` y en el catálogo (los dos suponen `/data/output/jpss/`): IASI deja ~800 MB por pasada. |
+| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
 | Sondeos (IASI + AMSU-A + MHS) | `cspp_heap_v3.0.sif` soporta `m01`/`m03` (manual §1.2 y §1.6.2); falta la rama METOP de `run_heap_edr.sh`. |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
 | AVHRR a GeoTIFF y vistas | `polar2grid_v3.2-mapdrawer.sif` trae `avhrr_l1b_aapp`, y `wgs84_geo_1000m` ya está en `config/grid.yaml`. Falta el script, las CPT y las entradas de `product_map`. |

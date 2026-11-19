@@ -22,6 +22,8 @@
 #   4  XML de RT-STPS, extraídos del .sif
 #   5  leapsec.dat, extraído del .sif
 #   6  Primer llenado de los cachés de ancillary dinámico
+#   7  Bundle de CSPP HEAP     → /data/opt/CSPP_HEAP_3_0 (escribible)
+#   8  Rama METOP: auxiliares de IASI → /data/ancillary/aapp/opsaux
 #
 # Uso:
 #   sudo ./scripts/preparar_servidor.sh              todas las fases
@@ -36,6 +38,7 @@
 #   TARBALLS    Bundles                          (def. /opt/contenedores)
 #   TARFILES    Estáticos                        (def. $TARBALLS/tarfiles)
 #   RTSTPS_SIF  Imagen de RT-STPS                (def. /opt/containers/rt_stps_7.0.sif)
+#   AAPP_SIF    Imagen de AAPP (rama METOP)      (def. /opt/containers/aapp_v8.15.sif)
 # ==============================================================================
 
 set -euo pipefail
@@ -49,6 +52,7 @@ DUENO="${DUENO:-lanotadm:lanotadm}"
 TARBALLS="${TARBALLS:-/opt/contenedores}"
 TARFILES="${TARFILES:-$TARBALLS/tarfiles}"
 RTSTPS_SIF="${RTSTPS_SIF:-/opt/containers/rt_stps_7.0.sif}"
+AAPP_SIF="${AAPP_SIF:-/opt/containers/aapp_v8.15.sif}"
 
 # Rutas dentro del contenedor de RT-STPS
 RTSTPS_XML_INTERNO="/opt/rt-stps/config"
@@ -128,6 +132,16 @@ DIRS_775=(
     /data/ancillary/heap
     # MiRS no descarga nada (--noSFR -l), pero su driver exige un caché escribible
     /data/ancillary/mirs
+    # Rama METOP (run_metop_l1.sh). El caché de AAPP lleva lo que AAPP escribe:
+    # MMAM, TLE y satpos, y los auxiliares de IASI. calibration/ no va aquí: la
+    # siembra run_metop_l1.sh desde la imagen la primera vez.
+    /data/output/metop/level1
+    /data/output/metop/state/aapp
+    /data/ancillary/aapp
+    /data/ancillary/aapp/mmam
+    /data/ancillary/aapp/orbelems
+    /data/ancillary/aapp/opsaux
+    /var/log/lanot/polares/aapp
 )
 
 DIRS_755=(
@@ -156,6 +170,8 @@ Fases:
   4  XML de RT-STPS (del .sif)
   5  leapsec.dat (del .sif)
   6  Primer llenado de los cachés de ancillary
+  7  Bundle de CSPP HEAP
+  8  Rama METOP: auxiliares de IASI (NWP SAF)
 
 Opciones:
   -s, --solo <n>           Una sola fase
@@ -201,7 +217,7 @@ desplegado() {
 
 # ------------------------------------------------------------------- fase 1
 fase_1_directorios() {
-    paso "[1/7] Directorios, dueño y permisos"
+    paso "[1/8] Directorios, dueño y permisos"
     local d faltaban=0
 
     for d in "${DIRS_755[@]}" "${DIRS_775[@]}"; do
@@ -329,15 +345,15 @@ desplegar_estaticos() {
     return 0
 }
 
-fase_2_sdr()   { desplegar_estaticos jpss_sdr    "[2/7] Estático de CSPP SDR"; }
-fase_3_atmos() { desplegar_estaticos viirs_atmos "[3/7] Estático de CSPP ATMOS"; }
+fase_2_sdr()   { desplegar_estaticos jpss_sdr    "[2/8] Estático de CSPP SDR"; }
+fase_3_atmos() { desplegar_estaticos viirs_atmos "[3/8] Estático de CSPP ATMOS"; }
 
 # HEAP no despliega un estático sino el software entero, y es deliberado: su
 # árbol de instalación tiene que ser escribible, porque el Fortran de la
 # recuperación abre 'fort.40' dentro de él. Con el bundle en el .sif la corrida
 # termina en 0 sin escribir un solo sondeo. Ver contenedores/cspp_heap_v3.0.def.
 fase_7_heap() {
-    desplegar_estaticos heap "[7/7] Bundle de CSPP HEAP" || return 1
+    desplegar_estaticos heap "[7/8] Bundle de CSPP HEAP" || return 1
 
     # Los demás estáticos son DATOS: basta con poder leerlos. Este es SOFTWARE, y
     # el chown -R al dueño de /data/opt deja los ejecutables fuera del alcance de
@@ -382,7 +398,7 @@ fase_7_heap() {
 
 # ------------------------------------------------------------------- fase 4
 fase_4_xml() {
-    paso "[4/7] XML de RT-STPS"
+    paso "[4/8] XML de RT-STPS"
     local destino="$RAIZ/data/opt/RT-STPS/rt-stps/config"
     local xml n=0
 
@@ -424,7 +440,7 @@ fase_4_xml() {
 # fuente con el formato que RT-STPS espera. Aquí hay una sola fuente y, si no
 # está, la fase falla.
 fase_5_leapsec() {
-    paso "[5/7] leapsec.dat"
+    paso "[5/8] leapsec.dat"
     local destino="$RAIZ/data/ancillary/common/leapsec.dat"
     local tmp
 
@@ -461,7 +477,7 @@ fase_5_leapsec() {
 
 # ------------------------------------------------------------------- fase 6
 fase_6_cache() {
-    paso "[6/7] Primer llenado de los cachés de ancillary"
+    paso "[6/8] Primer llenado de los cachés de ancillary"
     local s fallos=0
 
     for s in update_sdr_daily.sh update_atmos_ancillary.sh; do
@@ -480,6 +496,42 @@ fase_6_cache() {
     echo ""
     echo "  Estos dos van además en cron; ver docs/estado_y_pendientes.md."
     [ "$fallos" -eq 0 ] || return 1
+}
+
+# ------------------------------------------------------------------- fase 8
+# Los auxiliares de IASI que OPS-LRS necesita para sacar IASI. Es el mismo
+# script que va en cron semanal; aquí se corre la primera vez. Corre como root,
+# así que después se le da el árbol al dueño: si no, lanotadm no podría ni
+# actualizar opsaux ni escribir el MMAM.
+fase_8_aapp() {
+    paso "[8/8] Rama METOP: auxiliares de IASI"
+    local s="$SCRIPT_DIR/update_aapp_ancillary.sh"
+    local anc="$RAIZ/data/ancillary/aapp"
+
+    if [ ! -f "$AAPP_SIF" ]; then
+        echo "ERROR: no está la imagen de AAPP: $AAPP_SIF" >&2
+        echo "Compílala antes: ./contenedores/construir.sh aapp_v8.15" >&2
+        return 1
+    fi
+    if [ ! -x "$s" ]; then
+        echo "  ✗ no está o no es ejecutable: $s"
+        return 1
+    fi
+
+    echo "  → update_aapp_ancillary.sh (~1 GB la primera vez)"
+    if ! correr env METOP_CONTAINER="$AAPP_SIF" METOP_ANC_DIR="$anc" \
+                    METOP_WORK_BASE="$RAIZ/data/tmp" METOP_LOG_BASE="$RAIZ/var/log/lanot/polares" "$s"; then
+        echo "  ✗ update_aapp_ancillary.sh terminó con error"
+        return 1
+    fi
+
+    # Escribible por el grupo, con setgid para que lo nuevo herede el grupo.
+    correr chown -R "$DUENO" "$anc"
+    correr chmod -R g+rwX "$anc"
+    if [ "$DRY_RUN" -eq 0 ]; then
+        find "$anc" -type d -exec chmod g+s {} +
+    fi
+    echo "  Va además en cron semanal (ver el encabezado de update_aapp_ancillary.sh)."
 }
 
 # --------------------------------------------------------------- verificación
@@ -534,7 +586,7 @@ verificar() {
     # El de HEAP no lo llena la fase 6 ni ningún cron: lo puebla el propio
     # driver la primera vez que corre una pasada, así que vacío es lo normal
     # hasta entonces.
-    for d in /data/ancillary /data/ancillary/atmos /data/ancillary/heap; do
+    for d in /data/ancillary /data/ancillary/atmos /data/ancillary/heap /data/ancillary/aapp/opsaux; do
         if [ -d "$RAIZ$d" ] && [ -n "$(ls -A "$RAIZ$d" 2>/dev/null)" ]; then
             echo "  ✓ $d con contenido"
         else
@@ -596,12 +648,12 @@ if [ "$DRY_RUN" -eq 0 ] && [ "$EUID" -ne 0 ] && [ -z "$RAIZ" ]; then
     exit 1
 fi
 
-FASES=(fase_1_directorios fase_2_sdr fase_3_atmos fase_4_xml fase_5_leapsec fase_6_cache fase_7_heap)
+FASES=(fase_1_directorios fase_2_sdr fase_3_atmos fase_4_xml fase_5_leapsec fase_6_cache fase_7_heap fase_8_aapp)
 
 if [ -n "$SOLO" ]; then
     case "$SOLO" in
-        [1-7]) ;;
-        *) echo "ERROR: --solo acepta 1..7, no '$SOLO'" >&2; exit 1 ;;
+        [1-8]) ;;
+        *) echo "ERROR: --solo acepta 1..8, no '$SOLO'" >&2; exit 1 ;;
     esac
     "${FASES[$((SOLO - 1))]}"
     exit $?
@@ -614,7 +666,7 @@ done
 
 paso "Resumen"
 if [ "$FALLOS" -eq 0 ]; then
-    echo "  Las siete fases terminaron bien."
+    echo "  Las ocho fases terminaron bien."
     echo ""
     echo "  Siguiente paso: instalar el código de operación."
     echo "    sudo ./scripts/instalar.sh"
