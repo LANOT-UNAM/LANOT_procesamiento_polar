@@ -282,7 +282,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 
 | Pieza | Estado |
 |---|---|
-| Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | Existe; METOP sale como "no es de esta cadena". Hay que enseñarle una segunda rama. |
+| Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. Probado con simulados; falta la primera pasada real tras instalar. |
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Faltan: comparar con stratus, la fase de `preparar_servidor.sh` (`/data/ancillary/aapp/opsaux` con `get_aux_files.sh`), `update_aapp_ancillary.sh`, las filas de `tarballs.tsv`, y que `/data/output/metop` entre en `config/retencion.tsv` y en el catálogo (los dos suponen `/data/output/jpss/`): IASI deja ~800 MB por pasada. |
 | Sondeos (IASI + AMSU-A + MHS) | `cspp_heap_v3.0.sif` soporta `m01`/`m03` (manual §1.2 y §1.6.2); falta la rama METOP de `run_heap_edr.sh`. |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
@@ -329,10 +329,19 @@ para la pieza 3.
 
 ### 3. Orquestación
 
-- `config/cadenas.tsv`: una columna de rama (`jpss`/`metop`), para que la columna `xml` deje
-  de hacer las veces de "¿lo procesa esta cadena?".
-- `recibe.sh` y `barrer_pendientes.sh` despachan por rama. La cola de la fase 0.7 del plan de
-  `/datawork` tiene que admitir los dos tipos de boleto.
+- **Hecho el 2026-11-18.** `config/cadenas.tsv` tiene columna `rama` (`jpss`, `metop`, `-`)
+  y `consultar_cadena` devuelve 4 para `metop`, sin cambiar su salida (`<satélite> <xml>`),
+  que tres scripts leen con `read`. La fila `metop` de `chain6` vale **desde el 2026-11-19
+  00:00 UTC**: es fecha de corte, para que el barrido no procese los 268 `chain6` que ya
+  estaban en el buzón (~13 h y >200 GB). Uno de esos se puede procesar a mano con
+  `run_metop_l1.sh <crudo>`, que lo acepta con aviso.
+- `recibe.sh` lanza `run_metop_l1.sh` en segundo plano con log en
+  `cadena/<fecha>_metop_<crudo>.log`; `barrer_pendientes.sh` tiene una tercera tarea con las
+  reglas de los crudos de JPSS (intentos, `.fallido`) sobre `state/aapp`, y le pasa
+  `METOP_ESPERA_MIN=0`: con AAPP ocupado, `run_metop_l1.sh` sale en 75 y no cuenta.
+- Mientras convivan, stratus sigue procesando METOP con `metop2.sh`: los dos lados producen.
+- Pendiente: la cola de la fase 0.7 del plan de `/datawork` tiene que admitir los dos tipos
+  de boleto.
 - Un orquestador de pasada para METOP (L1 → AVHRR, HEAP y MiRS en paralelo), en vez de meter
   sus eslabones en los doce de `procesar_pasada.sh`.
 - `scripts/pasadas.sh` agrupa por nombres de SDR (`j02_d…_t…`); METOP necesita claves a

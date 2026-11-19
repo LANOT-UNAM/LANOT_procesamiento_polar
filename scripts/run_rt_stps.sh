@@ -101,7 +101,7 @@ EOF
 
 # Qué satélite es cada crudo lo decide config/cadenas.tsv, la misma tabla que
 # leen recibe.sh y el barrido. consultar_cadena imprime "<SATELITE> <xml>" y
-# devuelve 0 solo si el crudo es de esta cadena.
+# devuelve 0 solo si el crudo es de la rama JPSS (4 es METOP, ver cadenas.sh).
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/cadenas.sh"
 
 # Imprime la ruta del RAW más reciente del buzón que sea de un satélite moderno
@@ -202,7 +202,8 @@ CODIGO_CADENA=0
 SAT_INFO=$(consultar_cadena "$INPUT_FILE") || CODIGO_CADENA=$?
 case "$CODIGO_CADENA" in
     0) ;;
-    1)
+    1|4)
+        # 4 es la rama METOP: run_metop_l1.sh, no RT-STPS.
         echo "[$TIMESTAMP] ERROR: $FILENAME es de ${SAT_INFO% *}, que no procesa RT-STPS." >&2
         exit 1
         ;;

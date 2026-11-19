@@ -38,6 +38,10 @@
 #   ./run_metop_l1.sh <crudo>          # un crudo específico
 #   ./run_metop_l1.sh --force [crudo]  # reprocesa aunque ya tenga marcador
 #
+# Códigos de salida: 0 hecho (o ya estaba, o nada pendiente), 1 fallo, 75 el
+# candado de AAPP siguió tomado METOP_ESPERA_MIN minutos (no es fallo: el
+# barrido no lo cuenta como intento).
+#
 # Éxito = AAPP_RUN_METOP en 0 Y los Level 1 de TODOS los instrumentos esperados
 # para ese satélite. AAPP_RUN_METOP sale en 2 cuando falla OPS-LRS y aun así
 # entrega lo demás: eso es un fallo (sin IASI no hay sondeos), pero lo que salió
@@ -152,13 +156,13 @@ EOF
 
 source "$SCRIPT_DIR/cadenas.sh"
 
-# ¿Es de METOP este crudo, según cadenas.tsv? consultar_cadena devuelve 1 para
-# lo que "atiende otro sistema", y METOP está ahí mientras la rama no tenga su
-# columna en la tabla (plan_metop.md, pieza 3): se distingue por el satélite.
+# ¿Es de la rama METOP este crudo, según cadenas.tsv? consultar_cadena devuelve
+# 4. Los chain6 de antes del 2026-11-19 dan 1 (los procesa la cadena vieja) y la
+# autoselección no los toma; a mano, sí (ver SELECCIÓN DEL CRUDO).
 es_de_metop() {
-    local info codigo=0
-    info=$(consultar_cadena "$1" 2>/dev/null) || codigo=$?
-    [ "$codigo" -eq 1 ] && [[ "$info" == METOP* ]]
+    local codigo=0
+    consultar_cadena "$1" > /dev/null 2>&1 || codigo=$?
+    [ "$codigo" -eq 4 ]
 }
 
 seleccionar_crudo_mas_reciente() {
@@ -264,17 +268,31 @@ if [ -n "$INPUT_FILE" ]; then
     fi
     INPUT_FILE=$(realpath "$INPUT_FILE")
 
-    # Un crudo indicado a mano puede no llamarse chainN-… (pruebas): entonces
-    # decide el SCID. Pero si la tabla dice que es de otro satélite, no.
+    # A mano se acepta también un METOP de antes del corte de la rama (código 1
+    # con satélite METOP: los 268 chain6 de septiembre a noviembre), y uno que
+    # no se llame chainN-… (pruebas), del que decide el SCID. Lo que la tabla
+    # dice que es de otro satélite, no.
     CODIGO_CADENA=0
     SAT_INFO=$(consultar_cadena "$INPUT_FILE" 2>/dev/null) || CODIGO_CADENA=$?
-    if [ "$CODIGO_CADENA" -eq 0 ] || { [ "$CODIGO_CADENA" -eq 1 ] && [[ "$SAT_INFO" != METOP* ]]; }; then
-        echo "ERROR: $(basename "$INPUT_FILE") es de ${SAT_INFO% *} según $CADENAS_TSV, no de METOP." >&2
-        exit 1
-    fi
-    if [ "$CODIGO_CADENA" -ne 1 ]; then
-        echo "[$TIMESTAMP] Aviso: $CADENAS_TSV no conoce este crudo; el satélite saldrá del SCID."
-    fi
+    case "$CODIGO_CADENA" in
+        4) ;;
+        1)
+            if [[ "$SAT_INFO" != METOP* ]]; then
+                echo "ERROR: $(basename "$INPUT_FILE") es de ${SAT_INFO% *} según $CADENAS_TSV, no de METOP." >&2
+                exit 1
+            fi
+            echo "[$TIMESTAMP] Aviso: crudo de METOP anterior a la rama METOP en $CADENAS_TSV; se procesa porque se pidió."
+            ;;
+        0)
+            echo "ERROR: $(basename "$INPUT_FILE") es de ${SAT_INFO% *} según $CADENAS_TSV, no de METOP." >&2
+            exit 1
+            ;;
+        2)  echo "[$TIMESTAMP] Aviso: $CADENAS_TSV no conoce este crudo; el satélite saldrá del SCID." ;;
+        *)
+            echo "ERROR: no se pudo consultar $CADENAS_TSV" >&2
+            exit 1
+            ;;
+    esac
 else
     if [ ! -d "$INPUT_DIR" ]; then
         echo "ERROR: Directorio de entrada no encontrado: $INPUT_DIR" >&2
@@ -367,8 +385,9 @@ exec 9> "$CANDADO"
 if ! flock -n 9; then
     echo "[$TIMESTAMP] Otra corrida de AAPP en curso; se espera hasta ${ESPERA_MIN} min..."
     if ! flock -w $((ESPERA_MIN * 60)) 9; then
+        # 75, como procesar_pasada.sh: el barrido no lo cuenta como intento.
         echo "ERROR: el candado $CANDADO no se liberó en ${ESPERA_MIN} min." >&2
-        exit 1
+        exit 75
     fi
 fi
 

@@ -17,32 +17,41 @@
 # de modificación del crudo. `-` es "desde siempre". Al cambiar el esquema,
 # AGREGAR filas con la fecha nueva; no editar las viejas.
 #
-# xml: el de RT-STPS si la procesa esta cadena; `-` si no (METOP lo procesa la
-# cadena vieja; Aqua ya no lo procesa nadie).
+# xml: el de RT-STPS para la rama jpss; `-` en las demás.
+# rama: quién lo procesa aquí. `jpss` → procesar_pasada.sh (RT-STPS, SDR…);
+# `metop` → run_metop_l1.sh (metopizer + AAPP); `-` → nadie en esta cadena
+# (Aqua; y METOP antes del 2026-11-19, que lo procesa la cadena vieja en stratus).
 # Una cadena que no aparece aquí no se procesa, y recibe.sh lo avisa. No mapear
 # de antemano las cadenas sin uso: si una vuelve con otro satélite, RT-STPS
 # decodificaría con el XML equivocado sin avisar.
 #
-# cadena	desde			satelite	telemetria	xml
+# cadena	desde			satelite	telemetria	xml		rama
 
 # Esquema anterior (de abril de 2025 al 2026-09-21). Solo sirve para los
 # crudos que sigan en el buzón.
-2	-			NPP		nppdb		npp.xml
-6	-			NOAA-20		jpssdb		jpss1.xml
-5	-			METOP-B/C	ahrpt		-
-1	-			Aqua		aquadb		-
+2	-			NPP		nppdb		npp.xml		jpss
+6	-			NOAA-20		jpssdb		jpss1.xml	jpss
+5	-			METOP-B/C	ahrpt		-		-
+1	-			Aqua		aquadb		-		-
 
 # Desde el 2026-09-21, con NOAA-21. El último crudo del esquema anterior es
 # chain6-8_pass58 (NOAA-20, 20:34 UTC) y el primero del nuevo chain5-1_pass41
 # (Aqua, empieza 22:36 UTC). La 3 (metopsgdb) está inactiva.
-1	2026-09-21T21:00:00Z	NOAA-21		jpss2db		jpss2.xml
-2	2026-09-21T21:00:00Z	NOAA-20		jpssdb		jpss1.xml
-4	2026-09-21T21:00:00Z	NPP		nppdb		npp.xml
-5	2026-09-21T21:00:00Z	Aqua		aquadb		-
-6	2026-09-21T21:00:00Z	METOP-B/C	ahrpt		-
+1	2026-09-21T21:00:00Z	NOAA-21		jpss2db		jpss2.xml	jpss
+2	2026-09-21T21:00:00Z	NOAA-20		jpssdb		jpss1.xml	jpss
+4	2026-09-21T21:00:00Z	NPP		nppdb		npp.xml		jpss
+5	2026-09-21T21:00:00Z	Aqua		aquadb		-		-
+6	2026-09-21T21:00:00Z	METOP-B/C	ahrpt		-		-
 
 # Desde el 2026-11-02: S-NPP fuera. El último crudo es chain4-8_pass38_20261102T091627
 # (09:16 UTC); desde el racimo de la tarde no llega nada por la 4. Queda con xml `-`
 # en vez de quitarse porque las filas solo se agregan. Si la 4 vuelve a entregar
 # crudos, es otro satélite: confirmarlo con lspass y agregar su fila.
-4	2026-11-02T12:00:00Z	NPP		nppdb		-
+4	2026-11-02T12:00:00Z	NPP		nppdb		-		-
+
+# Desde el 2026-11-19: METOP-B/C entra a esta cadena (run_metop_l1.sh). La fila
+# de septiembre se queda para los 268 chain6 que ya estaban en el buzón: sin
+# esta fecha de corte el barrido los procesaría todos, unas 13 h y más de 200 GB
+# que la retención borraría a la semana. La cadena vieja sigue procesando METOP
+# en stratus hasta que se apague metop2.sh (plan_metop.md, "Orden").
+6	2026-11-19T00:00:00Z	METOP-B/C	ahrpt		-		metop

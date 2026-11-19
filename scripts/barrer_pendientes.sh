@@ -47,6 +47,7 @@
 #   REINTENTO_HORAS    Hasta qué antigüedad se retoma una pasada (def. 24)
 #   REINTENTO_ESPERA_MIN  Mínimo entre intentos de una pasada (def. 60)
 #   REINTENTOS_POR_BARRIDO  Pasadas retomadas por tic (def. 1)
+#   METOP_STATE_DIR    Marcadores de la rama METOP (def. /data/output/metop/state/aapp)
 #
 # SEGUNDA TAREA: retomar pasadas con ATMOS, LSR o CRYO sin marcador. Un crudo
 # procesado tiene su .done aunque alguna etapa haya fallado —procesar_pasada.sh
@@ -58,6 +59,13 @@
 # renderizar si algo nuevo salió. Solo las que pasaron ya por la cadena (tienen
 # marcador de p2g_l1), con espera entre intentos para dar tiempo a que se
 # publique lo que falta, y pocas por tic para no retrasar las pasadas nuevas.
+#
+# TERCERA TAREA: los crudos de la rama METOP (código 4 de consultar_cadena), con
+# las mismas reglas que los de JPSS —orden cronológico, marcador más nuevo que el
+# crudo, MAX_INTENTOS y .fallido— pero con run_metop_l1.sh y sus marcadores, en
+# state/aapp. Van después de los de JPSS y no los esperan: AAPP tiene su propio
+# candado, y run_metop_l1.sh sale en 75 si está tomado (METOP_ESPERA_MIN=0, para
+# que el barrido no se quede una hora esperando).
 # ==============================================================================
 
 set -uo pipefail
@@ -72,6 +80,8 @@ MAX_INTENTOS="${MAX_INTENTOS:-3}"
 BARRIDO_LOCK="${BARRIDO_LOCK:-/data/tmp/lanot_barrido.lock}"
 
 PROCESAR_PASADA="$SCRIPTS_DIR/procesar_pasada.sh"
+RUN_METOP="$SCRIPTS_DIR/run_metop_l1.sh"
+STATE_METOP="${METOP_STATE_DIR:-/data/output/metop/state/aapp}"
 
 # Los mismos marcadores que lee procesar_pasada.sh, con las mismas variables.
 ESTADO="${ESTADO_BASE:-/data/output/jpss/state}"
@@ -156,9 +166,10 @@ ocupado=0
 while IFS= read -r raw; do
     base="$(basename "$raw")"
 
-    # Solo lo que config/cadenas.tsv asigna a esta cadena. Sin el filtro, un
+    # Solo lo que config/cadenas.tsv asigna a la rama JPSS. Sin el filtro, un
     # crudo de Aqua o METOP iría a RT-STPS, que lo rechaza, y a los tres
-    # intentos quedaría .fallido: todos los días, por cada pasada ajena.
+    # intentos quedaría .fallido: todos los días, por cada pasada ajena. Los de
+    # METOP (código 4) tienen su sección abajo.
     consultar_cadena "$raw" > /dev/null 2>&1 || continue
 
     # La antena RECICLA los nombres, así que un marcador solo vale si es más
@@ -295,8 +306,87 @@ if [ "$ocupado" -eq 0 ] && [ -d "$DIR_P2G_L1" ]; then
 fi
 [ "$retomadas" -eq 0 ] || echo "[$(date '+%Y-%m-%d %H:%M:%S')] Pasadas retomadas: $retomadas"
 
+# ------------------------------------------------------------------------------
+# Rama METOP (ver la cabecera, tercera tarea).
+# ------------------------------------------------------------------------------
+
+es_de_metop() {
+    local codigo=0
+    consultar_cadena "$1" > /dev/null 2>&1 || codigo=$?
+    [ "$codigo" -eq 4 ]
+}
+
+m_pendientes=0
+m_procesados=0
+m_rendidos=0
+
+if [ ! -x "$RUN_METOP" ]; then
+    echo "  ⚠ no está run_metop_l1.sh ($RUN_METOP): no se barren los crudos de METOP"
+else
+    [ "$DRY_RUN" -eq 1 ] || mkdir -p "$STATE_METOP" 2>/dev/null || true
+
+    while IFS= read -r raw; do
+        es_de_metop "$raw" || continue
+        base="$(basename "$raw")"
+
+        for m in done fallido intentos; do
+            if [ -f "$STATE_METOP/$base.$m" ] && [ "$raw" -nt "$STATE_METOP/$base.$m" ]; then
+                [ "$DRY_RUN" -eq 1 ] || rm -f "$STATE_METOP/$base.$m"
+            fi
+        done
+        [ ! -f "$STATE_METOP/$base.done" ]    || [ "$raw" -nt "$STATE_METOP/$base.done" ]    || continue
+        [ ! -f "$STATE_METOP/$base.fallido" ] || [ "$raw" -nt "$STATE_METOP/$base.fallido" ] || continue
+
+        m_pendientes=$((m_pendientes + 1))
+        intentos=0
+        [ ! -f "$STATE_METOP/$base.intentos" ] || [ "$raw" -nt "$STATE_METOP/$base.intentos" ] || intentos="$(cat "$STATE_METOP/$base.intentos" 2>/dev/null || echo 0)"
+
+        if [ "$DRY_RUN" -eq 1 ]; then
+            echo "  [dry-run] METOP $base (intentos: $intentos)"
+            continue
+        fi
+
+        echo "  → METOP $base (intento $((intentos + 1)) de $MAX_INTENTOS)"
+        codigo=0
+        METOP_ESPERA_MIN=0 METOP_STATE_DIR="$STATE_METOP" "$RUN_METOP" "$raw" || codigo=$?
+
+        if [ "$codigo" -eq "$CODIGO_OCUPADO" ]; then
+            echo "    ~ había otra corrida de AAPP en curso; no cuenta como intento"
+            break
+        fi
+
+        intentos=$((intentos + 1))
+        echo "$intentos" > "$STATE_METOP/$base.intentos"
+
+        if [ -f "$STATE_METOP/$base.done" ] && [ "$STATE_METOP/$base.done" -nt "$raw" ]; then
+            rm -f "$STATE_METOP/$base.intentos"
+            m_procesados=$((m_procesados + 1))
+            echo "    ✓ procesado"
+            continue
+        fi
+
+        echo "    ✗ sigue sin marcador (código $codigo)"
+        if [ "$intentos" -ge "$MAX_INTENTOS" ]; then
+            {
+                echo "rendido:  $(date '+%Y-%m-%d %H:%M:%S')"
+                echo "intentos: $intentos"
+                echo "codigo:   $codigo del último intento"
+                echo "raw:      $raw"
+            } > "$STATE_METOP/$base.fallido"
+            m_rendidos=$((m_rendidos + 1))
+            echo "    ⚠ se deja de intentar: $STATE_METOP/$base.fallido"
+        fi
+    done < <(find "$INPUT_DIR" -maxdepth 1 -type f -mmin "+${MIN_AGE_MIN}" \
+                  -printf '%T@ %p\n' 2>/dev/null | sort -n | cut -d' ' -f2-)
+
+    [ "$m_pendientes" -eq 0 ] || echo "[$(date '+%Y-%m-%d %H:%M:%S')] METOP · pendientes vistos: $m_pendientes · procesados: $m_procesados · rendidos: $m_rendidos"
+fi
+
 if [ "$rendidos" -gt 0 ]; then
     echo "Hay RAW marcados .fallido en $STATE_DIR; requieren revisión a mano."
-    exit 1
 fi
+if [ "$m_rendidos" -gt 0 ]; then
+    echo "Hay crudos de METOP marcados .fallido en $STATE_METOP; requieren revisión a mano."
+fi
+[ "$rendidos" -eq 0 ] && [ "$m_rendidos" -eq 0 ] || exit 1
 exit 0
