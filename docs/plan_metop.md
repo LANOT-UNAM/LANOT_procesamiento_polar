@@ -179,7 +179,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   (`3.57`), `ccsds.config` y `libfec.so` en el caché de `ldconfig`. **No corre ninguna pasada**,
   y por eso no vio lo que sigue.
 - **La primera pasada dentro de la imagen sacó tres problemas más**, todos ya corregidos en el
-  `.def` (la compilación buena es `tahan:/data/tmp/aapp_build_20261118_bz2/aapp_v8.15.sif`;
+  `.def` (la compilación buena es `tahan:/data/tmp/aapp_build_20261118_bz2/aapp_v8.15.sif`, la de las 18 h, ya con la descarga de coeficientes apagada;
   va a `/opt/containers`, donde están las de operación —`/opt/contenedores` es el de tarballs y
   compilación—):
   1. `ccsds_to_l0` abre `libbz2.so` con `dlopen`, igual que el metopizer a libfec, y muere con
@@ -204,8 +204,42 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   `chain6-1_pass51` (METOP-B), con todo dirigido a `/data/tmp/metop_prueba_20261118/`: 3 min
   por pasada, 13 archivos de Level 1 cada una (AMSU-A, MHS, AVHRR, IASI en 1C de EUMETSAT y en
   formato AAPP, con sus HDF5), cero escrituras en la imagen, y el marcador detiene la segunda
-  corrida. **Falta compararlos con los de stratus** de las mismas pasadas: stratus no
-  respondía por ssh esa tarde.
+  corrida.
+- **Comparación con stratus** (mismas dos pasadas, 2026-11-18). Los md5 no coinciden en ningún
+  archivo y no tienen por qué: los binarios de AAPP llevan fecha y versión de proceso, y las
+  diferencias se reparten por todas las líneas. Leídos con Satpy (`mhs_l1c_aapp`,
+  `avhrr_l1b_aapp`):
+
+  | | METOP-C | METOP-B |
+  |---|---|---|
+  | AVHRR 4, 5 (IR) | 100 % de píxeles iguales | 100 % |
+  | AVHRR 1, 2, 3a (VIS) | 100 % | **×1.04, ×1.20, ×1.37** (ver abajo) |
+  | MHS | ≥ 99.9 % iguales, el resto ±0.01 K (último dígito empaquetado) | igual |
+  | Lat/lon | ≤ 0.0014° (~150 m): AAPP 8.12 → 8.15 y TLE de otra hora | igual |
+  | HIRS | no se procesa | **vacío en los dos lados**: el de stratus tampoco sale |
+
+  Tamaños idénticos en todo menos `iasil1d_M01…l1d.h5`. Stratus deja **dos** IASI 1C por
+  pasada de METOP-C (OPS-LRS corre en dos de sus cinco llamadas); aquí, uno.
+
+  **IASI, sin cerrar.** En el 1C de EUMETSAT de METOP-C difieren 2.1 M de 218 M bytes: los
+  sellos de proceso de la MPHR y, después, bytes contiguos en todos los registros, con
+  diferencias casi siempre de pocas unidades. Los auxiliares (BRD/GRD) vigentes son los
+  mismos en los dos lados y OPS-LRS es el mismo V8.4, así que lo más probable es redondeo de
+  punto flotante por otro compilador (gcc 14 aquí); no está demostrado. Satpy 3.2 no tiene
+  lector de IASI 1C: hay que decodificar el EPS o comparar más abajo, en los NUCAPS de HEAP.
+  AAPP sí es determinista: dos corridas de la misma pasada dan el AVHRR idéntico byte a byte.
+- **Los visibles de AVHRR: stratus está mal desde el 2026-08-21, y se usan los de 2017.**
+  `avh_get_vis_coefs` baja los coeficientes operativos de NOAA STAR (sitio de Libia) cuando la
+  última entrada local tiene más de 7 días, y guarda **cualquier** respuesta con código 200. Ese
+  día NOAA contestó con una página HTML, que sustituyó a `Metop1_…` y `Metop3_AVHRR_Libya_ch*.txt`
+  en stratus: sin una sola línea válida, AAPP calibra con la de base, sin la corrección por
+  degradación. Hoy NOAA contesta 404 —dejó de publicarlos— y el archivo de METOP-B que trae
+  AAPP 8.15 termina en **agosto de 2017**. Decidido el 2026-11-18: METOP-B con los de 2017 (la
+  entrada más cercana a la fecha, que es lo que AAPP hace solo) y **descarga apagada** en el
+  `.def` (`AVHRR_VISIBLE_URL` vacía), para que una respuesta rara no los vuelva a borrar.
+  METOP-C no tiene archivo en AAPP 8.15 y queda con la de base, como en stratus. Consecuencia:
+  los visibles de METOP-B que publique la cadena nueva **no** se podrán comparar con los de
+  stratus de agosto en adelante.
 - **El HIRS de METOP-B no calibra**: `hirscl_algoV4` da `No enough calib cycles found` (todas
   las líneas de la pasada sin ciclo de calibración). Como `AAPP_RUN_METOP` aborta en cuanto
   falla un instrumento, con HIRS en la llamada no sale nada. **Eso explica las cinco llamadas de

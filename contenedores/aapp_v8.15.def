@@ -158,6 +158,16 @@ PAR_NAVIGATION_TLE_URL_DOWNLOAD+=' https://service.eumetsat.int/tle/data_out/lat
 PAR_NAVIGATION_TLE_CATALOGUE=""
 export PAR_NAVIGATION_TLE_URL_DOWNLOAD PAR_NAVIGATION_TLE_CATALOGUE
 
+# Sin descarga de los coeficientes visibles de AVHRR (avh_get_vis_coefs).
+# NOAA STAR dejó de publicarlos —hoy contesta 404, y su última entrada para
+# METOP-B es de agosto de 2017— y el script guarda como coeficientes cualquier
+# respuesta con código 200: el 2026-08-21 una página HTML sustituyó en stratus
+# los de METOP-B y C, y desde entonces calibra los visibles sin corrección por
+# degradación sin que nada lo dijera. Se usan los de 2017 que trae AAPP 8.15
+# (decidido el 2026-11-18). Con la URL vacía, avh_get_vis_coefs no descarga.
+AVHRR_VISIBLE_URL=
+export AVHRR_VISIBLE_URL
+
 # La plantilla REEMPLAZA el PATH entero (PATH=__PATH__, el de la compilación)
 # si no encuentra en él sus propias rutas, y con eso se pierden el metopizer y
 # los scripts de NWP SAF. Se devuelven aquí, para quien cargue este archivo.
@@ -253,6 +263,9 @@ EOF
 
     grep -q 'service.eumetsat.int/tle/data_out/latest_m03_tle.txt' /opt/aapp/ATOVS_ENV8
     echo "  OK TLE de EUMETSAT"
+
+    test -z "$AVHRR_VISIBLE_URL"
+    echo "  OK sin descarga de coeficientes visibles de AVHRR"
 
     test -d "$PATH_OPS"
     echo "  OK OPS-LRS"

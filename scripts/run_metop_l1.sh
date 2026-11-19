@@ -380,6 +380,9 @@ if [ ! -d "$ANC_DIR/calibration/coef" ]; then
     apptainer exec --bind "$ANC_DIR":/anc --pwd /anc "$CONTAINER" \
         /bin/bash -c "cp -r $CALIBRACION_IMAGEN /anc/calibration.tmp" \
         || { echo "ERROR: no se pudo copiar la calibración de la imagen" >&2; rm -rf "$ANC_DIR/calibration.tmp"; exit 1; }
+    # cp copia el modo de la imagen (644): sin esto, si la siembra la hace una
+    # persona en pruebas, lanotadm no puede actualizar los coeficientes después.
+    chmod -R g+rwX "$ANC_DIR/calibration.tmp"
     mv "$ANC_DIR/calibration.tmp" "$ANC_DIR/calibration"
 fi
 
