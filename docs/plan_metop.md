@@ -226,7 +226,8 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   diferencias casi siempre de pocas unidades. Los auxiliares (BRD/GRD) vigentes son los
   mismos en los dos lados y OPS-LRS es el mismo V8.4, así que lo más probable es redondeo de
   punto flotante por otro compilador (gcc 14 aquí); no está demostrado. Satpy 3.2 no tiene
-  lector de IASI 1C: hay que decodificar el EPS o comparar más abajo, en los NUCAPS de HEAP.
+  lector de IASI 1C. Decidido el 2026-11-18: no se decodifica el EPS; se cierra al comparar
+  los NUCAPS de HEAP con los de stratus (pieza 5).
   AAPP sí es determinista: dos corridas de la misma pasada dan el AVHRR idéntico byte a byte.
 - **Los visibles de AVHRR: stratus está mal desde el 2026-08-21, y se usan los de 2017.**
   `avh_get_vis_coefs` baja los coeficientes operativos de NOAA STAR (sitio de Libia) cuando la
@@ -349,6 +350,10 @@ para la pieza 3.
 
 ### 5. Sondeos con HEAP
 
+- **Aquí se cierra la comparación de IASI** con stratus (ver "IASI, sin cerrar" arriba): los
+  NUCAPS de una misma pasada, de HEAP 3.0 sobre nuestro 1C, contra los de HEAP 2.0 en tsom03.
+  Son versiones distintas de HEAP, así que una diferencia ahí no culpa todavía al 1C: si sale
+  grande, correr HEAP 3.0 sobre el 1C de stratus para separar las dos causas.
 - `run_heap_edr.sh`: entradas `IASI_xxx_1C_M0{1,3}_*`, `amsual1b_M0{1,3}_*.l1b` y
   `mhsl1b_M0{1,3}_*.l1b`, misión `m01`/`m03`, emparejadas por tiempo como CrIS ÷ ATMS. HEAP
   parte solo los IASI de pasada entera en trozos de 22–23 MDR (manual §1.6.2).
