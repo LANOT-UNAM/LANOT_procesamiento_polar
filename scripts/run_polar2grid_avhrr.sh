@@ -162,6 +162,13 @@ else
     fi
 fi
 
+# A la raíz: apptainer no arranca si quien corre no puede entrar al directorio
+# actual, y "sudo -u lanotadm" desde el clon hereda un home ajeno ("can't change
+# directory to /home/…: permission denied", 2026-11-18). Lo mismo que hacen
+# procesar_pasada.sh y recibe.sh; va después de resolver las rutas de los
+# argumentos, que pueden ser relativas.
+cd / || exit 1
+
 NOMBRE=$(basename "$HRPT")
 case "$NOMBRE" in
     hrpt_M01_*) SATELITE=METOP-B ;;

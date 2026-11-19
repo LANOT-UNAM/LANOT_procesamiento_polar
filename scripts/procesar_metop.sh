@@ -40,7 +40,14 @@ if [ -z "${1:-}" ] || [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
     [ -n "${1:-}" ] && exit 0 || exit 1
 fi
-CRUDO="$1"
+CRUDO="$(realpath -m -- "$1")"
+
+# A la raíz: apptainer no arranca si quien corre no puede entrar al directorio
+# actual, y "sudo -u lanotadm" desde el clon hereda un home ajeno ("can't change
+# directory to /home/…: permission denied", 2026-11-18). Lo mismo que hacen
+# procesar_pasada.sh y recibe.sh; va después de resolver las rutas de los
+# argumentos, que pueden ser relativas.
+cd / || exit 1
 BASE="$(basename "$CRUDO")"
 
 marca() { date '+%Y-%m-%d %H:%M:%S'; }
