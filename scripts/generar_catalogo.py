@@ -25,8 +25,9 @@
 #   · cada ruta sea un directorio que algún run_*.sh crea;
 #   · el .md esté al día con el TSV.
 # Sale en 1 con la lista de lo que no cuadra. LANOT_tools se busca en
-# ~/lanot/LANOT_tools (override: LANOT_TOOLS); si no está, esas dos
-# comprobaciones se avisan y se saltan.
+# ~/lanot/LANOT_tools (las máquinas personales) o en ~/proyectos/LANOT_tools
+# (las del laboratorio), el primero que exista (override: LANOT_TOOLS); si no
+# está, esas dos comprobaciones se avisan y se saltan.
 #
 # Solo biblioteca estándar: tiene que correr igual aquí que en tahan.
 # ==============================================================================
@@ -397,7 +398,10 @@ def verificar(filas):
 
     # 2. Paleta de cada vista geotiff2view = la que elegiría paleta_de()
     pares = paletas_de_render("scripts/run_polar2grid_edr.sh")
-    lanot_tools = os.environ.get("LANOT_TOOLS", os.path.expanduser("~/lanot/LANOT_tools"))
+    lanot_tools = os.environ.get("LANOT_TOOLS") or next(
+        (d for d in map(os.path.expanduser, ("~/lanot/LANOT_tools", "~/proyectos/LANOT_tools"))
+         if os.path.isdir(d)),
+        os.path.expanduser("~/lanot/LANOT_tools"))
     dir_cpt = os.path.join(lanot_tools, "colortables")
     for f in filas:
         if not f["vista"].endswith(".cpt"):
