@@ -13,7 +13,7 @@ Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de
 
 ## Cuánto se conserva
 
-Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limpiar.sh` una vez al día, con los días de `config/retencion.tsv`; en `/dataservice/jpss/`, que es de donde lo toman los FTP, `scripts/publicar_dataservice.sh`, a los 5 días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así que ahí la carpeta puede no ser la misma que aquí. METOP todavía no se publica en `/dataservice`: ahí escribe la cadena vieja, en `noaa-metop/`, hasta que se apague.
+Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limpiar.sh` una vez al día, con los días de `config/retencion.tsv`; en `/dataservice/jpss/` y `/dataservice/metop/`, que es de donde lo toman los FTP, `scripts/publicar_dataservice.sh`, a los 5 días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así que ahí la carpeta puede no ser la misma que aquí. `/dataservice/npp-jpss1/` y `/dataservice/noaa-metop/` son de la cadena vieja, no de esta.
 
 | Carpeta en `/data/output/` | Se conserva | En `/dataservice/` (5 días) |
 |---|---|---|
@@ -22,10 +22,10 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 | `jpss/level2/` | 14 días | `jpss/level2/acspo`, `jpss/level2/atmos`, `jpss/level2/cryo`, `jpss/level2/fires`, `jpss/level2/flood`, `jpss/level2/lsr`, `jpss/level2/mirs`, `jpss/level2/omps`, `jpss/level2/sounder` |
 | `jpss/geotiff/` | 14 días | `jpss/geotiff/acspo` → `jpss/level2/acspo`, `jpss/geotiff/atmos` → `jpss/level2/atmos`, `jpss/geotiff/dnb` → `jpss/level1/viirs`, `jpss/geotiff/fire` → `jpss/level2/fires`, `jpss/geotiff/flood` → `jpss/level2/flood`, `jpss/geotiff/i_bands` → `jpss/level1/viirs`, `jpss/geotiff/lsr` → `jpss/level2/lsr`, `jpss/geotiff/m_bands` → `jpss/level1/viirs`, `jpss/geotiff/mirs` → `jpss/level2/mirs`, `jpss/geotiff/omps` → `jpss/level2/omps`, `jpss/geotiff/rgb` → `jpss/level1/viirs`, `jpss/geotiff/sounder` → `jpss/level2/sounder` |
 | `jpss/vistas/` | 90 días | `jpss/vistas/acspo`, `jpss/vistas/atmos`, `jpss/vistas/dnb`, `jpss/vistas/fire`, `jpss/vistas/flood`, `jpss/vistas/lsr`, `jpss/vistas/mirs`, `jpss/vistas/omps`, `jpss/vistas/rgb`, `jpss/vistas/sounder`, `jpss/vistas/sounder/skewt` |
-| `metop/level1/` | 7 días | no se publica |
-| `metop/level2/` | 14 días | no se publica |
-| `metop/geotiff/` | 14 días | no se publica |
-| `metop/vistas/` | 90 días | no se publica |
+| `metop/level1/` | 7 días | `metop/level1/amsua`, `metop/level1/avhrr`, `metop/level1/iasi`, `metop/level1/mhs` |
+| `metop/level2/` | 14 días | `metop/level2/sounder` |
+| `metop/geotiff/` | 14 días | `metop/geotiff/avhrr` → `metop/level1/avhrr` |
+| `metop/vistas/` | 90 días | `metop/vistas/avhrr` |
 
 ## Resumen
 

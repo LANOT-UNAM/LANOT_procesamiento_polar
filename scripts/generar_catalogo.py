@@ -139,16 +139,18 @@ def leer_publicacion():
     """Días de retención en /dataservice y el reparto origen → destino.
 
     Los dos lados, como las rutas del TSV: relativos a /data/output y a
-    /dataservice. publicar_dataservice.sh solo publica JPSS (de jpss/ a jpss/).
+    /dataservice. DESTINOS es el árbol de JPSS y DESTINOS_METOP el de METOP,
+    cada uno de su carpeta a la homónima (jpss/ → jpss/, metop/ → metop/).
     """
     with open(PUBLICADOR, encoding="utf-8") as f:
         texto = f.read()
     dias = int(re.search(r'DIAS="\$\{PUB_DS_DIAS:-(\d+)\}"', texto).group(1))
-    bloque = re.search(r"DESTINOS=\((.*?)\n\)", texto, re.S).group(1)
     reparto = []   # (origen, destino)
-    for m in re.finditer(r'"([^"]+)"', bloque):
-        destino, *origenes = m.group(1).split()
-        reparto += [(f"jpss/{o}", f"jpss/{destino}") for o in origenes]
+    for arreglo, arbol in (("DESTINOS", "jpss"), ("DESTINOS_METOP", "metop")):
+        bloque = re.search(rf"^{arreglo}=\((.*?)\n\)", texto, re.S | re.M).group(1)
+        for m in re.finditer(r'"([^"]+)"', bloque):
+            destino, *origenes = m.group(1).split()
+            reparto += [(f"{arbol}/{o}", f"{arbol}/{destino}") for o in origenes]
     return dias, reparto
 
 
@@ -158,10 +160,11 @@ def seccion_conservacion(w):
     w("")
     w(f"Lo que pasa de esta edad se borra solo: en `{RAIZ}` lo hace "
       f"`scripts/limpiar.sh` una vez al día, con los días de `{RETENCION}`; en "
-      f"`/dataservice/jpss/`, que es de donde lo toman los FTP, `{PUBLICADOR}`, a los "
+      f"`/dataservice/jpss/` y `/dataservice/metop/`, que es de donde lo toman los FTP, "
+      f"`{PUBLICADOR}`, a los "
       f"{dias_pub} días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así "
-      f"que ahí la carpeta puede no ser la misma que aquí. METOP todavía no se publica en "
-      f"`/dataservice`: ahí escribe la cadena vieja, en `noaa-metop/`, hasta que se apague.")
+      f"que ahí la carpeta puede no ser la misma que aquí. `/dataservice/npp-jpss1/` y "
+      f"`/dataservice/noaa-metop/` son de la cadena vieja, no de esta.")
     w("")
     w(f"| Carpeta en `{RAIZ}` | Se conserva | En `/dataservice/` ({dias_pub} días) |")
     w("|---|---|---|")

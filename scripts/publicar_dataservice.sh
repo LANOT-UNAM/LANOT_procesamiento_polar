@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# publicar_dataservice.sh — copia Level 1 a /dataservice/jpss para los FTP.
+# publicar_dataservice.sh — copia productos a /dataservice/{jpss,metop} para los FTP.
 #
 # Para cron de lanotadm, cada 5 minutos (el candado lo toma el propio script):
 #   */5 * * * * /opt/lanot/polares/scripts/publicar_dataservice.sh
@@ -20,6 +20,17 @@
 # no. Las carpetas van con nombre y nunca "todo /data/output/jpss", para que
 # nada se publique por accidente. No choca con lo que publica la cadena vieja,
 # que escribe en /dataservice/npp-jpss1.
+#
+# METOP, desde el 2026-11-20, igual pero en su propio árbol (DESTINOS_METOP):
+#
+#   /dataservice/metop/       ←  /data/output/metop/
+#   level1/{amsua,mhs,iasi}   ←  lo mismo (AAPP: 1b, 1c y sus .h5; IASI 1C de EUMETSAT)
+#   level1/avhrr              ←  level1/avhrr (hrpt) + geotiff/avhrr
+#   level2/sounder            ←  level2/sounder (NUCAPS de HEAP)
+#   vistas/avhrr              ←  vistas/avhrr
+#
+# Al lado de /dataservice/noaa-metop, que es de la cadena vieja (stratus y
+# tsom03), como jpss junto a npp-jpss1: las dos publican sin pisarse.
 #
 # Hasta el 2026-10-23 los GeoTIFF se publicaban en geotiff/… también en
 # /dataservice. Esas carpetas están en RETIRADAS: ya no reciben nada y solo se
@@ -51,7 +62,7 @@
 #     corregiría en el siguiente, pero alguien pudo bajarlo entre tanto).
 #   - GeoTIFF: solo si su pasada tiene marcador del renderizador más nuevo que
 #     el archivo —polar2grid_l1 para los de Level 1, polar2grid para los de
-#     Level 2—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
+#     Level 2, polar2grid_avhrr para los de METOP—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
 #     estar a medias; el marcador se escribe solo cuando la etapa terminó bien.
 #     La clave sale del nombre: noaa20_viirs_…_20261014_083828_… es
 #     j01_d20261014_t083828.
@@ -71,6 +82,9 @@
 #   ESTADO_BASE       Marcadores           (def. /data/output/jpss/state)
 #   L1G_STATE_DIR     Marcadores de P2G L1 (def. $ESTADO_BASE/polar2grid_l1)
 #   P2G_STATE_DIR     Marcadores de P2G L2 (def. $ESTADO_BASE/polar2grid)
+#   PUB_DS_METOP_ORIGEN  Árbol de METOP    (def. /data/output/metop)
+#   PUB_DS_METOP_DEST    Destino de METOP  (def. /dataservice/metop)
+#   AVHRR_STATE_DIR   Marcadores de AVHRR  (def. /data/output/metop/state/polar2grid_avhrr)
 #
 # Uso:
 #   publicar_dataservice.sh            publica y poda
@@ -87,6 +101,9 @@ LOG="${PUB_DS_LOG:-/var/log/lanot/polares/cadena/publicar_dataservice.log}"
 ESTADO="${ESTADO_BASE:-/data/output/jpss/state}"
 DIR_P2G_L1="${L1G_STATE_DIR:-$ESTADO/polar2grid_l1}"
 DIR_P2G_L2="${P2G_STATE_DIR:-$ESTADO/polar2grid}"
+ORIGEN_METOP="${PUB_DS_METOP_ORIGEN:-/data/output/metop}"
+DEST_METOP="${PUB_DS_METOP_DEST:-/dataservice/metop}"
+DIR_P2G_AVHRR="${AVHRR_STATE_DIR:-/data/output/metop/state/polar2grid_avhrr}"
 
 # Una línea por carpeta de destino: el destino y, detrás, las carpetas de
 # origen que se publican en él. Relativas a ORIGEN y DEST.
@@ -117,6 +134,17 @@ DESTINOS=(
     "vistas/sounder/skewt  vistas/sounder/skewt"
     "vistas/omps           vistas/omps"
     "vistas/mirs           vistas/mirs"
+)
+
+# Lo mismo para METOP, relativo a ORIGEN_METOP y DEST_METOP. HIRS no va: en
+# METOP-B no calibra y METOP-C no lo trae (docs/plan_metop.md).
+DESTINOS_METOP=(
+    "level1/amsua    level1/amsua"
+    "level1/mhs      level1/mhs"
+    "level1/iasi     level1/iasi"
+    "level1/avhrr    level1/avhrr    geotiff/avhrr"
+    "level2/sounder  level2/sounder"
+    "vistas/avhrr    vistas/avhrr"
 )
 
 # Carpetas de destino que ya no reciben nada: solo se podan.
@@ -194,6 +222,24 @@ declare -A _MARCADORES_SAT=()   # "<dir> <sat>" → "época:ruta …", leído un
 geotiff_listo() {
     local ruta="$1" origen_rel="$2" nombre sat marcadores exacto t m e r
     nombre="$(basename "$ruta")"
+
+    # AVHRR de METOP: el marcador es el del hrpt de la pasada, que AAPP nombra
+    # con la hora del primer barrido truncada al minuto: metopb_avhrr_band4_bt_
+    # 20261120_145951_… ↔ hrpt_M01_20261120_1459_<órbita>.l1b.done. Casi siempre
+    # es el mismo minuto, pero Polar2Grid toma el primer barrido válido y puede
+    # pasar al siguiente: metopc_…_20261120_025301_… es de hrpt_M03_20261120_0252
+    # (tahan, 2026-11-20). Por eso se busca de 3 min antes a 1 después; dos
+    # pasadas del mismo satélite están a una órbita.
+    if [[ "$nombre" =~ ^metop([bc])_avhrr_.*_([0-9]{8})_([0-9]{2})([0-9]{2})[0-9]{2}_ ]]; then
+        [ "${BASH_REMATCH[1]}" = b ] && sat=M01 || sat=M03
+        t=$(date -u -d "${BASH_REMATCH[2]} ${BASH_REMATCH[3]}:${BASH_REMATCH[4]}" +%s) || return 1
+        for e in 0 -60 -120 -180 60; do
+            for m in "$DIR_P2G_AVHRR/hrpt_${sat}_$(date -u -d "@$((t + e))" +%Y%m%d_%H%M)"_*.l1b.done; do
+                [ -e "$m" ] && { [ "$m" -nt "$ruta" ]; return; }
+            done
+        done
+        return 1
+    fi
     # La hora va seguida de "_" (los de Polar2Grid) o de ".tif" (el de flood).
     # Los sondeos de NOAA-20 salían como j01_atms-cris_…, no noaa20_, hasta que
     # run_polar2grid_edr.sh los renombró (2026-11-04). j01|j02 se pueden quitar
@@ -327,6 +373,16 @@ done
 
 for c in "${RETIRADAS[@]}"; do
     podar "$c"
+done
+
+# METOP: las mismas funciones sobre el otro árbol. publicar_destino y podar
+# leen ORIGEN y DEST, así que basta con cambiarlos; va al final para que lo de
+# arriba siga apuntando a JPSS. El NFS es el mismo: ya se comprobó arriba.
+ORIGEN="$ORIGEN_METOP"
+DEST="$DEST_METOP"
+for linea in "${DESTINOS_METOP[@]}"; do
+    read -r -a campos <<< "$linea"
+    publicar_destino "${campos[@]}"
 done
 
 [ "$fallos" -eq 0 ] && terminar 0 || terminar 1

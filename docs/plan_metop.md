@@ -293,8 +293,8 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
 | Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
-| AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Vistas publicadas en kawak desde el 2026-11-20; falta dataservice. |
-| Publicación | **Kawak, hecho** (2026-11-20): `publicar_kawak.sh` copia `vistas/avhrr` a `polar/noaa-metop/avhrr/vistas`, y `crea_vistas_metop.sh` se apagó en kawak ese día. **Dataservice, falta**: `/dataservice/noaa-metop` lo sigue llenando stratus con los mismos nombres; se conecta al apagar `metop2.sh`. |
+| AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Publicado desde el 2026-11-20 (abajo). |
+| Publicación | **Hecho** (2026-11-20), en árboles propios al lado de los de la vieja, como `jpss` junto a `npp-jpss1`: `kawak:polar/metop/avhrr` (vistas, `publicar_kawak.sh`) y `/dataservice/metop/{level1,level2,vistas}` (`publicar_dataservice.sh`). Las dos cadenas publican a la vez y se comparan pasada por pasada; al apagar la vieja, la página de kawak y quien baje de `noaa-metop` tienen que mudarse a `metop`. |
 
 ## Trabajo, por pieza
 
@@ -380,11 +380,14 @@ barrido llaman a ese orquestador.
   nombre del compuesto; el pin del `.def` ya apunta ahí. Probado en tahan con los dos módulos
   montados sobre la imagen actual. Llega a operación al empujar LANOT_tools y recompilar
   `polar2grid_v3.2-mapdrawer.sif`.
-- Vistas en kawak desde el 2026-11-20: `publicar_kawak.sh` las copia a
-  `polar/noaa-metop/avhrr/vistas` con `--update`, así que lo que kawak ya tenía de la vieja
-  (más nuevo que lo nuestro) no se pisa; ese día se apagó `crea_vistas_metop.sh` en kawak.
-  Falta el GeoTIFF a `/dataservice/noaa-metop/avhrr`, que sigue escribiendo stratus con los
-  mismos nombres: se conecta cuando se apague `metop2.sh`.
+- Publicado desde el 2026-11-20 en árboles propios: vistas en `kawak:polar/metop/avhrr` y
+  GeoTIFF junto a su Level 1 en `/dataservice/metop/level1/avhrr`. Al principio se publicó en
+  `polar/noaa-metop/avhrr/vistas`, el árbol de la vieja, y se apagó `crea_vistas_metop.sh`;
+  ese mismo día se cambió a `polar/metop`, para que las dos cadenas convivan sin pisarse
+  (los nombres de archivo son idénticos) y se puedan comparar.
+- `publicar_dataservice.sh` espera, para cada GeoTIFF, el marcador del `hrpt` de su pasada.
+  La hora no siempre coincide al minuto: Polar2Grid toma el primer barrido válido y
+  `metopc_…_20261120_025301_…` es de `hrpt_M03_20261120_0252`.
 
 ### 5. Sondeos con HEAP
 
@@ -438,8 +441,13 @@ apagar la vieja.
 
 ### 7. Publicación
 
-Categorías de METOP en `publicar_kawak.sh`, sin pisar lo que publica la vieja mientras
-convivan (el mismo cuidado que con NPP y NOAA-20).
+**Hecho el 2026-11-20**, en árboles propios: `kawak:/var/www/html/polar/metop` y
+`/dataservice/metop`, al lado de los `noaa-metop` de la vieja, como se hizo con `jpss` y
+`npp-jpss1`. En dataservice, la misma estructura que JPSS: `level1/{amsua,mhs,iasi,avhrr}`
+(con los GeoTIFF de AVHRR junto a su Level 1), `level2/sounder` y `vistas/avhrr`, 5 días.
+Cuando se apague la vieja, la página de kawak tiene que leer de `polar/metop`, y quien baje
+de `/dataservice/noaa-metop` mudarse a `/dataservice/metop`, que tiene otra estructura (por
+nivel, no por instrumento).
 
 ## Orden
 
