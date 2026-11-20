@@ -292,7 +292,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. En operación desde el 2026-11-19: los 10 `chain6` de los dos primeros días, completos (Level 1, AVHRR y sondeos) sin intervención, 5–6 min por pasada; stratus vio las mismas 10. |
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Filas de `tarballs.tsv` y catálogo de productos, hechos el 2026-11-20. |
 | Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
-| Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
+| Microondas (AMSU-A + MHS) | **Hecho** (2026-11-20): `run_mirs_metop.sh` y `run_polar2grid_mirs_metop.sh`, cuarto eslabón de `procesar_metop.sh`, publicado en `polar/metop/amsu-mhs` y `/dataservice/metop/level2/mirs`. Producto nuevo: la vieja no lo tenía. |
 | AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Publicado desde el 2026-11-20 (abajo). |
 | Publicación | **Hecho** (2026-11-20), en árboles propios al lado de los de la vieja, como `jpss` junto a `npp-jpss1`: `kawak:polar/metop/avhrr` (vistas, `publicar_kawak.sh`) y `/dataservice/metop/{level1,level2,vistas}` (`publicar_dataservice.sh`). Las dos cadenas publican a la vez y se comparan pasada por pasada; al apagar la vieja, la página de kawak y quien baje de `noaa-metop` tienen que mudarse a `metop`. |
 
@@ -444,10 +444,31 @@ sondeos de tahan difieren un poco de los de stratus (47).
   2.x (sigue en el bundle, sin uso). Antes de apagar la vieja, preguntar si alguien baja los
   `AGG` o el `L2-QC`; si nadie, no hace falta nada.
 
-### 6. MiRS (opcional)
+### 6. MiRS
 
-Rama `amsual1b_M0*`/`mhsl1b_M0*` en `run_mirs_edr.sh`. Es producto nuevo, no condición para
-apagar la vieja.
+**Hecho el 2026-11-20**, con la misma imagen que JPSS (`cspp_mirs_v4.0.sif`) pero en scripts
+aparte, como HEAP: `run_mirs_metop.sh` toma el par AMSU-A/MHS 1b del manifiesto `.l1`, y
+`run_polar2grid_mirs_metop.sh` lo lleva a la rejilla de 5 km con las paletas y la decoración
+de la sección de MiRS de `run_polar2grid_edr.sh`, para comparar con ATMS lado a lado. ~1 min
+por pasada. Vistas de lluvia y agua precipitable; dato además de `clw`, `tskin`, 89 y 157 GHz.
+
+Lo que costó: **MiRS 4.0 no lee los 1b de esta cadena tal cual**, y el driver sale en 0 sin
+producir nada. Dos causas, las dos en el nombre de conjunto de datos que AAPP escribe en la
+cabecera y que MiRS usa en vez del nombre del archivo:
+- El código de sitio: AAPP lo compila (`SITE_ID=LNT`) y el driver solo acepta `SSE` (SSEC)
+  o `NSS` (NOAA). Con `LNT` no copia nada al gránulo y su script muere con
+  `Error: date xxxx-xx-xx is incorrect`.
+- La hora del MHS: el script de MiRS busca el MHS por la hora de inicio del AMSU-A
+  (`S14*`). Si los dos caen a los dos lados de una hora (AMSU-A 14:59, MHS 15:00, METOP-B
+  del 2026-11-20) no lo encuentra: `No mhs SDR data files found`.
+
+`metop_l1b_para_mirs.py` le da a MiRS una copia con `SSE` y con la hora del AMSU-A en el
+nombre del MHS (9 bytes; los tiempos de cada línea no se tocan). Recompilar AAPP con otro
+código de sitio no: cambiaría todo lo demás y sería falso. Vale la pena reportarlo a CSPP.
+
+Pendiente: la vista de hielo convectivo. En ATMS es 165 GHz; en MHS, 157 GHz (`btemp_157v`),
+que necesita su entrada en `product_map` de LANOT_tools (con pin y recompilación) y decidir
+si la paleta de 165 sirve.
 
 ### 7. Publicación
 
@@ -506,6 +527,11 @@ nivel, no por instrumento).
   TeraScan sugiere que alguien lo previó: ¿quién, y qué falta para activarla?
 
 ## Criterio para apagar la rama METOP vieja
+
+**Revisión el 2026-11-27** (decidido el 2026-11-20). Para entonces ya se sabe que casi seguro
+nadie consume lo que publica la vieja —el Level 1 de stratus, `/dataservice/noaa-metop` con
+sus `NUCAPS-AGG`/`L2-QC`, la página de `polar/noaa-metop`—, así que el apagado depende de que
+la convivencia siga limpia. Los avisos de `.fallido` siguen sin canal decidido.
 
 - Varios días seguidos procesando sola cada `chain6`, sin intervención y sin crudos pendientes.
 - Level 1 de AMSU-A, MHS, AVHRR e IASI equivalentes a los de la vieja en las mismas pasadas.

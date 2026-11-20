@@ -23,9 +23,9 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 | `jpss/geotiff/` | 14 días | `jpss/geotiff/acspo` → `jpss/level2/acspo`, `jpss/geotiff/atmos` → `jpss/level2/atmos`, `jpss/geotiff/dnb` → `jpss/level1/viirs`, `jpss/geotiff/fire` → `jpss/level2/fires`, `jpss/geotiff/flood` → `jpss/level2/flood`, `jpss/geotiff/i_bands` → `jpss/level1/viirs`, `jpss/geotiff/lsr` → `jpss/level2/lsr`, `jpss/geotiff/m_bands` → `jpss/level1/viirs`, `jpss/geotiff/mirs` → `jpss/level2/mirs`, `jpss/geotiff/omps` → `jpss/level2/omps`, `jpss/geotiff/rgb` → `jpss/level1/viirs`, `jpss/geotiff/sounder` → `jpss/level2/sounder` |
 | `jpss/vistas/` | 90 días | `jpss/vistas/acspo`, `jpss/vistas/atmos`, `jpss/vistas/dnb`, `jpss/vistas/fire`, `jpss/vistas/flood`, `jpss/vistas/lsr`, `jpss/vistas/mirs`, `jpss/vistas/omps`, `jpss/vistas/rgb`, `jpss/vistas/sounder`, `jpss/vistas/sounder/skewt` |
 | `metop/level1/` | 7 días | `metop/level1/amsua`, `metop/level1/avhrr`, `metop/level1/iasi`, `metop/level1/mhs` |
-| `metop/level2/` | 14 días | `metop/level2/sounder` |
-| `metop/geotiff/` | 14 días | `metop/geotiff/avhrr` → `metop/level1/avhrr` |
-| `metop/vistas/` | 90 días | `metop/vistas/avhrr` |
+| `metop/level2/` | 14 días | `metop/level2/mirs`, `metop/level2/sounder` |
+| `metop/geotiff/` | 14 días | `metop/geotiff/avhrr` → `metop/level1/avhrr`, `metop/geotiff/mirs` → `metop/level2/mirs` |
+| `metop/vistas/` | 90 días | `metop/vistas/avhrr`, `metop/vistas/mirs` |
 
 ## Resumen
 
@@ -61,6 +61,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 | [Ozono (OMPS)](#l2-omps) | OMPS NM+NP | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [SO₂ y ozono corregido por SO₂ (OMPS)](#l2-omps-tos) | OMPS NM | NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Sondeos NUCAPS de METOP: perfiles atmosféricos (IASI+AMSU-A+MHS)](#l2-metop-sounder) | IASI+AMSU-A+MHS | METOP-B, METOP-C | NetCDF4 | no |
+| [MiRS de METOP: lluvia, agua precipitable y perfiles (AMSU-A + MHS)](#l2-metop-mirs) | AMSU-A+MHS | METOP-B, METOP-C | NetCDF4 | no |
 
 ### GeoTIFF en rejilla
 
@@ -98,6 +99,9 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 | [Temperatura de brillo a 165 GHz](#gt-mirs-btemp165) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
 | [Agua líquida de nube, temperatura de piel y 88 GHz](#gt-mirs-otros) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | no |
 | [AVHRR por banda](#gt-avhrr-bands) | AVHRR | METOP-B, METOP-C | GeoTIFF float32 | sí |
+| [Tasa de lluvia (microondas, METOP)](#gt-metop-mirs-rain) | AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
+| [Agua precipitable total (microondas, METOP)](#gt-metop-mirs-tpw) | AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
+| [Agua líquida de nube, temperatura de piel, 89 y 157 GHz (METOP)](#gt-metop-mirs-otros) | AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | no |
 
 ### Vistas sin GeoTIFF propio
 
@@ -546,6 +550,25 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 - Ruta: `metop/level2/sounder/` · patrón `NUCAPS-{EDR,CCR,CCR-AR,CCR-NCEP,OLR}_v3r2_{sat}_*.nc`
 - Origen: CSPP HEAP 3.0 (modo M_IRMW) → run_heap_metop.sh
 - Depende de: l1-metop-iasi + l1-metop-amsua + l1-metop-mhs + GFS
+
+</details>
+
+<a id="l2-metop-mirs"></a>
+
+#### MiRS de METOP: lluvia, agua precipitable y perfiles (AMSU-A + MHS)
+
+`l2-metop-mirs` · AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: IMG: RR tasa de lluvia [mm/h], TPW agua precipitable [mm], CLW agua líquida de nube [mm], TSkin temperatura de piel [K], BT de los 20 canales de AMSU-A y MHS [K] con corrección de limbo, emisividad, hielo marino, nieve; SND: perfiles de temperatura y humedad
+- **Formato**: NetCDF4
+- **Resolución**: swath: huella de MHS, ~16 km en nadir (AMSU-A interpolado, -r HI)
+- **Notas**: Un par IMG/SND por pasada. Complementa al de ATMS (l2-mirs) con unas cuatro pasadas más al día. MiRS lee una copia del 1b con la cabecera ajustada (código de sitio y hora del MHS; ver metop_l1b_para_mirs.py). Aquí sat va como ma1|ma3.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level2/mirs/` · patrón `NPR-MIRS-IMG_v11r9_{sat}_*.nc, NPR-MIRS-SND_v11r9_{sat}_*.nc`
+- Origen: CSPP MiRS 4.0 → run_mirs_metop.sh
+- Depende de: l1-metop-amsua + l1-metop-mhs
 
 </details>
 
@@ -1198,6 +1221,68 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 - Vista: `metop/vistas/avhrr/` con `geotiff2view`
 - Origen: Polar2Grid 3.2 (avhrr_l1b_aapp, nearest) → run_polar2grid_avhrr.sh
 - Depende de: l1-metop-avhrr
+
+</details>
+
+<a id="gt-metop-mirs-rain"></a>
+
+#### Tasa de lluvia (microondas, METOP)
+
+`gt-metop-mirs-rain` · AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: rain_rate [mm/h]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Misma rejilla, paleta y decoración que gt-mirs-rain, para compararlas.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/mirs/` · patrón `{sat}_amsu-mhs_rain_rate_*_wgs84_geo_5km.tif`
+- Vista: `metop/vistas/mirs/` con `mirs_rain_rate.cpt`
+- Origen: Polar2Grid 3.2 → run_polar2grid_mirs_metop.sh
+- Depende de: l2-metop-mirs
+- Polar2Grid `-p`: `rain_rate`
+
+</details>
+
+<a id="gt-metop-mirs-tpw"></a>
+
+#### Agua precipitable total (microondas, METOP)
+
+`gt-metop-mirs-tpw` · AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: tpw [mm]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Misma rejilla, paleta y decoración que gt-mirs-tpw, para compararlas.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/mirs/` · patrón `{sat}_amsu-mhs_tpw_*_wgs84_geo_5km.tif`
+- Vista: `metop/vistas/mirs/` con `mirs_tpw.cpt`
+- Origen: Polar2Grid 3.2 → run_polar2grid_mirs_metop.sh
+- Depende de: l2-metop-mirs
+- Polar2Grid `-p`: `tpw`
+
+</details>
+
+<a id="gt-metop-mirs-otros"></a>
+
+#### Agua líquida de nube, temperatura de piel, 89 y 157 GHz (METOP)
+
+`gt-metop-mirs-otros` · AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: clw [mm], tskin [K], btemp_89v1 [K], btemp_157v [K]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Dato, sin vista. 157 GHz es el canal de MHS más parecido al de 165 GHz de ATMS (hielo convectivo); llevaría vista con su entrada en product_map.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/mirs/` · patrón `{sat}_amsu-mhs_{clw,tskin,btemp_89v1,btemp_157v}_*_wgs84_geo_5km.tif`
+- Origen: Polar2Grid 3.2 → run_polar2grid_mirs_metop.sh
+- Depende de: l2-metop-mirs
+- Polar2Grid `-p`: `clw tskin btemp_89v1 btemp_157v`
 
 </details>
 

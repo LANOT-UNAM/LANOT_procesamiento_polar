@@ -51,6 +51,8 @@
 
 # METOP (run_metop_l1.sh, run_polar2grid_avhrr.sh y run_heap_metop.sh), acordado
 # el 2026-11-18; level2 (sondeos, ~650 MB por pasada) con los días de JPSS.
+# MiRS (run_mirs_metop.sh y su render, desde el 2026-11-20) cae en las mismas
+# carpetas level2, geotiff y vistas: ~50 MB por pasada, casi todo el SND.
 # geotiff y vistas con los días de JPSS (~100 MB y ~1.5 MB por pasada); level1 como el de JPSS; pesa
 # ~800 MB por pasada, casi todo IASI (1C de EUMETSAT, AAPP y sus HDF5). Los
 # marcadores van por crudo, como los de RT-STPS. El MMAM solo sirve el reciente
@@ -63,5 +65,7 @@
 /data/output/metop/vistas	90	archivos
 /data/output/metop/state/polar2grid_avhrr	30	marcadores
 /data/output/metop/state/cspp-heap	30	marcadores
+/data/output/metop/state/cspp-mirs	30	marcadores
+/data/output/metop/state/polar2grid_mirs	30	marcadores
 /data/output/metop/state/aapp	1	marcadores_raw
 /data/ancillary/aapp/mmam	30	archivos

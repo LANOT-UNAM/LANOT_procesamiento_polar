@@ -27,7 +27,8 @@
 #   level1/{amsua,mhs,iasi}   ←  lo mismo (AAPP: 1b, 1c y sus .h5; IASI 1C de EUMETSAT)
 #   level1/avhrr              ←  level1/avhrr (hrpt) + geotiff/avhrr
 #   level2/sounder            ←  level2/sounder (NUCAPS de HEAP)
-#   vistas/avhrr              ←  vistas/avhrr
+#   level2/mirs               ←  level2/mirs (MiRS de AMSU-A + MHS) + geotiff/mirs
+#   vistas/{avhrr,mirs}       ←  lo mismo
 #
 # Al lado de /dataservice/noaa-metop, que es de la cadena vieja (stratus y
 # tsom03), como jpss junto a npp-jpss1: las dos publican sin pisarse.
@@ -62,7 +63,7 @@
 #     corregiría en el siguiente, pero alguien pudo bajarlo entre tanto).
 #   - GeoTIFF: solo si su pasada tiene marcador del renderizador más nuevo que
 #     el archivo —polar2grid_l1 para los de Level 1, polar2grid para los de
-#     Level 2, polar2grid_avhrr para los de METOP—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
+#     Level 2, polar2grid_avhrr y polar2grid_mirs para los de METOP—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
 #     estar a medias; el marcador se escribe solo cuando la etapa terminó bien.
 #     La clave sale del nombre: noaa20_viirs_…_20261014_083828_… es
 #     j01_d20261014_t083828.
@@ -85,6 +86,7 @@
 #   PUB_DS_METOP_ORIGEN  Árbol de METOP    (def. /data/output/metop)
 #   PUB_DS_METOP_DEST    Destino de METOP  (def. /dataservice/metop)
 #   AVHRR_STATE_DIR   Marcadores de AVHRR  (def. /data/output/metop/state/polar2grid_avhrr)
+#   MIRS_METOP_P2G_STATE  Marcadores de MiRS de METOP (def. /data/output/metop/state/polar2grid_mirs)
 #
 # Uso:
 #   publicar_dataservice.sh            publica y poda
@@ -104,6 +106,7 @@ DIR_P2G_L2="${P2G_STATE_DIR:-$ESTADO/polar2grid}"
 ORIGEN_METOP="${PUB_DS_METOP_ORIGEN:-/data/output/metop}"
 DEST_METOP="${PUB_DS_METOP_DEST:-/dataservice/metop}"
 DIR_P2G_AVHRR="${AVHRR_STATE_DIR:-/data/output/metop/state/polar2grid_avhrr}"
+DIR_P2G_MIRS_METOP="${MIRS_METOP_P2G_STATE:-/data/output/metop/state/polar2grid_mirs}"
 
 # Una línea por carpeta de destino: el destino y, detrás, las carpetas de
 # origen que se publican en él. Relativas a ORIGEN y DEST.
@@ -144,7 +147,9 @@ DESTINOS_METOP=(
     "level1/iasi     level1/iasi"
     "level1/avhrr    level1/avhrr    geotiff/avhrr"
     "level2/sounder  level2/sounder"
+    "level2/mirs     level2/mirs     geotiff/mirs"
     "vistas/avhrr    vistas/avhrr"
+    "vistas/mirs     vistas/mirs"
 )
 
 # Carpetas de destino que ya no reciben nada: solo se podan.
@@ -237,6 +242,17 @@ geotiff_listo() {
             for m in "$DIR_P2G_AVHRR/hrpt_${sat}_$(date -u -d "@$((t + e))" +%Y%m%d_%H%M)"_*.l1b.done; do
                 [ -e "$m" ] && { [ "$m" -nt "$ruta" ]; return; }
             done
+        done
+        return 1
+    fi
+
+    # MiRS de METOP: el marcador es el del IMG del que salió, con la misma hora
+    # de inicio al segundo (Polar2Grid la toma de él): metopb_amsu-mhs_tpw_
+    # 20261120_145900_… ↔ NPR-MIRS-IMG_v11r9_ma1_s202611201459000_….nc.done.
+    if [[ "$nombre" =~ ^metop([bc])_amsu-mhs_.*_([0-9]{8})_([0-9]{6})_ ]]; then
+        [ "${BASH_REMATCH[1]}" = b ] && sat=ma1 || sat=ma3
+        for m in "$DIR_P2G_MIRS_METOP/NPR-MIRS-IMG_"*"_${sat}_s${BASH_REMATCH[2]}${BASH_REMATCH[3]}"*.nc.done; do
+            [ -e "$m" ] && { [ "$m" -nt "$ruta" ]; return; }
         done
         return 1
     fi

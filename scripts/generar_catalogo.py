@@ -46,7 +46,7 @@ MD = "docs/catalogo_productos.md"
 PDF = "docs/catalogo_productos.pdf"
 SCRIPTS = "scripts"
 RENDERIZADORES = ["scripts/run_polar2grid_l1.sh", "scripts/run_polar2grid_edr.sh",
-                  "scripts/run_polar2grid_avhrr.sh"]
+                  "scripts/run_polar2grid_avhrr.sh", "scripts/run_polar2grid_mirs_metop.sh"]
 RETENCION = "config/retencion.tsv"
 PUBLICADOR = "scripts/publicar_dataservice.sh"
 
