@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view, skewt) + MetaGráfica
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit fa99373b83a744338c6b876cfa1ce0912a01891f
+    LANOT_tools_commit d8ccbe373f1da1010eff3629e5e3376dfd4157b5
     MetaGrafica_commit 89dfe5e018588add00222aabe8660f92e8bc49b7
 
 %help
@@ -72,7 +72,15 @@ From: lanot_base_rocky9.sif
     # Se perdió una compilación así el 2026-08-14. Solo las colortables entran
     # por otra vía: los run_*.sh montan /usr/local/share/lanot/colortables del
     # host encima del de la imagen, así que esas sí basta con instalarlas.
-    # fa99373: mapdrawer más rápido sin cambiar un píxel (PNG con zlib nivel 1,
+    # d8ccbe3: las bandas de AVHRR de METOP y su RGB 1-2-3a en product_map
+    # ("Band 4 (10.8 µm)", "RGB 1-2-3a"), y geotiff2view rotula un RGB de tres
+    # entradas desde el nombre del compuesto, no del tercer canal. Con un pin
+    # anterior las vistas de run_polar2grid_avhrr.sh salen "Metop-B BAND4", sin
+    # banda la 3a y la 3b, y el RGB "RGB" a secas: degrada en silencio, así que
+    # se comprueba abajo. Entran también so2.cpt y documentación (7c53291,
+    # 2a2ab96), que no cambian la imagen: las CPT van montadas.
+    #
+    # Antes iba en fa99373: mapdrawer más rápido sin cambiar un píxel (PNG con zlib nivel 1,
     # capas vectoriales proyectadas en arrays y leídas del gpkg solo dentro del
     # recuadro, --clip lee del GeoTIFF solo la ventana) y recursos con
     # manifiesto: install.sh copia según recursos.sha256 y respalda lo que
@@ -138,7 +146,7 @@ From: lanot_base_rocky9.sif
     # viaja DENTRO del .sif y que un pin viejo deja atrás en silencio. Las CPT
     # son la excepción de siempre: van montadas desde el host, así que ésas se
     # arreglan con git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=fa99373b83a744338c6b876cfa1ce0912a01891f
+    LANOT_TOOLS_COMMIT=d8ccbe373f1da1010eff3629e5e3376dfd4157b5
 
     # MetaGráfica: skewt no dibuja pixeles, escribe un .mg y llama a `mg` para
     # compilarlo a SVG/PDF/EPS. Es un binario C++ fuera de pip, así que el venv
@@ -303,6 +311,12 @@ From: lanot_base_rocky9.sif
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa21_atms_rain_rate_20260926_082141_wgs84_geo_5km.tif'); assert m.get('product')=='Rain Rate', 'product_map sin rain_rate: pin viejo? -> %r' % m.get('product'); assert m.get('sensor')=='ATMS'"
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa21_atms_btemp_165h_20260926_082141_wgs84_geo_5km.tif'); assert m.get('product')=='Convective Ice (165 GHz)', 'product_map con el rótulo viejo del 165 GHz: pin viejo? -> %r' % m.get('product')"
 
+    # AVHRR de METOP: run_polar2grid_avhrr.sh lo renderiza desde el 2026-11-18 y
+    # el rótulo sale de product_map; el del RGB, del nombre del compuesto. Un pin
+    # anterior a d8ccbe3 los deja "Metop-B BAND4" y "RGB" sin que nada falle.
+    /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('metopb_avhrr_band4_bt_20261120_145951_wgs84_geo_1000m.tif'); assert (m.get('product') or '').startswith('Band 4 '), 'product_map sin AVHRR: pin viejo? -> %r' % m.get('product')"
+    /opt/lanot-tools/venv/bin/python -c "from geotiff2view import nombre_para_metadatos; from metadata import Metadata; m=Metadata(); m.enrich_from_filename(nombre_para_metadatos('a,b,c', ['a','b','c'], 'rgb_metopc_avhrr_band1_2_3a_vis_20261120_152131_wgs84_geo_1000m')); assert m.get('product')=='RGB 1-2-3a', 'RGB de AVHRR mal rotulado: pin viejo? -> %r' % m.get('product')"
+
     # omps_a_geotiff.py (el GeoTIFF de ozono, hasta Polar2Grid 3.3) no viaja en
     # la imagen —run_polar2grid_edr.sh lo monta desde el repositorio—, pero corre
     # con el intérprete del bundle y usa estas tres bibliotecas de su runtime.
@@ -390,7 +404,13 @@ From: lanot_base_rocky9.sif
     # y, sin la etiqueta en el GeoTIFF, el rótulo del JPG sale de product_map.
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa21_atms_rain_rate_20260926_082141_wgs84_geo_5km.tif'); assert m.get('product')=='Rain Rate', 'product_map sin rain_rate: pin viejo? -> %r' % m.get('product'); assert m.get('sensor')=='ATMS'"
     /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('noaa21_atms_btemp_165h_20260926_082141_wgs84_geo_5km.tif'); assert m.get('product')=='Convective Ice (165 GHz)', 'product_map con el rótulo viejo del 165 GHz: pin viejo? -> %r' % m.get('product')"
-    echo "  OK --percentiles, --lat-south, --font-bg, --timestamp-pos, codigos, product_map"
+
+    # AVHRR de METOP: run_polar2grid_avhrr.sh lo renderiza desde el 2026-11-18 y
+    # el rótulo sale de product_map; el del RGB, del nombre del compuesto. Un pin
+    # anterior a d8ccbe3 los deja "Metop-B BAND4" y "RGB" sin que nada falle.
+    /opt/lanot-tools/venv/bin/python -c "from metadata import Metadata; m=Metadata(); m.enrich_from_filename('metopb_avhrr_band4_bt_20261120_145951_wgs84_geo_1000m.tif'); assert (m.get('product') or '').startswith('Band 4 '), 'product_map sin AVHRR: pin viejo? -> %r' % m.get('product')"
+    /opt/lanot-tools/venv/bin/python -c "from geotiff2view import nombre_para_metadatos; from metadata import Metadata; m=Metadata(); m.enrich_from_filename(nombre_para_metadatos('a,b,c', ['a','b','c'], 'rgb_metopc_avhrr_band1_2_3a_vis_20261120_152131_wgs84_geo_1000m')); assert m.get('product')=='RGB 1-2-3a', 'RGB de AVHRR mal rotulado: pin viejo? -> %r' % m.get('product')"
+    echo "  OK --percentiles, --lat-south, --font-bg, --timestamp-pos, codigos, product_map (AVHRR incluido)"
 
     # Ver la nota del %post: omps_a_geotiff.py usa el runtime del bundle.
     /opt/polar2grid/libexec/python_runtime/bin/python3 -c "import rasterio.features, netCDF4, yaml"

@@ -374,9 +374,12 @@ barrido llaman a ese orquestador.
 - **`crea_vistas_metop.sh` pierde pasadas**: toma los 5 archivos más recientes y solo si
   pasaron más de 10 min desde lo último. La pasada de METOP-B de las 15:40 del 2026-11-18 no
   está en kawak porque la de METOP-C llegó 20 min después. Con marcador por pasada no pasa.
-- `product_map` no tiene las bandas de AVHRR: las vistas se rotulan "Metop-B BAND4", "Metop-B
-  RGB", como hoy en kawak. Agregarlas (p. ej. "10.8 µm") obliga a empujar LANOT_tools, mover
-  el pin y recompilar `polar2grid_v3.2-mapdrawer.sif`; queda como mejora.
+- Rótulos: hasta el 2026-11-20 las vistas salían "Metop-B BAND4", 3a y 3b sin banda y el RGB
+  "RGB" a secas. LANOT_tools d8ccbe3 agrega las bandas y el RGB a `product_map` ("Band 4
+  (10.8 µm)", "RGB 1-2-3a") y hace que `geotiff2view` rotule un RGB de tres entradas desde el
+  nombre del compuesto; el pin del `.def` ya apunta ahí. Probado en tahan con los dos módulos
+  montados sobre la imagen actual. Llega a operación al empujar LANOT_tools y recompilar
+  `polar2grid_v3.2-mapdrawer.sif`.
 - Vistas en kawak desde el 2026-11-20: `publicar_kawak.sh` las copia a
   `polar/noaa-metop/avhrr/vistas` con `--update`, así que lo que kawak ya tenía de la vieja
   (más nuevo que lo nuestro) no se pisa; ese día se apagó `crea_vistas_metop.sh` en kawak.

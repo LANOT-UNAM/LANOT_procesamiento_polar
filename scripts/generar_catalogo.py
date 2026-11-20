@@ -346,6 +346,15 @@ def paleta_de(nombre, pares):
     return None
 
 
+def expandir_llaves(texto):
+    """Como bash: 'band{1,2}_vis' → ['band1_vis', 'band2_vis']. Anidadas no."""
+    m = re.search(r"\{([^{}]*,[^{}]*)\}", texto)
+    if not m:
+        return [texto]
+    return [x for alt in m.group(1).split(",")
+            for x in expandir_llaves(texto[:m.start()] + alt + texto[m.end():])]
+
+
 def claves_product_map(ruta):
     with open(ruta, encoding="utf-8") as f:
         texto = f.read()
@@ -425,10 +434,14 @@ def verificar(filas):
         for f in filas:
             if f["vista"] in (NADA, "skewt"):
                 continue
-            nombre = (f["ruta_vista"] + f["patron"]).lower()
-            if not any(c in nombre for c in claves):
-                faltas.append(f"{f['id']}: ninguna clave de product_map aparece en "
-                              f"'{f['patron']}': la vista saldría sin nombre de producto")
+            # Cada variante del patrón (separadas por coma y con las llaves
+            # expandidas) necesita su clave: con una sola, las demás bandas
+            # saldrían sin nombre.
+            for patron in (p.strip() for p in f["patron"].split(", ")):
+                for nombre in expandir_llaves(patron):
+                    if not any(c in (f["ruta_vista"] + nombre).lower() for c in claves):
+                        faltas.append(f"{f['id']}: ninguna clave de product_map aparece en "
+                                      f"'{nombre}': la vista saldría sin nombre de producto")
 
     # 4. Rutas
     dirs = directorios_creados()
