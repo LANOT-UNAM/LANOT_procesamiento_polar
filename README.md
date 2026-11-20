@@ -1,6 +1,6 @@
 # LANOT_procesamiento_polar
 
-**Orquestación de contenedores Apptainer para el procesamiento operativo de satélites de la serie JPSS (Suomi-NPP, NOAA-20 y NOAA-21).**
+**Orquestación de contenedores Apptainer para el procesamiento operativo de los satélites polares que recibe el LANOT: la serie JPSS (NOAA-20, NOAA-21 y, hasta noviembre de 2026, Suomi-NPP) y METOP-B/C.**
 
 ![Estado](https://img.shields.io/badge/Estado-Operativo-green) ![Licencia](https://img.shields.io/badge/Licencia-GPLv3-blue) ![Institución](https://img.shields.io/badge/LANOT-UNAM-gold)
 
@@ -18,13 +18,14 @@ El objetivo es migrar de scripts monolíticos en servidor ("bare metal") a una a
 **No contiene software científico ni datos**: solo recetas, scripts, plantillas XML y documentación. Los tarballs oficiales de CIMSS/SSEC están listados en el manifiesto `contenedores/tarballs.tsv`.
 
 ### 🛰️ Satélites Soportados
-* **Suomi-NPP**
+* **Suomi-NPP** (hasta su último crudo, el 2026-11-02)
 * **NOAA-20 (JPSS-1)**
 * **NOAA-21 (JPSS-2)**
+* **METOP-B y METOP-C** (desde el 2026-11-19)
 
 ---
 
-## 🏗️ Arquitectura del Flujo
+## 🏗️ Arquitectura del Flujo: JPSS
 
 `recibe.sh` recibe el RAW de la antena y enruta; `procesar_pasada.sh` encadena los doce eslabones de una pasada, con barreras entre niveles y hasta tres etapas simultáneas; `barrer_pendientes.sh` va en cron y recoge lo que se quedó atrás.
 
@@ -88,13 +89,63 @@ tiempo.
 
 ---
 
+## 🛰️ Arquitectura del Flujo: METOP-B/C
+
+Comparte con JPSS la recepción, `cadenas.tsv`, el barrido, HEAP, MiRS y la imagen de Polar2Grid,
+pero no la cadena: `recibe.sh` manda los crudos de la rama `metop` a `procesar_metop.sh`, que
+encadena cuatro eslabones en serie sobre una pasada.
+
+```mermaid
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 18, "rankSpacing": 30, "padding": 12, "subGraphTitleMargin": {"top": 4, "bottom": 14}}, "themeVariables": {"primaryColor": "#f6f8fa", "primaryBorderColor": "#bbbbbb", "primaryTextColor": "#222222", "lineColor": "#888888", "clusterBkg": "#fbfbf6", "clusterBorder": "#d8d4b0", "edgeLabelBackground": "#ffffff"}}}%%
+flowchart TD
+    A["Antena<br/>RAW"] --> R["recibe.sh<br/>cadenas.tsv"]
+    R --> D["procesar_metop.sh"]
+    Z["barrer_pendientes.sh<br/>cron cada 15 min"] -.->|reintenta| D
+
+    subgraph AP["Apptainer"]
+        B["metopizer 3.57<br/>Level 0"] --> C["AAPP 8.15 + OPS-LRS<br/>Level 1"]
+        C -->|AVHRR| P["Polar2Grid 3.2<br/>GeoTIFF"]
+        C -->|AMSU-A + MHS| MI["MiRS 4.0<br/>lluvia · agua precipitable"]
+        C -->|IASI + AMSU-A + MHS| N["HEAP 3.0<br/>sondeos NUCAPS"]
+        MI --> P
+        P --> M["LANOT_tools<br/>vistas JPG"]
+    end
+
+    D --> B
+
+    classDef l2 fill:#e8f0fe,stroke:#4a7fd4
+    classDef aux fill:#ffffff,stroke:#bbbbbb,stroke-dasharray:4 3,color:#666666
+    class MI,N l2
+    class Z aux
+```
+
+**Lo que cambia respecto a JPSS:**
+
+* **La unidad de trabajo es el crudo**, no la pasada de SDR: cada recepción de la antena da un
+  Level 1 por instrumento, y `run_metop_l1.sh` deja un manifiesto (`<crudo>.l1`) del que los
+  demás eslabones toman sus entradas. No hay nada que emparejar por tiempo.
+* **El Level 1 lo hace AAPP**, de NWP SAF, en un solo contenedor (`aapp_v8.15.sif`) con el
+  metopizer de EUMETSAT y OPS-LRS para IASI. Sus coeficientes de calibración viven en el host
+  y `update_aapp_ancillary.sh` los trae al día cada semana.
+* **Los mismos paquetes, otros sensores**: HEAP saca los sondeos de IASI + AMSU-A + MHS en vez de
+  CrIS + ATMS, y MiRS la lluvia y el agua precipitable de AMSU-A + MHS en vez de ATMS. MiRS no lee
+  los 1b de AAPP tal cual: `metop_l1b_para_mirs.py` le prepara una copia con la cabecera que espera.
+* **Los sondeos todavía no tienen mapas ni Skew-T**, a diferencia de los de JPSS.
+
+Todo va a su propio árbol, `/data/output/metop/{level1,level2,geotiff,vistas}`, y se publica
+en `polar/metop` (kawak) y `/dataservice/metop`, al lado de los `noaa-metop` de la cadena
+anterior, que sigue corriendo mientras se comparan. El plan y su estado están en
+[`docs/plan_metop.md`](docs/plan_metop.md).
+
+---
+
 ## 🚀 Requisitos Previos
 
 Para desplegar este sistema en un servidor nuevo, se requiere:
 
 *   **Sistema Operativo:** Rocky Linux 8/9 o RHEL compatible.
 *   **Motor de Contenedores:** `Apptainer` instalado (`dnf install apptainer`).
-*   **Credenciales:** registro en el sitio de descargas de CIMSS/SSEC.
+*   **Credenciales:** registro en el sitio de descargas de CIMSS/SSEC y, para la rama METOP, en el área de usuario de NWP SAF (AAPP, OPS-LRS) y en el User Portal de EUMETSAT (metopizer).
 
 ---
 
