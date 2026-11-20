@@ -245,8 +245,10 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
   las líneas de la pasada sin ciclo de calibración). Como `AAPP_RUN_METOP` aborta en cuanto
   falla un instrumento, con HIRS en la llamada no sale nada. **Eso explica las cinco llamadas de
   `metop2.sh`**, que parecían redundantes: la completa revienta y lo publicado sale de las
-  sueltas. `run_metop_l1.sh` hace una llamada con lo exigido y otra, opcional, con HIRS. Falta
-  confirmar en stratus si su `hirs/level1` de METOP-B lleva tiempo vacío.
+  sueltas. `run_metop_l1.sh` hace una llamada con lo exigido y otra, opcional, con HIRS.
+  Confirmado el 2026-11-20: el `hirs/level1` de stratus está vacío del todo, y en tahan
+  HIRS falló en las cinco pasadas de METOP-B de los dos primeros días (`hirscl_algoV4
+  failed`). No se pierde nada que la vieja produjera.
 - **El metopizer 3.51.1** está compilado en su árbol fuente (`~lanotadm/METOPIZER`), sin
   tarball aparte. Su `config/` va en `referencia/metop/metopizer_config` (sin los
   `IASI_BRD_*` de M02).
@@ -287,9 +289,9 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 
 | Pieza | Estado |
 |---|---|
-| Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. Probado con simulados; falta la primera pasada real tras instalar. |
+| Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. En operación desde el 2026-11-19: los 10 `chain6` de los dos primeros días, completos (Level 1, AVHRR y sondeos) sin intervención, 5–6 min por pasada; stratus vio las mismas 10. |
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
-| Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T) y decidir la versión de `amsua_clparams.dat` en operación (abajo). |
+| Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
 | AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Falta publicarlo (kawak y dataservice) y apagar `crea_vistas_metop.sh` en kawak. |
 | Publicación en kawak | Falta la correspondencia en `publicar_kawak.sh`. |
@@ -412,9 +414,11 @@ coeficientes que viven en el host (AMSU-A, MHS, HIRS, AVHRR), validando la cabec
 y dejando la versión anterior respaldada con fecha. La decisión de la mañana —"esos
 coeficientes casi nunca cambian, no van en cron"— era equivocada.
 
-**Pendiente de decidir:** el caché de operación sigue con la 46 (el cambio no se aplicó sin
-permiso). Con la 48, los sondeos de METOP-C diferirán un poco de los de stratus (47) mientras
-convivan; con la 47, saldrían idénticos pero con límites ya superados por NWP SAF.
+**Decidido el 2026-11-20: la versión más reciente de NWP SAF**, la que deja el cron. En
+operación ya era la 48 desde el 2026-11-18 a las 20:21 (CST), cuando una corrida a mano de
+`update_aapp_ancillary.sh` la subió desde la 46 —antes de la primera pasada real—, así que
+todas las de la cadena nueva van con la 48. Consecuencia aceptada: mientras convivan, los
+sondeos de tahan difieren un poco de los de stratus (47).
 
 - Falta el render: mapas por nivel y Skew-T como los de JPSS (`run_polar2grid_edr.sh`, lector
   `nucaps`). La vieja no tiene vistas de NUCAPS de METOP, así que no se pierde nada mientras.

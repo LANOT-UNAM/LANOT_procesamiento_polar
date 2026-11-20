@@ -195,11 +195,18 @@ seleccionar_crudo_mas_reciente() {
 # HOME apunta al trabajo porque ATOVS_CONF carga $HOME/ATOVS_ENV8 si existe, y
 # apptainer monta el home real: en stratus, lanotadm tiene uno, y cualquier
 # copia así cambiaría la configuración sin que nada lo diga.
+#
+# TZ=UTC porque el contenedor hereda la zona del host, y OPS-LRS sella la hora
+# de creación del AVHR_xxx_1B con la hora local y sufijo Z (en tahan, CST:
+# …_20261120111041Z para una pasada de las 17:10 UTC, 2026-11-20). Los nombres
+# llevan la hora como identificador, así que va en UTC, como el resto. Con eso
+# también los mensajes de AAPP en el log salen en UTC; las marcas de en_aapp
+# van igual, con Z, para que el log de AAPP se lea en una sola zona.
 en_aapp() {
     local etiqueta="$1"; shift
     local codigo=0
 
-    echo "--- $etiqueta --- $(date '+%H:%M:%S')" >> "$LOG_FILE"
+    echo "--- $etiqueta --- $(date -u '+%H:%M:%SZ')" >> "$LOG_FILE"
     apptainer exec \
         --bind "$INPUT_DIR_REAL":/input:ro \
         --bind "$WORK_DIR":/work \
@@ -208,9 +215,9 @@ en_aapp() {
         --bind "$ANC_DIR/calibration":"$CALIBRACION_IMAGEN" \
         --pwd /work \
         "$CONTAINER" \
-        /bin/bash -c "export LC_ALL=C HOME=/work/aapp WRK=/work/aapp DIR_NAVIGATION=/anc/orbelems DIR_IASICONFIG=/anc/opsaux; . /opt/aapp/ATOVS_ENV8; $*" \
+        /bin/bash -c "export LC_ALL=C TZ=UTC HOME=/work/aapp WRK=/work/aapp DIR_NAVIGATION=/anc/orbelems DIR_IASICONFIG=/anc/opsaux; . /opt/aapp/ATOVS_ENV8; $*" \
         >> "$LOG_FILE" 2>&1 || codigo=$?
-    echo "--- $etiqueta: código $codigo --- $(date '+%H:%M:%S')" >> "$LOG_FILE"
+    echo "--- $etiqueta: código $codigo --- $(date -u '+%H:%M:%SZ')" >> "$LOG_FILE"
 
     return $codigo
 }
