@@ -290,7 +290,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Pieza | Estado |
 |---|---|
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. En operación desde el 2026-11-19: los 10 `chain6` de los dos primeros días, completos (Level 1, AVHRR y sondeos) sin intervención, 5–6 min por pasada; stratus vio las mismas 10. |
-| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
+| Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Filas de `tarballs.tsv` y catálogo de productos, hechos el 2026-11-20. |
 | Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
 | AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Publicado desde el 2026-11-20 (abajo). |
@@ -300,10 +300,12 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 
 ### 1. Contenedor `metop_l1` (metopizer + AAPP + OPS-LRS)
 
-**Hecho el 2026-11-18 como `aapp_v8.15.def`, sobre `_rocky9`** (detalle arriba). Siguen
-pendientes de esta pieza: las filas de `tarballs.tsv` con el origen `nwpsaf` y que
-`construir.sh` la conozca, el estático en el host y comprobar qué escribe AAPP en su árbol,
-lo que se verá al correr la primera pasada con `run_metop_l1.sh`.
+**Hecho el 2026-11-18 como `aapp_v8.15.def`, sobre `_rocky9`** (detalle arriba). El
+2026-11-20 entraron sus 13 insumos a `tarballs.tsv`, con sha1 calculado en tahan y cuatro
+orígenes nuevos (`nwpsaf`, `eumetsat`, `publico` y `stratus`, este último para fftw, xerces,
+bufrdc e `iostream.h`, cuyo origen real no quedó escrito); `obtener_tarballs.sh --novedades`
+manda a revisar a mano lo que no es de CSPP. `construir.sh` ya la compilaba: lista todo
+`.def` y copia `parches/`, donde va el del metopizer.
 
 - `.def` sobre `lanot_base_rocky8` o `_rocky9`, según lo que AAPP compile limpio. Compila
   AAPP 8.x, OPS-LRS y el metopizer. OPS-LRS es lo más delicado (Fortran, fftw, xerces y

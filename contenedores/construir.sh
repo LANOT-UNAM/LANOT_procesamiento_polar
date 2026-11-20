@@ -61,7 +61,8 @@ compilar() {
 
     # El %files de una receta es relativo al directorio de compilación, no al
     # clon, así que lo que la receta necesita del repositorio hay que llevarlo
-    # ahí antes. Hoy solo son los parches al Satpy del bundle de Polar2Grid.
+    # ahí antes. Hoy son los parches: al Satpy del bundle de Polar2Grid y al
+    # rs_decode del metopizer (aapp_v8.15).
     if [ -d "$RECETAS_DIR/parches" ]; then
         rm -rf "$TARBALLS/parches"
         cp -r "$RECETAS_DIR/parches" "$TARBALLS/parches"

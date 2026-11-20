@@ -21,10 +21,20 @@
 #   version      La que tenemos instalada, con el formato de esa URL.
 #   archivo      Nombre exacto del tarball.
 #   origen       cimss = https://cimss.ssec.wisc.edu/cspp/download/  (registro)
-#                Todos salen de ahí, RT-STPS incluido: lo escribió el Direct
-#                Readout Laboratory de la NASA, pero el DRL pasó a "estado de
-#                archivo" (congelado, sin soporte) y quien lo distribuye y
+#                Todo lo de CSPP sale de ahí, RT-STPS incluido: lo escribió el
+#                Direct Readout Laboratory de la NASA, pero el DRL pasó a "estado
+#                de archivo" (congelado, sin soporte) y quien lo distribuye y
 #                parchea es CSPP. Aquí decía que se bajaba de la DRL: era error.
+#                Para AAPP (rama METOP), desde el 2026-11-20:
+#                nwpsaf   = área de usuario de NWP SAF (registro): AAPP, OPS-LRS,
+#                           kai, el instalador y los scripts de actualización
+#                eumetsat = User Portal de EUMETSAT (cuenta y licencia): metopizer
+#                publico  = sitio del proyecto, sin registro: HDF5, ecCodes
+#                stratus  = copiado de stratus:/data/opt/AAPP/tarfiles, donde lo
+#                           dejó quien armó la rama vieja; de dónde lo bajó no
+#                           quedó escrito. Son versiones viejas que no cambian.
+#                --novedades solo sabe consultar la portada de CSPP; lo demás se
+#                revisa a mano.
 #   receta       El .def que lo consume, o '-' si no lo consume ninguno.
 #   destino      Dónde se extrae (solo estáticos).
 #   comprobacion Ruta que debe existir y no estar vacía después de extraer. Es lo que
@@ -62,11 +72,34 @@ bundle	mirs	4.0	CSPP_MIRS_V4.0.tar.gz	cimss	cspp_mirs_v4.0	-	-	af11441ace6438ad5
 # --conservar-tarballs si no quieres volver a pasar por el registro de CIMSS: a
 # diferencia de los demás estáticos, este es la única copia del software.
 estatico	heap	3.0	CSPP_HEAP_V3.0.tar.gz	cimss	-	/data/opt	/data/opt/CSPP_HEAP_3_0/scripts/run_heap.bash	96d67c0936980affdba2d2879fc048ee9ef281f0
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_npp.tar.gz	cimss	-	/data/opt	-	-
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j01.tar.gz	cimss	-	/data/opt	-	-
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j02.tar.gz	cimss	-	/data/opt	-	-
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_tiles.tar.gz	cimss	-	/data/opt	-	-
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_npp.tar.gz	cimss	-	/data/opt	-	-
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_j01.tar.gz	cimss	-	/data/opt	-	-
-estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_j02.tar.gz	cimss	-	/data/opt	-	-
+# Los siete estáticos de SDR se borraron sin registrar sha1 ni comprobación, así
+# que el inventario los daba por faltantes. La comprobación se puso el 2026-11-20
+# por la carpeta que cada nombre indica (shipped_luts/<sat>, stray_light_luts/<sat>,
+# ecotiles), sin el tarball a la vista para confirmarlo con tar tzf.
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_npp.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/shipped_luts/npp	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j01.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/shipped_luts/j01	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_luts_j02.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/shipped_luts/j02	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_static_tiles.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/ecotiles	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_npp.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/stray_light_luts/npp	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_j01.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/stray_light_luts/j01	-
+estatico	jpss_sdr	4.1.1	CSPP_SDR_V4.1_straylight_luts_j02.tar.gz	cimss	-	/data/opt	/data/opt/SDR_4_1/anc/static/stray_light_luts/j02	-
 estatico	viirs_atmos	1.0	CSPP_VIIRS_ATMOS_V1.0_STATIC.tar.gz	cimss	-	/data/opt	/data/opt/CSPP_ATMOS_1_0/anc/static/Config	1946f215170bb71386ebd7beaef9e24f459bd0f4
+
+# AAPP 8.15 + OPS-LRS + metopizer (aapp_v8.15.def, rama METOP). Viven en la
+# subcarpeta aapp_8.15/ de TARBALLS, con su SHA256SUMS; el %files los toma de
+# ahí. AAPP, OPS-LRS y el metopizer piden cuenta: conservarlos. No entran:
+# iasi_pca_comp.tar.gz (está en la carpeta pero el .def no lo usa) y aapp_8.12/,
+# las entradas de la versión de stratus, que se copiaron solo para comparar.
+bundle	aapp	8.15	aapp_8.15/AAPP_8.15.tgz	nwpsaf	aapp_v8.15	-	-	c9707cbc775e50644de087e76bace2c2f3ea3c33
+bundle	aapp	8.15	aapp_8.15/install_aapp8_v8.15.sh	nwpsaf	aapp_v8.15	-	-	898c12fbe39b2dded3273a5318fde2236dcc027f
+bundle	aapp	8.15	aapp_8.15/get_aux_files.sh	nwpsaf	aapp_v8.15	-	-	5bd1af061db3ed1f0afd2d9d52e593fcd8df6523
+bundle	aapp	8.15	aapp_8.15/get_atovs_cal_files.sh	nwpsaf	aapp_v8.15	-	-	5ffa7f4f7db184ff7a57a5fda0c99bf34b3781ce
+bundle	ops_lrs	8.4	aapp_8.15/OPS_V8.4-AAPP-l-20211216.tgz	nwpsaf	aapp_v8.15	-	-	95abce0f7df14f2557e522d95a9d7530637a53d8
+bundle	kai	1.12	aapp_8.15/kai_1_12_e8b74685d1.zip	nwpsaf	aapp_v8.15	-	-	b95bf1ef5ba51c5a7de7e4e08a6d71d488ef511e
+bundle	metopizer	3.57	aapp_8.15/metopizer_3_57_tar_9b77fef66a.zip	eumetsat	aapp_v8.15	-	-	5ea53c30046a3551869c5e5fb7ed2aade748422d
+bundle	hdf5	1.10.6	aapp_8.15/hdf5-1.10.6.tar.gz	publico	aapp_v8.15	-	-	700257241b4499a2da8125169d13a5d9f58a2ffe
+bundle	eccodes	2.38.0	aapp_8.15/eccodes-2.38.0-Source.tar.gz	publico	aapp_v8.15	-	-	9e2e2c290ba5aecbd4282628f76aef5571284ff0
+bundle	bufrdc	000409	aapp_8.15/bufrdc_000409.tar.gz	stratus	aapp_v8.15	-	-	188f325307ed1e4ab1f909a22591400fd8ec982c
+bundle	fftw	3.0.1	aapp_8.15/fftw-3.0.1.tar.gz	stratus	aapp_v8.15	-	-	e392a005dd93583f47de29ec4992687aa21bf3a2
+bundle	xerces_c	1.7.0	aapp_8.15/xerces-c-src1_7_0.tar.gz	stratus	aapp_v8.15	-	-	65bb925a41a748755e015c9c3b06a742dd91a37c
+bundle	iostream_h	-	aapp_8.15/iostream.h	stratus	aapp_v8.15	-	-	3e86825420722dc571f7d9d795b6fe5a06e38393

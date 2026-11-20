@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# obtener_tarballs.sh — inventario de los tarballs de CSPP, RT-STPS y Polar2Grid
+# obtener_tarballs.sh — inventario de los tarballs de CSPP, RT-STPS, Polar2Grid y AAPP
 #
 # Trabaja sobre contenedores/tarballs.tsv, que es la única lista completa de qué
 # archivos necesita un servidor de la cadena. Cuatro modos:
@@ -42,6 +42,19 @@ CSPP_PORTADA="${CSPP_PORTADA:-https://cimss.ssec.wisc.edu/cspp/}"
 RAIZ="${RAIZ:-}"
 
 URL_CIMSS="https://cimss.ssec.wisc.edu/cspp/download/"
+
+# De dónde se baja cada origen del manifiesto. Solo cimss tiene portada que
+# --novedades sepa leer; los demás se revisan a mano.
+url_de_origen() {
+    case "$1" in
+        cimss)    echo "$URL_CIMSS" ;;
+        nwpsaf)   echo "https://nwp-saf.eumetsat.int/site/software/aapp/ (área de usuario, con registro)" ;;
+        eumetsat) echo "https://user.eumetsat.int/ (User Portal: cuenta y aceptar la licencia)" ;;
+        publico)  echo "el sitio del proyecto (HDF Group, ECMWF), sin registro" ;;
+        stratus)  echo "stratus:/data/opt/AAPP/tarfiles (copia; el origen no quedó escrito)" ;;
+        *)        echo "(origen '$1' no reconocido)" ;;
+    esac
+}
 
 TEMPORALES="$(mktemp -d)"
 trap 'rm -rf "$TEMPORALES"' EXIT
@@ -244,10 +257,7 @@ descargar() {
 
         n=$((n + 1))
         echo "  $archivo"
-        case "$origen" in
-            cimss) echo "      de:    $URL_CIMSS" ;;
-            *)     echo "      de:    (origen '$origen' no reconocido)" ;;
-        esac
+        echo "      de:    $(url_de_origen "$origen")"
         echo "      a:     $(dirname "$ruta")/"
         [ "$sha1" = "-" ] || echo "      sha1:  $sha1"
         echo ""
@@ -296,6 +306,13 @@ novedades() {
         # basta con mirarlo una vez.
         case " $vistos " in *" $slug "*) continue ;; esac
         vistos="$vistos $slug"
+
+        # Lo que no es de CSPP no está en esa portada: se avisa una vez por
+        # paquete, con dónde revisarlo, en vez de darlo por "no aparece".
+        if [ "$origen" != cimss ]; then
+            printf '  · %-14s tenemos %-10s revisar a mano: %s\n' "$slug" "$version" "$(url_de_origen "$origen")"
+            continue
+        fi
 
         # La portada lista versiones viejas junto a la nueva (jpss_sdr aparece
         # como 4.1 y 4.1.1), así que gana la mayor.
