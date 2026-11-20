@@ -433,6 +433,14 @@ sondeos de tahan difieren un poco de los de stratus (47).
 - Los nombres de los mapas y Skew-T hoy dicen `atms-cris`; para METOP, `iasi-amsu` o lo que
   se acuerde, y la entrada correspondiente en `product_map`.
 - Confirmar que el lector `nucaps` de Polar2Grid lee igual la salida de METOP.
+- **Lo que la vieja publica y la nueva no** (`/dataservice/noaa-metop/nucaps`, revisado el
+  2026-11-20; su `nucaps/vistas` está vacía). HEAP 2.0 (`v3r0`) deja, además de lo nuestro,
+  `NUCAPS-AGG-EDR` y `NUCAPS-AGG-CCR-AR` (agregados por pasada), `NUCAPS-L2-QC` (un
+  `L2_QC.txt` renombrado a `.nc`) y dos `.txt` de diagnóstico (`EDR-MONITORING`,
+  `GranuleInfo`), y cada gránulo sale dos veces por los dos IASI 1C de stratus. HEAP 3.0
+  (`v3r2`) no puede agregar: su envoltorio de Python no tiene `-a`, que era de `run_heap.pl`
+  2.x (sigue en el bundle, sin uso). Antes de apagar la vieja, preguntar si alguien baja los
+  `AGG` o el `L2-QC`; si nadie, no hace falta nada.
 
 ### 6. MiRS (opcional)
 
