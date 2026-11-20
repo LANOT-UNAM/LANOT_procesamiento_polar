@@ -537,7 +537,7 @@ DURACION=$(formato_duracion $(( $(date '+%s') - START_EPOCH )))
 # ============================================================================
 # ENTREGA
 # ============================================================================
-# Por instrumento, como stratus: level1/{amsua,mhs,hirs,avhrr,iasi}. Se entrega
+# Por instrumento, como stratus: /data/output/metop/level1/{amsua,mhs,hirs,avhrr,iasi}. Se entrega
 # también lo parcial: un AVHRR bueno sirve aunque OPS-LRS haya fallado.
 
 declare -A DESTINO=(

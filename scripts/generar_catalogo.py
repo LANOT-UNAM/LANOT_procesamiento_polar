@@ -44,7 +44,8 @@ TSV = "docs/catalogo_productos.tsv"
 MD = "docs/catalogo_productos.md"
 PDF = "docs/catalogo_productos.pdf"
 SCRIPTS = "scripts"
-RENDERIZADORES = ["scripts/run_polar2grid_l1.sh", "scripts/run_polar2grid_edr.sh"]
+RENDERIZADORES = ["scripts/run_polar2grid_l1.sh", "scripts/run_polar2grid_edr.sh",
+                  "scripts/run_polar2grid_avhrr.sh"]
 RETENCION = "config/retencion.tsv"
 PUBLICADOR = "scripts/publicar_dataservice.sh"
 
@@ -58,7 +59,11 @@ NIVELES = OrderedDict([
     ("vista", "Vistas sin GeoTIFF propio"),
 ])
 
-SATELITES = {"npp": "Suomi-NPP", "j01": "NOAA-20", "j02": "NOAA-21"}
+SATELITES = {"npp": "Suomi-NPP", "j01": "NOAA-20", "j02": "NOAA-21",
+             "m01": "METOP-B", "m03": "METOP-C"}
+
+# Las rutas del TSV son relativas a esta raíz: jpss/… o metop/…
+RAIZ = "/data/output/"
 
 NADA = "—"
 
@@ -116,21 +121,25 @@ def pendientes(f):
 
 
 def leer_retencion():
-    """Filas de config/retencion.tsv bajo /data/output/jpss: (carpeta, días)."""
+    """Filas de config/retencion.tsv bajo /data/output: (carpeta, días)."""
     filas = []
     with open(RETENCION, encoding="utf-8") as f:
         for linea in f:
             if not linea.strip() or linea.startswith("#"):
                 continue
             ruta, dias, modo = linea.rstrip("\n").split("\t")[:3]
-            if modo != "archivos" or not ruta.startswith("/data/output/jpss/"):
+            if modo != "archivos" or not ruta.startswith(RAIZ):
                 continue
-            filas.append((ruta[len("/data/output/jpss/"):], int(dias)))
+            filas.append((ruta[len(RAIZ):], int(dias)))
     return filas
 
 
 def leer_publicacion():
-    """Días de retención en /dataservice y el reparto origen → destino."""
+    """Días de retención en /dataservice y el reparto origen → destino.
+
+    Los dos lados, como las rutas del TSV: relativos a /data/output y a
+    /dataservice. publicar_dataservice.sh solo publica JPSS (de jpss/ a jpss/).
+    """
     with open(PUBLICADOR, encoding="utf-8") as f:
         texto = f.read()
     dias = int(re.search(r'DIAS="\$\{PUB_DS_DIAS:-(\d+)\}"', texto).group(1))
@@ -138,7 +147,7 @@ def leer_publicacion():
     reparto = []   # (origen, destino)
     for m in re.finditer(r'"([^"]+)"', bloque):
         destino, *origenes = m.group(1).split()
-        reparto += [(o, destino) for o in origenes]
+        reparto += [(f"jpss/{o}", f"jpss/{destino}") for o in origenes]
     return dias, reparto
 
 
@@ -146,13 +155,14 @@ def seccion_conservacion(w):
     dias_pub, reparto = leer_publicacion()
     w("## Cuánto se conserva")
     w("")
-    w(f"Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace "
+    w(f"Lo que pasa de esta edad se borra solo: en `{RAIZ}` lo hace "
       f"`scripts/limpiar.sh` una vez al día, con los días de `{RETENCION}`; en "
       f"`/dataservice/jpss/`, que es de donde lo toman los FTP, `{PUBLICADOR}`, a los "
       f"{dias_pub} días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así "
-      f"que ahí la carpeta puede no ser la misma que aquí.")
+      f"que ahí la carpeta puede no ser la misma que aquí. METOP todavía no se publica en "
+      f"`/dataservice`: ahí escribe la cadena vieja, en `noaa-metop/`, hasta que se apague.")
     w("")
-    w(f"| Carpeta en `/data/output/jpss/` | Se conserva | En `/dataservice/jpss/` ({dias_pub} días) |")
+    w(f"| Carpeta en `{RAIZ}` | Se conserva | En `/dataservice/` ({dias_pub} días) |")
     w("|---|---|---|")
     for carpeta, dias in leer_retencion():
         if carpeta.startswith("state"):
@@ -177,11 +187,12 @@ def generar_md(filas):
       "los cambios van en el TSV.")
     w("")
     w("Productos que el LANOT genera a partir de la recepción directa de los satélites polares "
-      "Suomi-NPP, NOAA-20 y NOAA-21, de Level 1 en adelante. Todas las rutas son relativas a "
-      "`/data/output/jpss/`.")
+      "Suomi-NPP, NOAA-20, NOAA-21, METOP-B y METOP-C, de Level 1 en adelante. Todas las rutas "
+      f"son relativas a `{RAIZ}`: los de JPSS van en `jpss/` y los de METOP en `metop/`.")
     w("")
-    w("- **Level 1 (SDR)**: radiancias calibradas y geolocalizadas, en la geometría del "
-      "instrumento (swath), un archivo por gránulo o por pasada.")
+    w("- **Level 1**: radiancias calibradas y geolocalizadas, en la geometría del "
+      "instrumento (swath), un archivo por gránulo o por pasada. En JPSS son los SDR de "
+      "CSPP; en METOP, los Level 1b/1c/1d de AAPP.")
     w("- **Level 2**: variables geofísicas calculadas con CSPP, también en swath.")
     w("- **GeoTIFF**: una selección de Level 1 y Level 2 remallada a una rejilla "
       "latitud-longitud fija (`config/grid.yaml`). Es **dato** (float32, sin realce), salvo "
@@ -191,7 +202,9 @@ def generar_md(filas):
     w("")
     w("Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de 20 min. "
       "En los nombres de GeoTIFF y vistas el satélite va como `npp`, `noaa20` o `noaa21`; en "
-      "los de CSPP, como `npp`, `j01` o `j02` (o `n20`/`n21` en algunos Level 2).")
+      "los de CSPP, como `npp`, `j01` o `j02` (o `n20`/`n21` en algunos Level 2). En METOP "
+      "una pasada es un crudo de la antena: los nombres de AAPP llevan `M01` (METOP-B) o `M03` "
+      "(METOP-C), los de HEAP `m01`/`m03`, y los GeoTIFF y vistas `metopb`/`metopc`.")
     w("")
 
     seccion_conservacion(w)
@@ -343,17 +356,24 @@ def claves_product_map(ruta):
 
 
 def directorios_creados():
-    """Directorios de /data/output/jpss que nombra algún script de scripts/."""
+    """Directorios de /data/output/{jpss,metop} que nombra algún script de scripts/.
+
+    Relativos a RAIZ, como en el TSV. Una llave al final se expande como en
+    bash (level1/{amsua,mhs} → level1/amsua, level1/mhs): así nombra
+    run_metop_l1.sh las carpetas por instrumento, que arma con una tabla.
+    """
     dirs = set()
     for nombre in sorted(os.listdir(SCRIPTS)):
         if not nombre.endswith(".sh"):
             continue
         with open(os.path.join(SCRIPTS, nombre), encoding="utf-8") as f:
             texto = f.read()
-        for m in re.finditer(r"/data/output/jpss/([A-Za-z0-9_/]+)", texto):
-            dirs.add(m.group(1).strip("/"))
+        for m in re.finditer(r"/data/output/((?:jpss|metop)/[A-Za-z0-9_/]*)(?:\{([a-z0-9_,]+)\})?", texto):
+            base = m.group(1)
+            for sufijo in (m.group(2).split(",") if m.group(2) else [""]):
+                dirs.add((base + sufijo).strip("/"))
         for m in re.finditer(r'\$(GEOTIFF|VISTAS)/([a-z_/]+)', texto):
-            dirs.add(f"{m.group(1).lower()}/{m.group(2).strip('/')}")
+            dirs.add(f"jpss/{m.group(1).lower()}/{m.group(2).strip('/')}")
     return dirs
 
 

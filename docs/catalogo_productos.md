@@ -2,26 +2,30 @@
 
 > Generado desde `docs/catalogo_productos.tsv` con `scripts/generar_catalogo.py`. **No editar a mano**: los cambios van en el TSV.
 
-Productos que el LANOT genera a partir de la recepción directa de los satélites polares Suomi-NPP, NOAA-20 y NOAA-21, de Level 1 en adelante. Todas las rutas son relativas a `/data/output/jpss/`.
+Productos que el LANOT genera a partir de la recepción directa de los satélites polares Suomi-NPP, NOAA-20, NOAA-21, METOP-B y METOP-C, de Level 1 en adelante. Todas las rutas son relativas a `/data/output/`: los de JPSS van en `jpss/` y los de METOP en `metop/`.
 
-- **Level 1 (SDR)**: radiancias calibradas y geolocalizadas, en la geometría del instrumento (swath), un archivo por gránulo o por pasada.
+- **Level 1**: radiancias calibradas y geolocalizadas, en la geometría del instrumento (swath), un archivo por gránulo o por pasada. En JPSS son los SDR de CSPP; en METOP, los Level 1b/1c/1d de AAPP.
 - **Level 2**: variables geofísicas calculadas con CSPP, también en swath.
 - **GeoTIFF**: una selección de Level 1 y Level 2 remallada a una rejilla latitud-longitud fija (`config/grid.yaml`). Es **dato** (float32, sin realce), salvo donde se indica que es imagen.
 - **Vista**: imagen decorada (JPG, o SVG en el Skew-T) para mirar, no para calcular. Solo llevan vista los productos que alguien mira.
 
-Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de 20 min. En los nombres de GeoTIFF y vistas el satélite va como `npp`, `noaa20` o `noaa21`; en los de CSPP, como `npp`, `j01` o `j02` (o `n20`/`n21` en algunos Level 2).
+Una **pasada** es el conjunto de gránulos de un satélite sin huecos de más de 20 min. En los nombres de GeoTIFF y vistas el satélite va como `npp`, `noaa20` o `noaa21`; en los de CSPP, como `npp`, `j01` o `j02` (o `n20`/`n21` en algunos Level 2). En METOP una pasada es un crudo de la antena: los nombres de AAPP llevan `M01` (METOP-B) o `M03` (METOP-C), los de HEAP `m01`/`m03`, y los GeoTIFF y vistas `metopb`/`metopc`.
 
 ## Cuánto se conserva
 
-Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts/limpiar.sh` una vez al día, con los días de `config/retencion.tsv`; en `/dataservice/jpss/`, que es de donde lo toman los FTP, `scripts/publicar_dataservice.sh`, a los 5 días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así que ahí la carpeta puede no ser la misma que aquí.
+Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limpiar.sh` una vez al día, con los días de `config/retencion.tsv`; en `/dataservice/jpss/`, que es de donde lo toman los FTP, `scripts/publicar_dataservice.sh`, a los 5 días. En `/dataservice` cada GeoTIFF va junto al dato del que sale, así que ahí la carpeta puede no ser la misma que aquí. METOP todavía no se publica en `/dataservice`: ahí escribe la cadena vieja, en `noaa-metop/`, hasta que se apague.
 
-| Carpeta en `/data/output/jpss/` | Se conserva | En `/dataservice/jpss/` (5 días) |
+| Carpeta en `/data/output/` | Se conserva | En `/dataservice/` (5 días) |
 |---|---|---|
-| `level0/` | 14 días | no se publica |
-| `level1/` | 7 días | `level1/atms`, `level1/cris`, `level1/omps`, `level1/viirs` |
-| `level2/` | 14 días | `level2/acspo`, `level2/atmos`, `level2/cryo`, `level2/fires`, `level2/flood`, `level2/lsr`, `level2/mirs`, `level2/omps`, `level2/sounder` |
-| `geotiff/` | 14 días | `geotiff/acspo` → `level2/acspo`, `geotiff/atmos` → `level2/atmos`, `geotiff/dnb` → `level1/viirs`, `geotiff/fire` → `level2/fires`, `geotiff/flood` → `level2/flood`, `geotiff/i_bands` → `level1/viirs`, `geotiff/lsr` → `level2/lsr`, `geotiff/m_bands` → `level1/viirs`, `geotiff/mirs` → `level2/mirs`, `geotiff/omps` → `level2/omps`, `geotiff/rgb` → `level1/viirs`, `geotiff/sounder` → `level2/sounder` |
-| `vistas/` | 90 días | `vistas/acspo`, `vistas/atmos`, `vistas/dnb`, `vistas/fire`, `vistas/flood`, `vistas/lsr`, `vistas/mirs`, `vistas/omps`, `vistas/rgb`, `vistas/sounder`, `vistas/sounder/skewt` |
+| `jpss/level0/` | 14 días | no se publica |
+| `jpss/level1/` | 7 días | `jpss/level1/atms`, `jpss/level1/cris`, `jpss/level1/omps`, `jpss/level1/viirs` |
+| `jpss/level2/` | 14 días | `jpss/level2/acspo`, `jpss/level2/atmos`, `jpss/level2/cryo`, `jpss/level2/fires`, `jpss/level2/flood`, `jpss/level2/lsr`, `jpss/level2/mirs`, `jpss/level2/omps`, `jpss/level2/sounder` |
+| `jpss/geotiff/` | 14 días | `jpss/geotiff/acspo` → `jpss/level2/acspo`, `jpss/geotiff/atmos` → `jpss/level2/atmos`, `jpss/geotiff/dnb` → `jpss/level1/viirs`, `jpss/geotiff/fire` → `jpss/level2/fires`, `jpss/geotiff/flood` → `jpss/level2/flood`, `jpss/geotiff/i_bands` → `jpss/level1/viirs`, `jpss/geotiff/lsr` → `jpss/level2/lsr`, `jpss/geotiff/m_bands` → `jpss/level1/viirs`, `jpss/geotiff/mirs` → `jpss/level2/mirs`, `jpss/geotiff/omps` → `jpss/level2/omps`, `jpss/geotiff/rgb` → `jpss/level1/viirs`, `jpss/geotiff/sounder` → `jpss/level2/sounder` |
+| `jpss/vistas/` | 90 días | `jpss/vistas/acspo`, `jpss/vistas/atmos`, `jpss/vistas/dnb`, `jpss/vistas/fire`, `jpss/vistas/flood`, `jpss/vistas/lsr`, `jpss/vistas/mirs`, `jpss/vistas/omps`, `jpss/vistas/rgb`, `jpss/vistas/sounder`, `jpss/vistas/sounder/skewt` |
+| `metop/level1/` | 7 días | no se publica |
+| `metop/level2/` | 14 días | no se publica |
+| `metop/geotiff/` | 14 días | no se publica |
+| `metop/vistas/` | 90 días | no se publica |
 
 ## Resumen
 
@@ -34,6 +38,11 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 | [CrIS SDR: infrarrojo hiperespectral](#l1-cris-sdr) | CrIS | NOAA-20, NOAA-21 | HDF5 | no |
 | [OMPS Nadir Mapper SDR](#l1-omps-nm-sdr) | OMPS NM | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
 | [OMPS Nadir Profiler SDR](#l1-omps-np-sdr) | OMPS NP | Suomi-NPP, NOAA-20, NOAA-21 | HDF5 | no |
+| [AMSU-A Level 1: temperaturas de brillo de microondas](#l1-metop-amsua) | AMSU-A | METOP-B, METOP-C | binario AAPP (1b, 1c); HDF5 (1c) | no |
+| [MHS Level 1: temperaturas de brillo de microondas (humedad)](#l1-metop-mhs) | MHS | METOP-B, METOP-C | binario AAPP (1b, 1c); HDF5 (1c) | no |
+| [IASI Level 1C: espectros infrarrojos](#l1-metop-iasi) | IASI | METOP-B, METOP-C | binario AAPP (1c); HDF5 (1c); EPS nativo de EUMETSAT | no |
+| [IASI Level 1D: IASI con AMSU-A y MHS en sus campos de mirada](#l1-metop-iasi-l1d) | IASI+AMSU-A+MHS | METOP-B, METOP-C | binario AAPP (1d); HDF5 (1d) | no |
+| [AVHRR Level 1B: imagen de cinco canales](#l1-metop-avhrr) | AVHRR | METOP-B, METOP-C | binario AAPP (1b); HDF5 (1b) | no |
 
 ### Level 2: productos geofísicos
 
@@ -51,6 +60,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 | [Sondeos NUCAPS (CrIS + ATMS)](#l2-sounder) | CrIS+ATMS | NOAA-20, NOAA-21 | NetCDF4 | no |
 | [Ozono (OMPS)](#l2-omps) | OMPS NM+NP | Suomi-NPP, NOAA-20, NOAA-21 | NetCDF4 | no |
 | [SO₂ y ozono corregido por SO₂ (OMPS)](#l2-omps-tos) | OMPS NM | NOAA-20, NOAA-21 | NetCDF4 | no |
+| [Sondeos NUCAPS de METOP: perfiles atmosféricos (IASI+AMSU-A+MHS)](#l2-metop-sounder) | IASI+AMSU-A+MHS | METOP-B, METOP-C | NetCDF4 | no |
 
 ### GeoTIFF en rejilla
 
@@ -87,12 +97,14 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 | [Agua precipitable total (microondas)](#gt-mirs-tpw) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
 | [Temperatura de brillo a 165 GHz](#gt-mirs-btemp165) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | sí |
 | [Agua líquida de nube, temperatura de piel y 88 GHz](#gt-mirs-otros) | ATMS | Suomi-NPP, NOAA-20, NOAA-21 | GeoTIFF float32 | no |
+| [AVHRR por banda](#gt-avhrr-bands) | AVHRR | METOP-B, METOP-C | GeoTIFF float32 | sí |
 
 ### Vistas sin GeoTIFF propio
 
 | Producto | Sensor | Satélites | Formato | Vista |
 |---|---|---|---|---|
 | [Diagrama Skew-T en estaciones de radiosondeo](#vista-skewt) | CrIS+ATMS | NOAA-20, NOAA-21 | SVG | sí |
+| [AVHRR RGB 1-2-3a](#vista-avhrr-rgb) | AVHRR | METOP-B, METOP-C | JPG | sí |
 
 ## Fichas
 
@@ -111,7 +123,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level1/viirs/` · patrón `SV*_{sat}_d*_t*_e*_b*_c*_cspp_dev.h5, G*O_*.h5, IVCDB_*.h5`
+- Ruta: `jpss/level1/viirs/` · patrón `SV*_{sat}_d*_t*_e*_b*_c*_cspp_dev.h5, G*O_*.h5, IVCDB_*.h5`
 - Origen: CSPP SDR 4.1.1 → run_sdr.sh --sensor viirs
 - Depende de: RDR de RT-STPS
 
@@ -130,7 +142,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level1/atms/` · patrón `SATMS_*, TATMS_*, GATMO_*.h5`
+- Ruta: `jpss/level1/atms/` · patrón `SATMS_*, TATMS_*, GATMO_*.h5`
 - Origen: CSPP SDR 4.1.1 → run_sdr.sh --sensor atms
 - Depende de: RDR de RT-STPS
 
@@ -149,7 +161,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level1/cris/` · patrón `SCRIF_*, GCRSO_*.h5`
+- Ruta: `jpss/level1/cris/` · patrón `SCRIF_*, GCRSO_*.h5`
 - Origen: CSPP SDR 4.1.1 → run_sdr.sh --sensor cris
 - Depende de: RDR de RT-STPS
 
@@ -168,7 +180,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level1/omps/` · patrón `SOMTC_*, GOTCO_*.h5`
+- Ruta: `jpss/level1/omps/` · patrón `SOMTC_*, GOTCO_*.h5`
 - Origen: CSPP SDR 4.1.1 → run_sdr.sh --sensor omps_nm
 - Depende de: RDR de RT-STPS
 
@@ -187,9 +199,104 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level1/omps/` · patrón `SOMPS_*, GONPO_*.h5`
+- Ruta: `jpss/level1/omps/` · patrón `SOMPS_*, GONPO_*.h5`
 - Origen: CSPP SDR 4.1.1 → run_sdr.sh --sensor omps_np
 - Depende de: RDR de RT-STPS
+
+</details>
+
+<a id="l1-metop-amsua"></a>
+
+#### AMSU-A Level 1: temperaturas de brillo de microondas
+
+`l1-metop-amsua` · AMSU-A · METOP-B, METOP-C
+
+- **Contenido**: 1c: btemps, 15 canales de 23.8 a 89 GHz [K]; NEdT de los blancos frío y caliente [K]; calidad por canal y por línea; geolocalización: latitud, longitud, ángulos solar y satelital [°]. 1b: cuentas con sus coeficientes de calibración y la geolocalización
+- **Formato**: binario AAPP (1b, 1c); HDF5 (1c)
+- **Resolución**: swath: 30 FOV por línea, ~48 km en nadir
+- **Notas**: El .h5 es el 1c pasado por convert_to_hdf5, como en stratus. HEAP lee el 1b. Calibrado con la versión más reciente de amsua_clparams.dat de NWP SAF (48 desde 2026-11-18), que no es la de stratus (47): mientras convivan, AMSU-A puede diferir entre las dos cadenas. Aquí {SAT} va como M01|M03.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level1/amsua/` · patrón `amsual1b_{SAT}_AAAAMMDD_HHMM_<órbita>.l1b, amsual1c_….l1c, amsual1c_….l1c.h5`
+- Origen: AAPP 8.15 → run_metop_l1.sh
+- Depende de: crudo chain6 (metopizer 3.57)
+
+</details>
+
+<a id="l1-metop-mhs"></a>
+
+#### MHS Level 1: temperaturas de brillo de microondas (humedad)
+
+`l1-metop-mhs` · MHS · METOP-B, METOP-C
+
+- **Contenido**: 1c: btemps, 5 canales de 89 a 190 GHz [K]; NEdT [K]; calidad por canal y por línea; geolocalización: latitud, longitud, ángulos solar y satelital [°]. 1b: cuentas con sus coeficientes de calibración y la geolocalización
+- **Formato**: binario AAPP (1b, 1c); HDF5 (1c)
+- **Resolución**: swath: 90 FOV por línea, ~16 km en nadir
+- **Notas**: HEAP lee el 1b. Aquí {SAT} va como M01|M03.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level1/mhs/` · patrón `mhsl1b_{SAT}_AAAAMMDD_HHMM_<órbita>.l1b, mhsl1c_….l1c, mhsl1c_….l1c.h5`
+- Origen: AAPP 8.15 → run_metop_l1.sh
+- Depende de: crudo chain6 (metopizer 3.57)
+
+</details>
+
+<a id="l1-metop-iasi"></a>
+
+#### IASI Level 1C: espectros infrarrojos
+
+`l1-metop-iasi` · IASI · METOP-B, METOP-C
+
+- **Contenido**: scalrad: radiancia espectral escalada en 8461 canales (645–2760 cm⁻¹); por IFOV, estadística de AVHRR (fracción de nube y de tierra, media y desviación por clúster); banderas de calidad; geolocalización
+- **Formato**: binario AAPP (1c); HDF5 (1c); EPS nativo de EUMETSAT
+- **Resolución**: swath: 30 FOR por línea, cada uno de 2×2 IFOV de ~12 km en nadir
+- **Notas**: El IASI_xxx_1C es el mismo 1C en el formato de EUMETSAT, y es el que lee HEAP. Es el producto más pesado de METOP. Aquí {SAT} va como M01|M03.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level1/iasi/` · patrón `iasil1c_{SAT}_AAAAMMDD_HHMM_<órbita>.l1c, iasil1c_….l1c.h5, IASI_xxx_1C_{SAT}_<inicio>Z_<fin>Z_V_T_<creación>Z`
+- Origen: OPS-LRS (en AAPP 8.15) → run_metop_l1.sh
+- Depende de: crudo chain6 (metopizer 3.57)
+
+</details>
+
+<a id="l1-metop-iasi-l1d"></a>
+
+#### IASI Level 1D: IASI con AMSU-A y MHS en sus campos de mirada
+
+`l1-metop-iasi-l1d` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: btemps: los 15 canales de AMSU-A y los 5 de MHS remuestreados a IASI [K]; scalrad en un subconjunto de 500 canales de IASI (cuáles: ?); máscara de nube, emisividad y estadística de AVHRR; calidad
+- **Formato**: binario AAPP (1d); HDF5 (1d)
+- **Resolución**: swath: un valor por FOR de IASI, 30 por línea, ~50 km
+- **Notas**: Lo produce la llamada a AAPP_RUN_METOP con -g IASI. La cadena no lo usa; se conserva porque stratus lo publicaba. Aquí {SAT} va como M01|M03.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level1/iasi/` · patrón `iasil1d_{SAT}_AAAAMMDD_HHMM_<órbita>.l1d, iasil1d_….l1d.h5`
+- Origen: AAPP 8.15 (atovpp -g IASI) → run_metop_l1.sh
+- Depende de: l1-metop-iasi + l1-metop-amsua + l1-metop-mhs
+
+</details>
+
+<a id="l1-metop-avhrr"></a>
+
+#### AVHRR Level 1B: imagen de cinco canales
+
+`l1-metop-avhrr` · AVHRR · METOP-B, METOP-C
+
+- **Contenido**: hrpt: cuentas de los canales 1, 2, 3a o 3b, 4 y 5, con los coeficientes de calibración visible e infrarroja, NEdT y telemetría; geolocalización en 51 puntos de amarre por línea
+- **Formato**: binario AAPP (1b); HDF5 (1b)
+- **Resolución**: swath: 2048 pixeles por línea, 1.1 km en nadir
+- **Notas**: El canal 3 alterna: 3a (1.6 µm) de día y 3b (3.7 µm) de noche. Lo leen Polar2Grid (gt-avhrr-bands) y OPS-LRS, para las estadísticas de AVHRR en IASI. Aquí {SAT} va como M01|M03.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level1/avhrr/` · patrón `hrpt_{SAT}_AAAAMMDD_HHMM_<órbita>.l1b, hrpt_….l1b.h5`
+- Origen: AAPP 8.15 → run_metop_l1.sh
+- Depende de: crudo chain6 (metopizer 3.57)
 
 </details>
 
@@ -208,7 +315,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/atmos/` · patrón `JRR-<producto>_v3r2_{sat}_s*_e*_c*.nc (CloudCoverLayers es v2r0); NOAA20_VIIRS_750M_*_NWP_GFS-*.nc`
+- Ruta: `jpss/level2/atmos/` · patrón `JRR-<producto>_v3r2_{sat}_s*_e*_c*.nc (CloudCoverLayers es v2r0); NOAA20_VIIRS_750M_*_NWP_GFS-*.nc`
 - Origen: CSPP ATMOS 1.0 → run_atmos_edr.sh
 - Depende de: l1-viirs-sdr + GFS
 
@@ -227,7 +334,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/lsr/` · patrón `SurfRefl_*.nc`
+- Ruta: `jpss/level2/lsr/` · patrón `SurfRefl_*.nc`
 - Origen: CSPP LSR 2.0 → run_lsr_edr.sh
 - Depende de: l1-viirs-sdr + l2-atmos
 
@@ -246,7 +353,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/cryo/` · patrón `JRR-IceAge_v3r2_{sat}_*.nc, JRR-IceConcentration_v3r3_{sat}_*.nc`
+- Ruta: `jpss/level2/cryo/` · patrón `JRR-IceAge_v3r2_{sat}_*.nc, JRR-IceConcentration_v3r3_{sat}_*.nc`
 - Origen: CSPP Cryosphere 1.0 → run_cryo_edr.sh
 - Depende de: l1-viirs-sdr + l2-atmos (CloudMask, CloudHeight)
 
@@ -265,7 +372,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/acspo/` · patrón `<AAAAMMDDhhmmss>-CSPP-L2P_GHRSST-SSTsubskin-VIIRS_<NPP|N20|N21>-ACSPO_V2.80-v02.0-fv01.0.nc`
+- Ruta: `jpss/level2/acspo/` · patrón `<AAAAMMDDhhmmss>-CSPP-L2P_GHRSST-SSTsubskin-VIIRS_<NPP|N20|N21>-ACSPO_V2.80-v02.0-fv01.0.nc`
 - Origen: CSPP ACSPO 3.0 → run_acspo_edr.sh
 - Depende de: l1-viirs-sdr + GFS/CMCSST
 
@@ -284,7 +391,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*.nc`
+- Ruta: `jpss/level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*.nc`
 - Origen: CSPP Active Fire 2.1 → run_active_fire_edr.sh
 - Depende de: l1-viirs-sdr (bandas I)
 
@@ -303,7 +410,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/fires/` · patrón `AFMOD_{sat}_d*_t*_e*_b*_c*.nc`
+- Ruta: `jpss/level2/fires/` · patrón `AFMOD_{sat}_d*_t*_e*_b*_c*.nc`
 - Origen: CSPP Active Fire 2.1 (-M) → run_active_fire_edr.sh
 - Depende de: l1-viirs-sdr (bandas M)
 
@@ -322,7 +429,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*_cspp_dev.txt`
+- Ruta: `jpss/level2/fires/` · patrón `AFIMG_{sat}_d*_t*_e*_b*_c*_cspp_dev.txt`
 - Origen: CSPP Active Fire 2.1 → run_active_fire_edr.sh
 - Depende de: l1-viirs-sdr (bandas I)
 
@@ -341,7 +448,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/flood/` · patrón `VIIRS-Flood_v2r0_{sat}_s*_e*_c*.nc`
+- Ruta: `jpss/level2/flood/` · patrón `VIIRS-Flood_v2r0_{sat}_s*_e*_c*.nc`
 - Origen: CSPP Flood 2.0 → run_flood_edr.sh
 - Depende de: l1-viirs-sdr (bandas I)
 
@@ -360,7 +467,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/mirs/` · patrón `NPR-MIRS-IMG_v11r9_{sat}_*.nc, NPR-MIRS-SND_v11r9_{sat}_*.nc`
+- Ruta: `jpss/level2/mirs/` · patrón `NPR-MIRS-IMG_v11r9_{sat}_*.nc, NPR-MIRS-SND_v11r9_{sat}_*.nc`
 - Origen: CSPP MiRS 4.0 → run_mirs_edr.sh
 - Depende de: l1-atms-sdr
 
@@ -379,7 +486,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/sounder/` · patrón `NUCAPS-{EDR,CCR,CCR-AR,OLR}_v3r2_{sat}_*.nc`
+- Ruta: `jpss/level2/sounder/` · patrón `NUCAPS-{EDR,CCR,CCR-AR,OLR}_v3r2_{sat}_*.nc`
 - Origen: CSPP HEAP 3.0 → run_heap_edr.sh
 - Depende de: l1-cris-sdr + l1-atms-sdr + GFS
 
@@ -398,7 +505,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/omps/` · patrón `V8TOZ-EDR_*.nc, V8PRO-EDR_*.nc`
+- Ruta: `jpss/level2/omps/` · patrón `V8TOZ-EDR_*.nc, V8PRO-EDR_*.nc`
 - Origen: CSPP OMPS EDR 1.0 → run_omps_edr.sh
 - Depende de: l1-omps-nm-sdr (+ l1-omps-np-sdr para V8PRO)
 
@@ -417,9 +524,28 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `level2/omps/` · patrón `V8TOS-EDR_*.nc`
+- Ruta: `jpss/level2/omps/` · patrón `V8TOS-EDR_*.nc`
 - Origen: CSPP OMPS V8TOS 1.0 → run_omps_tos_edr.sh
 - Depende de: l2-omps (V8TOZ)
+
+</details>
+
+<a id="l2-metop-sounder"></a>
+
+#### Sondeos NUCAPS de METOP: perfiles atmosféricos (IASI+AMSU-A+MHS)
+
+`l2-metop-sounder` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: NUCAPS-EDR: perfiles de temperatura, humedad, ozono y gases traza en 100 niveles, CAPE, CIN, LI; NUCAPS-CCR y NUCAPS-CCR-AR: radiancias de IASI limpiadas de nube; NUCAPS-CCR-NCEP: el mismo CCR en un subconjunto de 616 canales; NUCAPS-OLR: onda larga saliente
+- **Formato**: NetCDF4
+- **Resolución**: FOR de IASI, ~50 km
+- **Notas**: Dos o tres gránulos por pasada. NUCAPS-ALL también cae aquí y es el más pesado (~100 MB por gránulo), pero es la entrada: el IASI 1C pasado a NetCDF, en los 8461 canales. Todavía sin mapas ni Skew-T, que la cadena vieja tampoco tiene. Comparado con HEAP 2.0 de tsom03: las diferencias las explica la calibración de AMSU-A, no HEAP (ver docs/plan_metop.md). Aquí sat va como m01|m03.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/level2/sounder/` · patrón `NUCAPS-{EDR,CCR,CCR-AR,CCR-NCEP,OLR}_v3r2_{sat}_*.nc`
+- Origen: CSPP HEAP 3.0 (modo M_IRMW) → run_heap_metop.sh
+- Depende de: l1-metop-iasi + l1-metop-amsua + l1-metop-mhs + GFS
 
 </details>
 
@@ -438,7 +564,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/m_bands/` · patrón `{sat}_viirs_m[0-9][0-9]_*_wgs84_geo_750m.tif`
+- Ruta: `jpss/geotiff/m_bands/` · patrón `{sat}_viirs_m[0-9][0-9]_*_wgs84_geo_750m.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_l1.sh
 - Depende de: l1-viirs-sdr
 
@@ -457,7 +583,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/i_bands/` · patrón `{sat}_viirs_i[0-9][0-9]_*_wgs84_geo_375m.tif`
+- Ruta: `jpss/geotiff/i_bands/` · patrón `{sat}_viirs_i[0-9][0-9]_*_wgs84_geo_375m.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_l1.sh
 - Depende de: l1-viirs-sdr
 
@@ -476,8 +602,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/dnb/` · patrón `{sat}_viirs_dynamic_dnb_*_wgs84_geo_750m.tif`
-- Vista: `vistas/dnb/` con `mapdrawer`
+- Ruta: `jpss/geotiff/dnb/` · patrón `{sat}_viirs_dynamic_dnb_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/dnb/` con `mapdrawer`
 - Origen: Polar2Grid 3.2 → run_polar2grid_l1.sh
 - Depende de: l1-viirs-sdr
 - Polar2Grid `-p`: `dynamic_dnb`
@@ -497,8 +623,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/rgb/` · patrón `{sat}_viirs_true_color_*_wgs84_geo_750m.tif`
-- Vista: `vistas/rgb/` con `mapdrawer`
+- Ruta: `jpss/geotiff/rgb/` · patrón `{sat}_viirs_true_color_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/rgb/` con `mapdrawer`
 - Origen: Polar2Grid 3.2 → run_polar2grid_l1.sh
 - Depende de: l1-viirs-sdr
 - Polar2Grid `-p`: `true_color`
@@ -518,8 +644,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/rgb/` · patrón `{sat}_viirs_false_color_*_wgs84_geo_750m.tif`
-- Vista: `vistas/rgb/` con `mapdrawer`
+- Ruta: `jpss/geotiff/rgb/` · patrón `{sat}_viirs_false_color_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/rgb/` con `mapdrawer`
 - Origen: Polar2Grid 3.2 → run_polar2grid_l1.sh
 - Depende de: l1-viirs-sdr
 - Polar2Grid `-p`: `false_color`
@@ -539,8 +665,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_AOD550_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `aod550.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_AOD550_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `aod550.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `AOD550`
@@ -559,8 +685,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CldTopTemp_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `atmosrainbow.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CldTopTemp_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `atmosrainbow.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CldTopTemp`
@@ -579,8 +705,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CldTopHght_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `cld_height_acha.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CldTopHght_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `cld_height_acha.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CldTopHght`
@@ -599,8 +725,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CldBaseHght_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `cld_height_acha.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CldBaseHght_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `cld_height_acha.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CldBaseHght`
@@ -619,8 +745,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CldTopPres_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `cld_top_press.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CldTopPres_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `cld_top_press.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CldTopPres`
@@ -639,8 +765,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CloudPhase_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `phase.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CloudPhase_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `phase.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CloudPhase`
@@ -659,8 +785,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CloudType_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `cloud_type_jrr.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CloudType_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `cloud_type_jrr.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CloudType`
@@ -679,8 +805,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_Total_Cloud_Fraction_*_wgs84_geo_750m.tif`
-- Vista: `vistas/atmos/` con `cloud_fraction.cpt`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_Total_Cloud_Fraction_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/atmos/` con `cloud_fraction.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `Total_Cloud_Fraction`
@@ -700,7 +826,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/atmos/` · patrón `{sat}_viirs_CloudLayer_*_wgs84_geo_750m.tif`
+- Ruta: `jpss/geotiff/atmos/` · patrón `{sat}_viirs_CloudLayer_*_wgs84_geo_750m.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-atmos
 - Polar2Grid `-p`: `CloudLayer`
@@ -720,7 +846,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/lsr/` · patrón `{sat}_viirs_surf_refl_*_wgs84_geo_750m.tif`
+- Ruta: `jpss/geotiff/lsr/` · patrón `{sat}_viirs_surf_refl_*_wgs84_geo_750m.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-lsr
 - Polar2Grid `-p`: `surf_refl_i01 surf_refl_i02 surf_refl_i03 surf_refl_m01 surf_refl_m02 surf_refl_m03 surf_refl_m04 surf_refl_m05 surf_refl_m07 surf_refl_m08 surf_refl_m10 surf_refl_m11`
@@ -740,8 +866,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/lsr/` · patrón `{sat}_viirs_NDVI_*_wgs84_geo_750m.tif`
-- Vista: `vistas/lsr/` con `ndvi.cpt`
+- Ruta: `jpss/geotiff/lsr/` · patrón `{sat}_viirs_NDVI_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/lsr/` con `ndvi.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-lsr
 - Polar2Grid `-p`: `NDVI`
@@ -761,8 +887,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/lsr/` · patrón `{sat}_viirs_EVI_*_wgs84_geo_750m.tif`
-- Vista: `vistas/lsr/` con `evi.cpt`
+- Ruta: `jpss/geotiff/lsr/` · patrón `{sat}_viirs_EVI_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/lsr/` con `evi.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-lsr
 - Polar2Grid `-p`: `EVI`
@@ -781,8 +907,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/acspo/` · patrón `{sat}_viirs_sst_*_wgs84_geo_750m.tif`
-- Vista: `vistas/acspo/` con `sst.cpt`
+- Ruta: `jpss/geotiff/acspo/` · patrón `{sat}_viirs_sst_*_wgs84_geo_750m.tif`
+- Vista: `jpss/vistas/acspo/` con `sst.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-acspo
 - Polar2Grid `-p`: `sst`
@@ -802,8 +928,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/fire/` · patrón `{sat}_viirs_confidence_cat_*_wgs84_geo_375m.tif`
-- Vista: `vistas/fire/` con `viirs_confidence_cat.cpt`
+- Ruta: `jpss/geotiff/fire/` · patrón `{sat}_viirs_confidence_cat_*_wgs84_geo_375m.tif`
+- Vista: `jpss/vistas/fire/` con `viirs_confidence_cat.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-fires
 - Polar2Grid `-p`: `confidence_cat`
@@ -823,7 +949,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/fire/` · patrón `{sat}_viirs_{T4,power}_*_wgs84_geo_375m.tif`
+- Ruta: `jpss/geotiff/fire/` · patrón `{sat}_viirs_{T4,power}_*_wgs84_geo_375m.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-fires
 - Polar2Grid `-p`: `T4 power`
@@ -843,7 +969,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/fire/` · patrón `{sat}_viirs_{confidence_pct,T13,power}_*_wgs84_geo_750m.tif`
+- Ruta: `jpss/geotiff/fire/` · patrón `{sat}_viirs_{confidence_pct,T13,power}_*_wgs84_geo_750m.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-fires-m
 - Polar2Grid `-p`: `confidence_pct T13 power`
@@ -863,8 +989,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/flood/` · patrón `{sat}_viirs_flood_*.tif`
-- Vista: `vistas/flood/` con `mapdrawer`
+- Ruta: `jpss/geotiff/flood/` · patrón `{sat}_viirs_flood_*.tif`
+- Vista: `jpss/vistas/flood/` con `mapdrawer`
 - Origen: flood2tif de CSPP Flood 2.0 → run_flood_edr.sh
 - Depende de: l2-flood
 
@@ -883,8 +1009,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_853mb_*_wgs84_geo_5km.tif`
-- Vista: `vistas/sounder/` con `nucaps_temp_850.cpt`
+- Ruta: `jpss/geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_853mb_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/sounder/` con `nucaps_temp_850.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
 - Polar2Grid `-p`: `Temperature_853mb`
@@ -904,8 +1030,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_707mb_*_wgs84_geo_5km.tif`
-- Vista: `vistas/sounder/` con `nucaps_temp_700.cpt`
+- Ruta: `jpss/geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_707mb_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/sounder/` con `nucaps_temp_700.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
 - Polar2Grid `-p`: `Temperature_707mb`
@@ -925,8 +1051,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_497mb_*_wgs84_geo_5km.tif`
-- Vista: `vistas/sounder/` con `nucaps_temp_500.cpt`
+- Ruta: `jpss/geotiff/sounder/` · patrón `{sat}_atms-cris_Temperature_497mb_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/sounder/` con `nucaps_temp_500.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
 - Polar2Grid `-p`: `Temperature_497mb`
@@ -946,8 +1072,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/sounder/` · patrón `{sat}_atms-cris_Skin_Temperature_*_wgs84_geo_5km.tif`
-- Vista: `vistas/sounder/` con `nucaps_skin_temp.cpt`
+- Ruta: `jpss/geotiff/sounder/` · patrón `{sat}_atms-cris_Skin_Temperature_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/sounder/` con `nucaps_skin_temp.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-sounder
 - Polar2Grid `-p`: `Skin_Temperature`
@@ -967,8 +1093,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/omps/` · patrón `{sat}_omps_ColumnAmountO3_*_wgs84_geo_5km.tif`
-- Vista: `vistas/omps/` con `omps_toz.cpt`
+- Ruta: `jpss/geotiff/omps/` · patrón `{sat}_omps_ColumnAmountO3_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/omps/` con `omps_toz.cpt`
 - Origen: omps_a_geotiff.py → run_polar2grid_edr.sh
 - Depende de: l2-omps
 
@@ -986,8 +1112,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/mirs/` · patrón `{sat}_atms_rain_rate_*_wgs84_geo_5km.tif`
-- Vista: `vistas/mirs/` con `mirs_rain_rate.cpt`
+- Ruta: `jpss/geotiff/mirs/` · patrón `{sat}_atms_rain_rate_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/mirs/` con `mirs_rain_rate.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-mirs
 - Polar2Grid `-p`: `rain_rate`
@@ -1006,8 +1132,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/mirs/` · patrón `{sat}_atms_tpw_*_wgs84_geo_5km.tif`
-- Vista: `vistas/mirs/` con `mirs_tpw.cpt`
+- Ruta: `jpss/geotiff/mirs/` · patrón `{sat}_atms_tpw_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/mirs/` con `mirs_tpw.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-mirs
 - Polar2Grid `-p`: `tpw`
@@ -1027,8 +1153,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/mirs/` · patrón `{sat}_atms_btemp_165h_*_wgs84_geo_5km.tif`
-- Vista: `vistas/mirs/` con `mirs_btemp_165.cpt`
+- Ruta: `jpss/geotiff/mirs/` · patrón `{sat}_atms_btemp_165h_*_wgs84_geo_5km.tif`
+- Vista: `jpss/vistas/mirs/` con `mirs_btemp_165.cpt`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-mirs
 - Polar2Grid `-p`: `btemp_165h`
@@ -1048,10 +1174,30 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `geotiff/mirs/` · patrón `{sat}_atms_{clw,tskin,btemp_88v}_*_wgs84_geo_5km.tif`
+- Ruta: `jpss/geotiff/mirs/` · patrón `{sat}_atms_{clw,tskin,btemp_88v}_*_wgs84_geo_5km.tif`
 - Origen: Polar2Grid 3.2 → run_polar2grid_edr.sh
 - Depende de: l2-mirs
 - Polar2Grid `-p`: `clw tskin btemp_88v`
+
+</details>
+
+<a id="gt-avhrr-bands"></a>
+
+#### AVHRR por banda
+
+`gt-avhrr-bands` · AVHRR · METOP-B, METOP-C
+
+- **Contenido**: band1 (0.63 µm), band2 (0.86 µm) y band3a (1.6 µm): reflectancia [%]; band3b (3.7 µm), band4 (10.8 µm) y band5 (12.0 µm): temperatura de brillo [K]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_1000m
+- **Notas**: De día salen las bandas 1, 2, 3a, 4 y 5; de noche, 3b, 4 y 5. La reflectancia puede pasar de 100 % con el sol bajo. Vista de cada banda en gris, con las térmicas invertidas (frío en blanco), con los mismos nombres que las de crea_vistas_metop.sh. Remuestreo nearest, como en stratus, para que los GeoTIFF sean comparables.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/avhrr/` · patrón `{sat}_avhrr_band{1,2,3a}_vis_*_wgs84_geo_1000m.tif, {sat}_avhrr_band{3b,4,5}_bt_*_wgs84_geo_1000m.tif`
+- Vista: `metop/vistas/avhrr/` con `geotiff2view`
+- Origen: Polar2Grid 3.2 (avhrr_l1b_aapp, nearest) → run_polar2grid_avhrr.sh
+- Depende de: l1-metop-avhrr
 
 </details>
 
@@ -1070,10 +1216,36 @@ Lo que pasa de esta edad se borra solo: en `/data/output/jpss/` lo hace `scripts
 
 <details><summary>Para operación</summary>
 
-- Ruta: `vistas/sounder/skewt/` · patrón `{sat}_atms-cris_skewt_<OMM>_*.svg`
-- Vista: `vistas/sounder/skewt/` con `skewt`
+- Ruta: `jpss/vistas/sounder/skewt/` · patrón `{sat}_atms-cris_skewt_<OMM>_*.svg`
+- Vista: `jpss/vistas/sounder/skewt/` con `skewt`
 - Origen: skewt (LANOT_tools) → run_polar2grid_edr.sh
 - Depende de: l2-sounder
 
 </details>
+
+<a id="vista-avhrr-rgb"></a>
+
+#### AVHRR RGB 1-2-3a
+
+`vista-avhrr-rgb` · AVHRR · METOP-B, METOP-C
+
+- **Contenido**: compuesto de las bandas 1, 2 y 3a, apiladas por geotiff2view (recorte y escala, sin corrección de Rayleigh)
+- **Formato**: JPG
+- **Resolución**: wgs84_geo_1000m
+- **Notas**: Solo de día, cuando hay 3a. Es el RGB que publicaba kawak con crea_vistas_metop.sh.
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/vistas/avhrr/` · patrón `rgb_{sat}_avhrr_band1_2_3a_vis_*_wgs84_geo_1000m.jpg`
+- Vista: `metop/vistas/avhrr/` con `geotiff2view`
+- Origen: geotiff2view (LANOT_tools) → run_polar2grid_avhrr.sh
+- Depende de: gt-avhrr-bands
+
+</details>
+
+## Por verificar
+
+Los `?` marcan datos que faltan confirmar contra un archivo real en tahan (`ncdump -h`, `gdalinfo`), en vez de deducirlos:
+
+- [IASI Level 1D: IASI con AMSU-A y MHS en sus campos de mirada](#l1-metop-iasi-l1d): contenido
 
