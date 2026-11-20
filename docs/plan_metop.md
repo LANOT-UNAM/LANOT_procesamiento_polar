@@ -293,8 +293,8 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Faltan las filas de `tarballs.tsv` y el catálogo de productos, que supone `/data/output/jpss/`. |
 | Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
 | Microondas (AMSU-A + MHS) | `cspp_mirs_v4.0.sif` las soporta; falta la rama en `run_mirs_edr.sh`. Opcional: la vieja no lo produce. |
-| AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Falta publicarlo (kawak y dataservice) y apagar `crea_vistas_metop.sh` en kawak. |
-| Publicación en kawak | Falta la correspondencia en `publicar_kawak.sh`. |
+| AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Vistas publicadas en kawak desde el 2026-11-20; falta dataservice. |
+| Publicación | **Kawak, hecho** (2026-11-20): `publicar_kawak.sh` copia `vistas/avhrr` a `polar/noaa-metop/avhrr/vistas`, y `crea_vistas_metop.sh` se apagó en kawak ese día. **Dataservice, falta**: `/dataservice/noaa-metop` lo sigue llenando stratus con los mismos nombres; se conecta al apagar `metop2.sh`. |
 
 ## Trabajo, por pieza
 
@@ -377,9 +377,11 @@ barrido llaman a ese orquestador.
 - `product_map` no tiene las bandas de AVHRR: las vistas se rotulan "Metop-B BAND4", "Metop-B
   RGB", como hoy en kawak. Agregarlas (p. ej. "10.8 µm") obliga a empujar LANOT_tools, mover
   el pin y recompilar `polar2grid_v3.2-mapdrawer.sif`; queda como mejora.
-- Falta publicar: GeoTIFF a `/dataservice/noaa-metop/avhrr` y vistas a
-  `kawak:/var/www/html/polar/noaa-metop/avhrr/vistas`, y entonces apagar `crea_vistas_metop.sh`
-  en kawak. Mientras convivan, los nombres son idénticos: no copiar encima de lo de la vieja.
+- Vistas en kawak desde el 2026-11-20: `publicar_kawak.sh` las copia a
+  `polar/noaa-metop/avhrr/vistas` con `--update`, así que lo que kawak ya tenía de la vieja
+  (más nuevo que lo nuestro) no se pisa; ese día se apagó `crea_vistas_metop.sh` en kawak.
+  Falta el GeoTIFF a `/dataservice/noaa-metop/avhrr`, que sigue escribiendo stratus con los
+  mismos nombres: se conecta cuando se apague `metop2.sh`.
 
 ### 5. Sondeos con HEAP
 

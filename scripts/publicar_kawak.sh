@@ -5,12 +5,18 @@
 # Para cron, cada 15 minutos:
 #   12-59/15 * * * * flock -n /data/tmp/publicar_kawak.lock /opt/lanot/polares/scripts/publicar_kawak.sh
 #
-# Publica TODO lo de JPSS, de todos los satélites. Hasta el 2026-11-04 fue
+# Publica TODO lo de JPSS, de todos los satélites, y las vistas de AVHRR de
+# METOP (desde el 2026-11-20, abajo). Hasta el 2026-11-04 fue
 # provisional y solo copiaba lo que la cadena vieja no producía —VIIRS y sondeos
 # de NOAA-21, ozono, MiRS y Skew-T—, porque las dos nombraban igual sus vistas
 # de NPP y NOAA-20 y una copia habría pisado las de la otra. Con la rama JPSS de
-# la cadena vieja apagada, polar/jpss en kawak es solo nuestro. METOP sigue en
-# la cadena vieja, pero en otro árbol de kawak.
+# la cadena vieja apagada, polar/jpss en kawak es solo nuestro.
+#
+# METOP va a otro árbol de kawak, polar/noaa-metop/avhrr/vistas, suelto y con
+# los mismos nombres que ponía crea_vistas_metop.sh, que corría en kawak sobre
+# los GeoTIFF de stratus y se apagó el 2026-11-20. Lo que kawak ya tenga de la
+# vieja no se pisa: su copia es más nueva que la nuestra y --update la respeta.
+# Las de años anteriores las archiva otra cosa en vistas/AAAA/; aquí no se toca.
 #
 # La correspondencia de carpetas es la de la página, no la de vistas/:
 #
@@ -25,6 +31,8 @@
 #   vistas/omps              → omps            (al lado de viirs/: es OMPS)
 #   vistas/mirs              → atms            (al lado de viirs/: es ATMS)
 #
+#   metop/vistas/avhrr       → noaa-metop/avhrr/vistas
+#
 # Solo mira lo de los últimos PUB_KAWAK_DIAS días, y copia con --update: un
 # archivo que ya está en kawak se reemplaza solo si el de aquí es más nuevo (un
 # Skew-T regenerado), nunca al revés.
@@ -32,6 +40,8 @@
 # Variables de entorno:
 #   PUB_KAWAK_VISTAS  Raíz de vistas     (def. /data/output/jpss/vistas)
 #   PUB_KAWAK_DEST    Destino rsync      (def. kawak:/var/www/html/polar/jpss)
+#   PUB_KAWAK_METOP_VISTAS  Raíz de vistas de METOP (def. /data/output/metop/vistas)
+#   PUB_KAWAK_METOP_DEST    Destino de METOP  (def. kawak:/var/www/html/polar/noaa-metop)
 #   PUB_KAWAK_DIAS    Antigüedad máxima  (def. 2)
 #   PUB_KAWAK_LOG     Log                (def. /var/log/lanot/polares/cadena/publicar_kawak.log)
 # ==============================================================================
@@ -40,6 +50,8 @@ set -uo pipefail
 
 VISTAS="${PUB_KAWAK_VISTAS:-/data/output/jpss/vistas}"
 DEST="${PUB_KAWAK_DEST:-kawak:/var/www/html/polar/jpss}"
+VISTAS_METOP="${PUB_KAWAK_METOP_VISTAS:-/data/output/metop/vistas}"
+DEST_METOP="${PUB_KAWAK_METOP_DEST:-kawak:/var/www/html/polar/noaa-metop}"
 DIAS="${PUB_KAWAK_DIAS:-2}"
 LOG="${PUB_KAWAK_LOG:-/var/log/lanot/polares/cadena/publicar_kawak.log}"
 
@@ -87,7 +99,7 @@ copia() {
     fi
 }
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Publicación en $DEST${DRY_RUN:+ (dry-run)}"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Publicación en $DEST y $DEST_METOP${DRY_RUN:+ (dry-run)}"
 
 copia dnb           viirs/dnb       '*.jpg'
 copia rgb           viirs/rgb       '*.jpg'
@@ -101,6 +113,10 @@ copia sounder       sounder         '*.jpg'
 copia sounder/skewt sounder/skewt   '*.svg'
 copia omps          omps            '*.jpg'
 copia mirs          atms            '*.jpg'
+
+# METOP: otra raíz de origen y otro árbol en kawak; copia() las toma de ahí.
+VISTAS="$VISTAS_METOP" DEST="$DEST_METOP" \
+copia avhrr         avhrr/vistas    '*.jpg'
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Copiados: $copiados · fallos: $fallos"
 [ "$fallos" -eq 0 ]
