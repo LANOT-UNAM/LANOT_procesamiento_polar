@@ -130,30 +130,76 @@ por encima de la elevación mínima de la antena. El ángulo central terrestre e
   λ = arccos( R·cos ε / (R + h) ) − ε
 
 donde R es el radio terrestre, h la altura de la órbita y ε la elevación mínima. Va como
-ecuación numerada y editable en la metodología. Como referencia: con h ≈ 824 km (JPSS),
-≈ 817 km (METOP) y ε = 5°, el radio es de unos 2 600 km. A eso se le suma la mitad de la
-franja del sensor (VIIRS, unos 1 500 km), y así sale el área donde **hay datos**, más
-amplia que la del horizonte.
+ecuación numerada y editable en la metodología. Con R = 6 371 km, ε = 5° y h = 824 km
+(JPSS) sale λ = 23.1°, es decir **2 570 km**; con h = 817 km (METOP), 2 557 km. Es el mismo
+cálculo y el mismo resultado de `~/proyectos/vsg` (`GUIA_MAESTRO.md`, lección G), que dibuja
+ese círculo en el visor. A eso se le suma la mitad de la franja del sensor (VIIRS, unos
+1 500 km), y así sale el área donde **hay datos**, más amplia que la del horizonte.
 
 **Capa 2, la cobertura medida.** Cuántas pasadas por día ven cada punto en diciembre, por
 satélite o en total, calculado con las huellas reales de las pasadas.
 
-**Insumos que hacen falta:**
+**Insumos:**
 
-- [ ] **Coordenadas exactas de la antena** (latitud, longitud, altitud) y de quién o de qué
-      salen: GPS, planos o la configuración de TeraScan.
-- [ ] **Elevación mínima configurada** en TeraScan (`system.config` de polaracq) y la
-      **máscara de horizonte** real: el árbol sin podar en la línea de vista
-      (`docs/Solicitud_Poda_LANOT_IGG.docx`) recorta un sector. Si no hay medición del
-      horizonte, se dice y se usa solo la elevación mínima.
-- [ ] **Alturas de órbita** de cada satélite, de los TLE de CelesTrak de la ventana (fuente
-      citable).
+- [x] **Coordenadas de la antena: 19.328425° N, 99.176328° O**, es decir, 19°19′42.3″ N y
+      99°10′34.8″ O. Es el alfiler de `~/proyectos/vsg` (`misiones/jpss.json`, campo
+      `antena`), puesto sobre el edificio de las antenas en Google Maps
+      (<https://maps.app.goo.gl/PH55B6Dpa36hjug49>). La precisión, de unos metros, sobra a
+      esta escala. Falta la **altitud**: la del terreno se toma de un modelo de elevación
+      (INEGI) más la altura del edificio. Para el círculo da igual; para el horizonte, no.
+- [ ] **Elevación mínima configurada** en TeraScan (`system.config` de polaracq). Se revisa
+      esta semana. vsg supone 5°.
+- [ ] **El horizonte real** (sección siguiente).
+- [ ] **TLE de cada día de la ventana**, para las alturas de órbita y para predecir los
+      pasos. AAPP ya baja TLE en cada pasada de METOP (`get_tle`, en `/data/ancillary/aapp`);
+      falta confirmar que conserva los de JPSS y que la retención (30 días) no se los lleve
+      antes de enero. Si no, se archivan de CelesTrak, que además es la fuente citable.
 - [ ] **Huellas de las pasadas de diciembre.** Los GeoTIFF se borran a los 14 días
       (`config/retencion.tsv`), así que hay que **guardarlas sobre la marcha**: un polígono
       por pasada, sacado de la geolocalización del SDR (VIIRS) o del Level 1 de AVHRR. Pesan
-      poco. El script se escribe y se pone en cron antes del 1 de diciembre.
+      poco. El mismo script anota la **hora del primer y del último dato** de cada pasada,
+      que es lo que necesita el horizonte medido. Se escribe y se pone en cron antes del 1
+      de diciembre.
 - [ ] **Límites políticos y costas:** INEGI (marco geoestadístico) para México y Natural
       Earth para el resto, citados como fuente en el pie.
+
+### El horizonte: vale la pena averiguarlo
+
+Los 5° son una convención. El horizonte real del edificio decide cuánto se acerca el
+círculo verdadero al teórico, y por qué lado se recorta. Además es un resultado geográfico
+en sí: el relieve de la cuenca de México recortando lo que una antena alcanza a ver.
+
+Una estimación a ojo dice que importa. El Ajusco (unos 3 900 m) está a unos 15–17 km al
+sur-suroeste de CU (unos 2 300 m): unos 1 600 m de desnivel a esa distancia son **del orden
+de 5° a 6° de elevación**, tanto como la máscara supuesta o más. Hay que calcularlo bien,
+pero sugiere que el círculo se recorta hacia el sur, justo del lado de Centroamérica y el
+Pacífico.
+
+Tres formas de medirlo, que se complementan:
+
+1. **Con nuestros datos, la que más vale.** Para cada pasada de la ventana, la hora del
+   primer y del último dato recibido, junto con el TLE del día, da el **azimut y la
+   elevación** a los que la antena enganchó y soltó al satélite. Con todas las pasadas de un
+   mes se dibuja el **horizonte efectivo** de la antena, obstáculos incluidos: terreno,
+   edificios y el árbol. Es la medida que importa para el artículo, y nadie más la tiene.
+   Se calcula con Skyfield o con la propagación de `orbitas` de vsg. Si TeraScan guarda en
+   su log la hora de inicio y fin de cada adquisición (AOS/LOS), sirve igual o mejor.
+2. **Con un modelo digital de elevación.** El horizonte topográfico calculado desde la
+   antena (CEM 3.0 de INEGI, o SRTM) con un trazo de rayos por azimut. Separa lo que es
+   relieve de lo que son obstáculos cercanos, y es una fuente citable.
+3. **En campo.** Un panorama o mediciones con inclinómetro desde la azotea, en los azimuts
+   donde 1 y 2 no coincidan. Es el único que ve el árbol de
+   `docs/Solicitud_Poda_LANOT_IGG.docx` y los edificios vecinos.
+
+Con la 1 y la 2 alcanza para el artículo; la 3 solo si hay discrepancias que explicar. Como
+figura, un diagrama polar (azimut contra elevación) con el horizonte del modelo de elevación
+y los puntos de enganche y suelte de las pasadas, o bien el contorno recortado dibujado
+sobre el mapa de cobertura.
+
+**Producto secundario: pasadas perdidas.** Con los TLE se predicen todos los pasos sobre la
+elevación mínima; contrastados con los recibidos, salen las pasadas que no llegaron. Esa
+métrica falta en la lista de abajo, y explica la diferencia entre las dos capas del mapa.
+vsg ya lo hace (`build/orbitas --pasos --fecha <día>`).
 
 **Cartografía, según las normas:**
 
@@ -182,6 +228,8 @@ alguien configura logrotate.
 
 Lo que se mide:
 
+- pasos predichos con los TLE contra pasadas recibidas, por satélite (sección del
+  horizonte);
 - pasadas recibidas por satélite, y cuántas quedaron completas, parciales o fallidas;
 - latencia del fin de la pasada a la publicación, por producto (mediana y percentil 90); la
   espera del GFS explica la cola de ATMOS y LSR (estado, 2026-11-03 y 2026-11-18);
@@ -210,10 +258,53 @@ Por acordar:
 - **Si el índice se calcula dentro de la cadena** o lo calcula "el otro equipo": hoy los
   scripts de Uriel entregan GeoTIFF y el índice lo hacen otros.
 
+## Casos de estudio (criterios, no eventos todavía)
+
+Las figuras de productos se eligen por aplicación, no por cantidad. Un buen caso:
+
+- **ocurre en la ventana o cerca**, para que sus datos sigan en tahan (14 días de GeoTIFF,
+  90 de vistas) o se puedan reprocesar de los crudos;
+- **lo ve más de un producto de la misma pasada**, por ejemplo incendios sobre el RGB y la
+  pluma en el AOD de ATMOS, o lluvia de MiRS con los sondeos alrededor de un frente;
+- **tiene una referencia independiente para comparar:**
+  - radiosondeo del SMN para un Skew-T;
+  - reporte de CONAFOR para incendios;
+  - boletín del SMN para un frente frío o un norte;
+  - el monitoreo de sargazo para el AFAI;
+- **le dice algo a un usuario nombrado en 2025**, como CENAPRED, SEMAR o el SMN.
+
+Diciembre trae frentes fríos y nortes en el Golfo, y temporada de incendios temprana en
+algunas zonas; no trae ciclones. Si hace falta un ciclón para MiRS, se toma uno de la
+temporada 2026 que todavía esté en las vistas o en los crudos. Hay que verificar qué se
+conserva.
+
+Conviene llevar una **bitácora de candidatos** durante diciembre, una línea por evento con
+la fecha, la pasada y los productos. Así, en enero se elige entre eventos ya ubicados y no
+se buscan de memoria.
+
+## Glosario
+
+Como el de 2025, y por la misma razón: el texto habla de conceptos y el glosario carga los
+términos técnicos. Candidatos:
+
+- niveles de procesamiento 0, 1 y 2;
+- RDR, SDR y EDR;
+- contenedor;
+- ancillary;
+- GFS;
+- sondeo;
+- Skew-T;
+- franja de barrido;
+- TLE;
+- elevación mínima;
+- pasada o paso.
+
+Reusar las definiciones de 2025 donde existan, para que los dos artículos hablen igual.
+
 ## Por decidir
 
 - [ ] Título (máximo 20 palabras) y las cinco palabras clave, que no estén en el título.
-- [ ] Insumos del mapa de cobertura (lista en su sección).
+- [ ] Insumos del mapa de cobertura (lista en su sección); TeraScan, esta semana.
 - [ ] Uriel y el AFAI (lunes 2026-11-23).
 - [ ] Casos de estudio: qué eventos, de qué fechas.
 - [ ] Fecha de corte del "estado actual": Polar2Grid 3.3 y el SO₂ de OMPS siguen pendientes;
@@ -221,13 +312,22 @@ Por acordar:
 - [ ] Fecha de envío objetivo. Con la ventana en diciembre, las cifras están en la primera
       semana de enero; antes de eso se puede escribir todo menos los resultados.
 
-## Calendario de lo que corre por cuenta de Claude
+## Plazos (por discutir)
 
-- **Antes del 1 de diciembre:** el script que guarda la huella de cada pasada, en cron en
-  tahan. Va como prueba (desde el clon) o como operación (`/opt`, `instalar.sh`): decidir.
-- **Noviembre:** el script de métricas, probado con los datos de noviembre.
-- **Primera semana de enero:** correr las métricas de diciembre, guardar el resultado en
-  `paper/` y generar el mapa de cobertura.
+Propuesta de Claude, todavía sin acordar:
+
+- **Antes del 1 de diciembre:**
+  - el script que guarda la huella y la hora de inicio y fin de cada pasada, en cron en
+    tahan; va como prueba (desde el clon) o como operación (`/opt`, `instalar.sh`): decidir;
+  - el archivo diario de TLE.
+- **Noviembre:**
+  - el script de métricas, probado con los datos de noviembre;
+  - el horizonte topográfico con el modelo de elevación, que no depende de la ventana.
+- **Durante diciembre:** la bitácora de casos de estudio.
+- **Primera semana de enero:**
+  - las métricas de diciembre, guardadas en `paper/`;
+  - el horizonte medido;
+  - el mapa de cobertura.
 
 ## Para el envío (de `normas.md`)
 
