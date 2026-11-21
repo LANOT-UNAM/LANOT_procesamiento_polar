@@ -107,7 +107,10 @@ al commit:
    (`f515973`): `30 5 * * * flock -n /data/tmp/archivar.lock …/archivar.sh >> …/cadena/archivar.log`,
    05:30 CST, seis horas antes de `limpiar.sh`. El crontab anterior está respaldado en
    `~lanotadm/respaldos/`.
-2. Comentar `almacena_polar_raw.sh` en stratus.
+2. ~~Comentar `almacena_polar_raw.sh` en stratus.~~ **Hecho el 2026-11-21** (crontab previo
+   en `~lanotadm/respaldos/` de stratus). Su último `.tgz` es el del 20 de noviembre
+   (`2026324-polar.tgz`); desde el 21, los crudos los archiva tahan del buzón
+   (`raw/<año>/<semana>/raw-<AAAAJJJ>.tar.zst`).
 3. `almacena_polar.sh -s npp_jpss` sigue mientras viva la rama JPSS vieja con NOAA-20: es lo
    único que guarda sus productos, y **los borra del NFS al archivarlos**, así que quitarlo
    sin apagar la rama llenaría el disco.
