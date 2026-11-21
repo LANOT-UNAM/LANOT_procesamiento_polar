@@ -54,6 +54,20 @@ Este artículo no puede ser "la versión 2 del sistema". Para que no lo parezca:
    sigue siendo el de NOAA, NASA y CIMSS, pero ahora la instalación es una receta
    versionada: un servidor nuevo se levanta en horas, no en meses. Es el aporte central, y
    continúa el argumento de "autonomía tecnológica" de 2025 sin repetirlo.
+   **Y la reproducibilidad no termina en la instalación: alcanza a los productos.** El
+   criterio de archivo (estado, "2026-11-21: el archivo en `/depot`") sale de medir qué
+   necesita cada etapa para regenerarse. Se guardan los crudos, el ancillary que cambia con
+   el tiempo (GFS, TLE, autocalibración: unos 7.5 GB al día) y el software de cada versión.
+   Con eso, cualquier producto de cualquier fecha se puede volver a generar, sin guardar el
+   nivel 1 (~70 GB al día). Son unos 13 TB al año en vez de más de 60.
+
+   Material para la discusión:
+   - la tabla de qué necesita cada etapa;
+   - lo que se perdió por no tenerlo: el ancillary de Polo y Rachel ya no existía en noviembre;
+   - la prueba de restauración, regenerar una pasada solo desde el archivo.
+
+   Para un geógrafo, el argumento es que una serie histórica sirve solo si se puede
+   recalcular con la misma versión del algoritmo.
 2. **Evidencia de operación.** Las cifras que le faltaron a 2025: latencia, completitud,
    fiabilidad y reproducibilidad (sección "Métricas"). Sostienen la capa 1.
 3. **Cobertura y productos nuevos**, como consecuencia de las dos primeras:
