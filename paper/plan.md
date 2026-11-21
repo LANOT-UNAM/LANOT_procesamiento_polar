@@ -10,7 +10,10 @@ Abierto el 2026-11-21.
 ## Decidido
 
 - **Autores:** los mismos que en 2025 (Alejandro Aguilar Sierra y Víctor Manuel Jiménez
-  Escudero). Posible invitación a Uriel por el AFAI del proyecto de sargazo (abajo).
+  Escudero). Posible invitación a Uriel por el AFAI del proyecto de sargazo (abajo); se
+  habla con él el lunes 2026-11-23.
+- **Autor de correspondencia:** Alejandro Aguilar Sierra, responsable de esta cadena.
+- **Ventana de evaluación:** diciembre de 2026, del 1 al 31. Se revisa al ver los datos.
 - **Alcance:** solo satélites polares. GOES queda fuera: ya se cubrió en 2025.
 - **Con resultados cuantitativos.**
 - **Figuras obligadas:** el mapa de cobertura de la antena y los diagramas de la cadena.
@@ -95,14 +98,8 @@ Extensión objetivo: unas 7 000 palabras, dentro del intervalo de 6 000 a 8 000.
 
 ## Figuras (propuesta)
 
-1. **Mapa de cobertura de la antena.** Debe cumplir las normas de mapas:
-   - coordenadas en grados, minutos y segundos;
-   - escala gráfica y leyenda;
-   - fuente y título fuera del mapa;
-   - sin rosa de los vientos ni nombres de autores.
-
-   *¿Existe ya o se hace?* Si se hace, conviene que las huellas de las pasadas reales de la
-   ventana de evaluación salgan de nuestros propios GeoTIFF.
+1. **Mapa de cobertura de la antena.** No existe: hay que hacerlo (sección "El mapa de
+   cobertura").
 2. **La cadena por niveles,** de la antena a la publicación, en español. Se puede comparar
    con la Figura 2 de 2025. Base: `docs/resumen/cadena.mmd`, simplificado y con la rama
    METOP.
@@ -122,12 +119,68 @@ Extensión objetivo: unas 7 000 palabras, dentro del intervalo de 6 000 a 8 000.
 - productos por aplicación: una selección del catálogo, no el catálogo entero;
 - métricas de la ventana de evaluación.
 
+## El mapa de cobertura
+
+Propuesta: un solo mapa con **dos capas**, la teórica y la medida. La diferencia entre las dos
+es en sí un resultado: obstáculos, pasadas perdidas y la franja de cada sensor.
+
+**Capa 1, el círculo de adquisición (teórico).** Es la región sobre la que el satélite está
+por encima de la elevación mínima de la antena. El ángulo central terrestre es
+
+  λ = arccos( R·cos ε / (R + h) ) − ε
+
+donde R es el radio terrestre, h la altura de la órbita y ε la elevación mínima. Va como
+ecuación numerada y editable en la metodología. Como referencia: con h ≈ 824 km (JPSS),
+≈ 817 km (METOP) y ε = 5°, el radio es de unos 2 600 km. A eso se le suma la mitad de la
+franja del sensor (VIIRS, unos 1 500 km), y así sale el área donde **hay datos**, más
+amplia que la del horizonte.
+
+**Capa 2, la cobertura medida.** Cuántas pasadas por día ven cada punto en diciembre, por
+satélite o en total, calculado con las huellas reales de las pasadas.
+
+**Insumos que hacen falta:**
+
+- [ ] **Coordenadas exactas de la antena** (latitud, longitud, altitud) y de quién o de qué
+      salen: GPS, planos o la configuración de TeraScan.
+- [ ] **Elevación mínima configurada** en TeraScan (`system.config` de polaracq) y la
+      **máscara de horizonte** real: el árbol sin podar en la línea de vista
+      (`docs/Solicitud_Poda_LANOT_IGG.docx`) recorta un sector. Si no hay medición del
+      horizonte, se dice y se usa solo la elevación mínima.
+- [ ] **Alturas de órbita** de cada satélite, de los TLE de CelesTrak de la ventana (fuente
+      citable).
+- [ ] **Huellas de las pasadas de diciembre.** Los GeoTIFF se borran a los 14 días
+      (`config/retencion.tsv`), así que hay que **guardarlas sobre la marcha**: un polígono
+      por pasada, sacado de la geolocalización del SDR (VIIRS) o del Level 1 de AVHRR. Pesan
+      poco. El script se escribe y se pone en cron antes del 1 de diciembre.
+- [ ] **Límites políticos y costas:** INEGI (marco geoestadístico) para México y Natural
+      Earth para el resto, citados como fuente en el pie.
+
+**Cartografía, según las normas:**
+
+- Proyección **azimutal equidistante centrada en la antena**: el círculo de adquisición sale
+  como círculo y la escala gráfica vale en todas direcciones desde el centro. En una rejilla
+  geográfica (lat/lon) la escala gráfica sería engañosa a 2 600 km.
+- Retícula con etiquetas en **grados, minutos y segundos**.
+- **Escala gráfica** y **leyenda** explícita: círculos por satélite y escala de colores de
+  pasadas por día.
+- Título y fuente **fuera** del mapa; sin rosa de los vientos ni nombres.
+- Herramienta: Python (cartopy/matplotlib) desde un script en `paper/figuras/`, para que se
+  pueda regenerar con los datos de la ventana. QGIS si se prefiere acabado a mano, pero
+  entonces sin la reproducibilidad.
+
 ## Métricas (ventana de evaluación)
 
-Propuesta: **un mes calendario completo**, por ejemplo del 1 al 31 de diciembre de 2026, con
-la cadena ya estable, METOP incluido y la rama METOP vieja apagada (revisión del 27 de
-noviembre). Se pueden sacar de los logs de `cadena/` y de los marcadores de `state/` en
-tahan:
+**Diciembre de 2026**, del 1 al 31, con la cadena ya estable, METOP incluido y la rama METOP
+vieja apagada (revisión del 27 de noviembre). Se pueden sacar de los logs de `cadena/` y de
+los marcadores de `state/` en tahan.
+
+**Retención:** en tahan no hay logrotate para `/var/log/lanot/polares/` (los de `cadena/` se
+conservan desde agosto), pero los marcadores de `state/` se borran a los 30 días y los
+GeoTIFF a los 14. Las cifras se sacan de los logs, y aun así conviene **extraerlas en la
+primera semana de enero** y guardar el resultado en `paper/`, por si cambia la retención o
+alguien configura logrotate.
+
+Lo que se mide:
 
 - pasadas recibidas por satélite, y cuántas quedaron completas, parciales o fallidas;
 - latencia del fin de la pasada a la publicación, por producto (mediana y percentil 90); la
@@ -140,8 +193,8 @@ tahan:
   convivencia de METOP; JPSS ya está apagado en la vieja, ver si quedan datos de comparación
   de antes del 2026-11-04).
 
-Las saca Claude con un script en `paper/` en cuanto se fije la ventana. No hace falta esperar
-a que termine para escribir el script.
+Las saca Claude con un script en `paper/`. Se escribe y se prueba con noviembre, para que
+el 1 de enero solo haya que correrlo.
 
 ## AFAI y sargazo (propuesta, por confirmar con Uriel)
 
@@ -160,14 +213,21 @@ Por acordar:
 ## Por decidir
 
 - [ ] Título (máximo 20 palabras) y las cinco palabras clave, que no estén en el título.
-- [ ] Autor de correspondencia.
-- [ ] Ventana de evaluación.
-- [ ] Mapa de cobertura: ¿existe o se hace? ¿Con qué herramienta?
-- [ ] Uriel y el AFAI.
+- [ ] Insumos del mapa de cobertura (lista en su sección).
+- [ ] Uriel y el AFAI (lunes 2026-11-23).
 - [ ] Casos de estudio: qué eventos, de qué fechas.
 - [ ] Fecha de corte del "estado actual": Polar2Grid 3.3 y el SO₂ de OMPS siguen pendientes;
       NPP salió el 2026-11-02.
-- [ ] Fecha de envío objetivo.
+- [ ] Fecha de envío objetivo. Con la ventana en diciembre, las cifras están en la primera
+      semana de enero; antes de eso se puede escribir todo menos los resultados.
+
+## Calendario de lo que corre por cuenta de Claude
+
+- **Antes del 1 de diciembre:** el script que guarda la huella de cada pasada, en cron en
+  tahan. Va como prueba (desde el clon) o como operación (`/opt`, `instalar.sh`): decidir.
+- **Noviembre:** el script de métricas, probado con los datos de noviembre.
+- **Primera semana de enero:** correr las métricas de diciembre, guardar el resultado en
+  `paper/` y generar el mapa de cobertura.
 
 ## Para el envío (de `normas.md`)
 
