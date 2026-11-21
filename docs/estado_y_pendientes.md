@@ -23,6 +23,105 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-11-21: el archivo en `/depot` pasa a tahan (`archivar.sh`)
+
+**Hasta hoy, de la cadena nueva no se archivaba nada.** Lo que había en `/depot/polar` venía
+del cron de `lanotadm` en stratus:
+
+- `almacena_polar_raw.sh` (00:01 UTC): un `.tgz` diario con los crudos de las últimas
+  24 h que llegaron a stratus (`/depot/polar/raw/<año>/<semana>/<AAAAJJJ>-polar.tgz`, de
+  10 a 13 GB). Sin log, porque el cron no lo redirige. **Faltan 45 días de 2026**:
+  - 9 y 10 de mayo;
+  - del 1 al 12 de julio;
+  - del 18 de julio al 4 de agosto;
+  - del 16 al 31 de agosto.
+
+  Además, **depende de que `copypolar.sh` siga mandando crudos a stratus**, cosa que el plan
+  de operación quita.
+- `almacena_polar.sh` 3.4 (06:00): **mueve** a `/depot/polar/npp_jpss/…` todo lo que produce
+  la cadena vieja, en un tar por día, sensor y nivel. Solo NPP y NOAA-20, nunca NOAA-21; desde
+  noviembre, solo NOAA-20. El de `noaa_metop` no encuentra nada que archivar.
+
+`/depot` es un Lustre de 910 TB **al 96 %: 43 TB libres**.
+
+**El criterio** salió de medir qué necesita cada etapa para regenerarse. Lo que se pierde
+sin remedio es el ancillary que cambia con el tiempo, y es barato:
+
+| Etapa | Ancillary dinámico | GB al día |
+|---|---|---|
+| Crudo → nivel 0 | ninguno (`leapsec.dat`) | — |
+| Nivel 0 → nivel 1 (SDR) | TLE y autocalibración de VIIRS (`/data/ancillary/AAAA_MM_DD_JJJ`), LUTs (`incoming_luts`) | 0.003 (+1.9 GB de LUTs) |
+| ATMOS (y LSR, CRYO) | GFS | 6.2 |
+| HEAP | GFS propio | 1.0 |
+| ACSPO | GFS y SST | 0.2 |
+| Incendios, inundaciones, MiRS (`--noSFR`), OMPS, Polar2Grid | ninguno | — |
+
+Con eso, más el software de cada versión, **los crudos regeneran toda la cadena**. Por eso se
+archivan:
+
+- crudos, ancillary, logs por corrida, y una instantánea de los `.sif` y de `/data/opt`;
+- el nivel 2 chico: los JRR de ATMOS **sin** su GFS interpolado, más ACSPO, CRYO, incendios,
+  inundaciones, MiRS, OMPS y sondeos;
+- METOP niveles 1 y 2;
+- las vistas.
+
+En total, unos 13 TB al año. **No** se archivan:
+
+| Qué | GB al día | Por qué |
+|---|---|---|
+| Nivel 0 | 6.8 | Se regenera de los crudos |
+| Nivel 1 de JPSS | ~70 | Se regenera del nivel 0 con el ancillary guardado |
+| LSR | 11.5 | Se regenera |
+| GeoTIFF | — | Se regeneran |
+| `NWP_GFS-GRID` y `-INTP` de ATMOS | 78 | Son el GFS de 6 GB, interpolado a cada gránulo |
+
+Ese último es aparte un pendiente: **falta ver si algo usa el `GRID`** (1.5 GB por gránulo;
+LSR y CRYO usan el `INTP`). Si nada lo usa, sobra también en `/data` y quizá en
+`/dataservice`.
+
+**`archivar.sh`**, con su tabla `config/archivo.tsv`:
+
+- Un tar por serie y día UTC de mtime, en `/depot/polar/<destino>/<año>/<semana>/`, con un
+  índice `.idx` de miembros al lado.
+- Nunca reescribe ni anexa: lo tardío va a partes `.2`, `.3`…
+- Verifica la lista de miembros antes de ponerlo en su nombre definitivo, y deja una reserva
+  de 2 TB libres en `/depot`.
+- No borra originales: eso lo hace `limpiar.sh`.
+- Archiva el día D el D+2 y revisa 10 días hacia atrás. La ventana tiene que ser menor que la
+  retención más corta de lo archivado (14 días).
+
+Probado en local (filtros, parte tardía, idempotencia, sin montaje, sin espacio) y, el
+2026-11-21, con una primera corrida real en tahan desde una copia en `/data/tmp`, idéntica
+al commit:
+
+- vistas desde el 29 de agosto;
+- ancillary desde mayo;
+- nivel 2 y METOP desde noviembre;
+- crudos solo en la ventana: el buzón tiene desde el 22 de septiembre, pero eso ya está en
+  `/depot` por stratus;
+- el software.
+
+**Para cancelar el respaldo de stratus falta:**
+
+1. Instalar y poner `archivar.sh` en el cron de tahan:
+   `30 5 * * * flock -n /data/tmp/archivar.lock /opt/lanot/polares/scripts/archivar.sh >> /var/log/lanot/polares/cadena/archivar.log 2>&1`
+2. Comentar `almacena_polar_raw.sh` en stratus.
+3. `almacena_polar.sh -s npp_jpss` sigue mientras viva la rama JPSS vieja con NOAA-20: es lo
+   único que guarda sus productos, y **los borra del NFS al archivarlos**, así que quitarlo
+   sin apagar la rama llenaría el disco.
+4. La **prueba de restauración**: regenerar una pasada solo desde `/depot`. Es la que
+   demuestra que el criterio de arriba alcanza.
+
+**Polo (20 al 29 de septiembre) y Rachel (27 de septiembre al 11 de octubre):**
+
+- Los crudos están completos en `/depot` del 16 de septiembre al 13 de octubre.
+- Nuestras vistas de esas fechas sobrevivían en tahan (168 RGB, 396 de MiRS, 523 Skew-T) y
+  quedaron archivadas antes de que `limpiar.sh` las borrara a los 90 días.
+- **No** queda el ancillary: el SDR guarda 30 días y el GFS de ATMOS, 14. Para regenerar con
+  la cadena nueva hay que conseguir el GFS histórico (NOAA lo conserva en AWS,
+  `noaa-gfs-bdp-pds`) y ver si CSPP puede bajar los TLE y la autocalibración de esas fechas.
+  MiRS no necesita GFS, pero sí SDR de ATMS.
+
 ## 2026-11-21: la primera noche de METOP con todo lo instalado el 20
 
 Revisado en tahan lo que se instaló el 2026-11-20 y no se había visto con una pasada real.

@@ -24,7 +24,10 @@ y en `docs/plan_metop.md`.
    industriales) y qué se enmascara (`ErrorFlag`, `s_QualityFlags_*`, negativos).
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
-3. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
+3. **Cancelar el respaldo de stratus** (`almacena_polar_raw.sh`): `archivar.sh` ya corrió en
+   tahan. Falta instalarlo en cron, la prueba de restauración y comentar el de stratus. Pasos
+   en el estado, "2026-11-21: el archivo en `/depot`".
+4. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
    "Criterio para apagar"). Casi seguro nadie consume lo que publica; depende de que la
    convivencia siga limpia.
 
@@ -76,7 +79,17 @@ sudo ./scripts/preparar_servidor.sh --solo 4     # solo una
 
 # Instalar el código de operación en /opt/lanot/polares. En cada despliegue.
 sudo ./scripts/instalar.sh
+
+# Archivo a largo plazo en /depot/polar (cron diario; qué y por qué en config/archivo.tsv)
+./scripts/archivar.sh --verificar                 # qué archivaría y cuánto pesa
+./scripts/archivar.sh --solo jpss-vistas --desde 2026-08-29   # rellenar hacia atrás
 ```
+
+**Qué se archiva lo decide qué se puede regenerar** (estado, "2026-11-21: el archivo en
+`/depot`"). El ancillary dinámico —GFS, TLE, autocalibración— es lo que se pierde sin remedio;
+con él y los crudos se regenera todo, y por eso el nivel 1 de JPSS (~70 GB al día) **no** se
+archiva. `/depot` estaba al 96 % al empezar: antes de agregar una serie a `archivo.tsv`,
+medir cuánto pesa al día.
 
 **Estado y pendientes**: `docs/estado_y_pendientes.md` es el documento vivo — qué eslabón se ha probado con datos reales, qué falta y qué preguntas siguen abiertas. `docs/plan_metop.md` es el plan para integrar METOP-B/C, todavía por discutir con quien armó la rama vieja. Los otros dos documentos de `docs/` describen la primera fase de la migración y ya no reflejan cómo corre la cadena.
 

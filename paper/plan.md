@@ -274,9 +274,26 @@ Las figuras de productos se eligen por aplicación, no por cantidad. Un buen cas
 - **le dice algo a un usuario nombrado en 2025**, como CENAPRED, SEMAR o el SMN.
 
 Diciembre trae frentes fríos y nortes en el Golfo, y temporada de incendios temprana en
-algunas zonas; no trae ciclones. Si hace falta un ciclón para MiRS, se toma uno de la
-temporada 2026 que todavía esté en las vistas o en los crudos. Hay que verificar qué se
-conserva.
+algunas zonas; no trae ciclones. Los ciclones salen de la temporada 2026:
+
+- **Polo** (20 al 29 de septiembre; tocó tierra en Baja California Sur y Sonora el 28 y 29).
+- **Rachel** (27 de septiembre al 11 de octubre; huracán desde el 30 de septiembre).
+
+Hay que citar como fuente el archivo histórico del SMN.
+
+Qué hay de esas fechas (estado, "2026-11-21: el archivo en `/depot`"):
+
+- **Nuestras vistas:** RGB, incendios, DNB, ATMOS, sondeos con Skew-T y MiRS (desde el 26 de
+  septiembre). Archivadas en `/depot/polar/jpss/vistas`. Alcanzan para las figuras.
+- **Crudos completos** en `/depot`, del 16 de septiembre al 13 de octubre.
+- **Niveles 1 y 2 de la cadena vieja**, solo NPP y NOAA-20, en `/depot/polar/npp_jpss`.
+- **Falta el ancillary de esas fechas.** Si hace falta un dato y no solo una vista (por
+  ejemplo, la lluvia de MiRS para cuantificar, o un perfil de NUCAPS para compararlo con el
+  radiosondeo), hay que regenerar desde los crudos con el GFS histórico de NOAA, y con TLE
+  y autocalibración de SDR de esas fechas si CSPP los puede bajar.
+
+  Es justo la prueba de restauración del archivo: hacerla con una pasada de Polo sirve a
+  las dos cosas.
 
 Conviene llevar una **bitácora de candidatos** durante diciembre, una línea por evento con
 la fecha, la pasada y los productos. Así, en enero se elige entre eventos ya ubicados y no
