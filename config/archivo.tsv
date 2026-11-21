@@ -10,6 +10,11 @@
 #   - Los productos de nivel 2 chicos, para usarlos sin reprocesar. NO van:
 #     el GFS interpolado de ATMOS (NWP_GFS-*, 78 GB al día, que es entrada y
 #     no producto) ni LSR (11.5 GB al día, que se regenera de lo anterior).
+#   - Lo que el ancillary tiene de fijo —las LUTs de SDR, leapsec.dat, los
+#     cachés de ACSPO— va como instantánea y no por día: sus archivos tienen
+#     mtime de 2025 o antes, y el modo "dia" no los vería nunca. Sin las LUTs no
+#     se restaura el SDR (lo destapó el diseño de la prueba de restauración,
+#     2026-11-21).
 #   - Las vistas, que es lo que se publicó.
 #   - Los logs de cada corrida, que son la fuente de las métricas.
 #
@@ -47,7 +52,8 @@
 
 # serie	modo	origen	destino	incluir	excluir	compresión
 crudos	dia	/datawork/input/polar/raw	raw	^chain	-	zst
-ancillary	dia	/data/ancillary	ancillary	-	(^|/)(active_fire_cache|index)/|\.lock$	-
+ancillary	dia	/data/ancillary	ancillary	-	(^|/)(active_fire_cache|index)/|\.lock$|^(incoming_luts|common|acspo_wisdom|acspo_histogram|SDR_4_1_DB)/	-
+ancillary-fijo	instantanea	/data/ancillary	software/ancillary	^(incoming_luts|common|acspo_wisdom|acspo_histogram|SDR_4_1_DB)$	-	zst
 logs	dia	/var/log/lanot/polares	logs	^[0-9]{8}_[0-9]{6}_.*\.log$	-	zst
 jpss-l2	dia_subdirs	/data/output/jpss/level2	jpss/level2	-	^lsr/|NWP_GFS-	-
 jpss-vistas	dia_subdirs	/data/output/jpss/vistas	jpss/vistas	-	-	-

@@ -112,7 +112,37 @@ al commit:
    único que guarda sus productos, y **los borra del NFS al archivarlos**, así que quitarlo
    sin apagar la rama llenaría el disco.
 4. La **prueba de restauración**: regenerar una pasada solo desde `/depot`. Es la que
-   demuestra que el criterio de arriba alcanza.
+   demuestra que el criterio de arriba alcanza. **Preparada el 2026-11-21:**
+   - `restaurar.sh` saca del archivo por índice (y lista los `.tgz` de stratus, que no
+     tienen).
+   - `prueba_restauracion.sh` corre `procesar_pasada.sh` completo en un árbol aislado
+     (`arbol_aislado.sh`, sacado de `prueba_dos_turnos.sh`), con los cachés de ancillary
+     también aislados. Al final lista lo que los drivers bajaron, busca fugas a producción y
+     compara con los originales si siguen ahí.
+
+   Dos modos:
+   - `--anc depot`: todo de `/depot`. Si se bajó algo, falla.
+   - `--anc externo`: para fechas anteriores al archivo; cachés vacíos que se llenan de SSEC.
+     **SSEC conserva el ancillary histórico de CSPP**, verificado para el 28 de septiembre:
+     TLE y autocalibración en `cspp_v_4_0`, y GFS a 0.25° y 0.5° en `cspp_v_2_0`. Así que
+     lo de Polo y Rachel se puede reconstruir, y nuestro archivo protege contra que SSEC lo
+     quite.
+
+   Al diseñarla salieron dos cosas:
+   - Las LUTs de SDR, `leapsec.dat` y los cachés fijos de ACSPO tienen mtime de 2025: el
+     modo por día no los archivaba nunca. Ahora van como instantánea (`ancillary-fijo`).
+   - `arbol_aislado.sh` no redirigía OMPS TOS (de noviembre, posterior a la biblioteca).
+
+   ACSPO monta `acspo_wisdom` y `acspo_histogram` de producción con ruta fija, así que la
+   prueba corre como `lanotadm`.
+
+   **Pasadas de Polo**, 2026-09-28, con el ojo frente a Baja California Sur y Sonora:
+   - **NOAA-21, 20:33 UTC** (`chain1-10_pass10`): la mejor; trae además otro ciclón al oeste
+     y, al sur, la convección de donde salió Rachel.
+   - **NOAA-20, 19:49 UTC** (`chain2-9_pass19`): de esta, `/depot/polar/npp_jpss` guarda el
+     SDR y los JRR de la cadena vieja, para comparar.
+
+   Están en `/depot/polar/raw/2026/39/2026271-polar.tgz`.
 
 **Polo (20 al 29 de septiembre) y Rachel (27 de septiembre al 11 de octubre):**
 

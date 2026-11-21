@@ -83,6 +83,14 @@ sudo ./scripts/instalar.sh
 # Archivo a largo plazo en /depot/polar (cron diario; qué y por qué en config/archivo.tsv)
 ./scripts/archivar.sh --verificar                 # qué archivaría y cuánto pesa
 ./scripts/archivar.sh --solo jpss-vistas --desde 2026-08-29   # rellenar hacia atrás
+
+# Sacar algo del archivo (lee los .idx; los .tgz de stratus los lista)
+./scripts/restaurar.sh -s ancillary -d 2026-11-16 -a 2026-11-17 -o /data/tmp/x/anc
+./scripts/restaurar.sh -s raw -d 2026-09-28 -p '^(\./)?chain1-10_pass10' -o /data/tmp/x/raw
+
+# Regenerar una pasada vieja desde /depot, aislada (como lanotadm, fuera de racimos)
+./scripts/prueba_restauracion.sh -f 2026-11-17 chain1-3_pass3             # ancillary del archivo
+./scripts/prueba_restauracion.sh --anc externo -f 2026-09-28 chain1-10_pass10   # de antes del archivo
 ```
 
 **Qué se archiva lo decide qué se puede regenerar** (estado, "2026-11-21: el archivo en
