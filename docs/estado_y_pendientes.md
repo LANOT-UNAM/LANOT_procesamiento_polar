@@ -103,8 +103,10 @@ al commit:
 
 **Para cancelar el respaldo de stratus falta:**
 
-1. Instalar y poner `archivar.sh` en el cron de tahan:
-   `30 5 * * * flock -n /data/tmp/archivar.lock /opt/lanot/polares/scripts/archivar.sh >> /var/log/lanot/polares/cadena/archivar.log 2>&1`
+1. ~~Instalar y poner `archivar.sh` en el cron de tahan.~~ **Hecho el 2026-11-21**
+   (`f515973`): `30 5 * * * flock -n /data/tmp/archivar.lock …/archivar.sh >> …/cadena/archivar.log`,
+   05:30 CST, seis horas antes de `limpiar.sh`. El crontab anterior está respaldado en
+   `~lanotadm/respaldos/`.
 2. Comentar `almacena_polar_raw.sh` en stratus.
 3. `almacena_polar.sh -s npp_jpss` sigue mientras viva la rama JPSS vieja con NOAA-20: es lo
    único que guarda sus productos, y **los borra del NFS al archivarlos**, así que quitarlo
