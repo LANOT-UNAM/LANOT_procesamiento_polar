@@ -1,6 +1,6 @@
 # Estado de la migración y pendientes
 
-**Última actualización: 2026-11-18**
+**Última actualización: 2026-11-21**
 
 **Los doce eslabones corren con datos reales.** La cadena nueva ya cubre lo que hace el
 servidor viejo, RGB incluido, y desde el 2026-08-13 también **OMPS**, que era lo último
@@ -22,6 +22,35 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 
 ---
+
+## 2026-11-21: la primera noche de METOP con todo lo instalado el 20
+
+Revisado en tahan lo que se instaló el 2026-11-20 y no se había visto con una pasada real.
+Las dos pasadas de la noche —`chain6-4_pass54` (METOP-B, 03:50 UTC) y `chain6-5_pass55`
+(METOP-C, 04:10 UTC)— y las tres diurnas de la mañana del 21 salieron solas y completas:
+`Level 1 ok · AVHRR ok · sondeos ok · MiRS ok`, en 400–432 s cada una.
+
+- **AAPP en UTC** (`666abd9`): bien. En el log de `aapp/` de la pass54, las marcas `---`
+  van de `03:59:55Z` a `04:02:46Z`, y el `AVHR_xxx_1B_M01_…035950Z_…_20261121040015Z` lleva
+  una creación 25 s posterior al final de la pasada, no seis horas anterior.
+- **Rótulos de AVHRR** (LANOT_tools `d8ccbe3`): bien. "Metop-B Band 4 (10.8 µm)" y
+  "Metop-B RGB 1-2-3a", donde la vieja dice "Metop-B BAND4". De noche salen 3b, 4 y 5 y
+  el resumen dice `RGB: no (falta 3a)`, como debe; de día, las cinco bandas y el RGB. La
+  banda 4 de la misma pasada en las dos cadenas es la misma escena, con la nuestra
+  apenas menos contrastada.
+- **MiRS** (`310a6ed`): `MiRS ok` en las cinco pasadas; un IMG y un SND por pasada, y las
+  dos vistas (lluvia y agua precipitable).
+- **Publicación en árboles propios** (`86c63e2`): bien. `kawak:polar/metop/avhrr` (72
+  vistas) y `polar/metop/amsu-mhs` (32) al día con la pasada de las 16:40 UTC;
+  `/dataservice/metop/{level1/{amsua,avhrr,iasi,mhs},level2/{mirs,sounder},vistas/{avhrr,mirs}}`
+  poblado, sin fallos en ninguno de los dos logs. La vieja (`crea_vistas_metop.sh`) sigue
+  llenando `noaa-metop/avhrr/vistas` con las mismas pasadas, así que la comparación del 27
+  tiene material.
+- **HIRS de METOP-B** falla en las 8 pasadas de ese satélite (`hirscl_algoV4 failed`), lo
+  esperado (`plan_metop.md`, "El HIRS de METOP-B no calibra"): es opcional y no cuenta para
+  el marcador.
+
+Nada que corregir. Lo que sigue de METOP es la revisión del 27 para apagar la vieja.
 
 ## 2026-11-18: "retraso en `vistas/lsr`" — otra falsa alarma
 

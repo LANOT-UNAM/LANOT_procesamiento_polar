@@ -12,9 +12,9 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-20)
+## Pendiente abierto (2026-11-21)
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-18", "2026-11-16" y "2026-11-14",
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-21", "2026-11-18", "2026-11-16" y "2026-11-14",
 y en `docs/plan_metop.md`.
 
 1. **Vistas de V8TOS: esperan a Polar2Grid 3.3** (decidido el 2026-11-18), que trae lector
@@ -24,24 +24,7 @@ y en `docs/plan_metop.md`.
    industriales) y qué se enmascara (`ErrorFlag`, `s_QualityFlags_*`, negativos).
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
-3. **Revisar el 2026-11-21 la primera pasada de METOP de la noche del 20** (la de ~20:40 CST,
-   o la primera `chain6` posterior a las 02:00 UTC del 21). Se instaló el 20 y nada de esto se
-   ha visto todavía con una pasada real:
-   - `TZ=UTC` en AAPP (`666abd9`): en su log de `/var/log/lanot/polares/aapp/`, el
-     `AVHR_xxx_1B_…_<creación>Z` debe llevar la hora UTC (minutos después de la de la
-     pasada, no seis horas antes), y las líneas de AAPP y las marcas `--- … ---` también.
-   - Rótulos de AVHRR (`polar2grid_v3.2-mapdrawer.sif` con LANOT_tools `d8ccbe3`): las vistas
-     de `/data/output/metop/vistas/avhrr` deben decir "Band 4 (10.8 µm)" etc. y el RGB "RGB
-     1-2-3a", no "Metop-B BAND4" ni "RGB". Mirar la franja superior del JPG.
-   - MiRS (`310a6ed`): el resumen de `cadena/<fecha>_metop_<crudo>.log` debe decir "MiRS ok";
-     IMG/SND en `level2/mirs`, vistas de lluvia y agua precipitable en `vistas/mirs`.
-   - Publicación en árboles propios (`86c63e2`): todo en `kawak:polar/metop/{avhrr,amsu-mhs}`
-     y `/dataservice/metop/{level1,level2,vistas}` (logs `cadena/publicar_kawak.log` y
-     `cadena/publicar_dataservice.log`), y lo de la vieja en los `noaa-metop`, que
-     `crea_vistas_metop.sh` (reactivado en kawak) sigue llenando: comparar las dos.
-   Las 11 pasadas anteriores ya tienen MiRS (relleno del 20); la del 21 es la primera que sale
-   completa sola.
-4. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
+3. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
    "Criterio para apagar"). Casi seguro nadie consume lo que publica; depende de que la
    convivencia siga limpia.
 
