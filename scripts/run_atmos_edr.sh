@@ -148,7 +148,8 @@ formato_duracion() {
 # ==============================================================================
 
 FORCE=0
-DOWNLOAD=0
+# ATMOS_DESCARGAR=1: como --download (lo usa la prueba de restauración con --anc externo)
+DOWNLOAD="${ATMOS_DESCARGAR:-0}"
 PASADA=""
 
 while [ $# -gt 0 ]; do

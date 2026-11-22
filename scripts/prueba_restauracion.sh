@@ -194,6 +194,7 @@ for raw in "${RAWS[@]}"; do
         export SDR_DYNAMIC="$ANC" ATMOS_CACHE="$ANC/atmos" HEAP_CACHE="$ANC/heap" \
                ACSPO_CACHE="$ANC/acspo" MIRS_CACHE="$ANC/mirs" FIRE_CACHE="$ANC/active_fire_cache"
         export LOCK_FILE="$BASE/prueba.lock" TMPDIR="$BASE/tmp"
+        [ "$MODO_ANC" = "externo" ] && export ATMOS_DESCARGAR=1
         cd /
         exec "$SCRIPT_DIR/procesar_pasada.sh" "$raw"
     ) > "$BASE/$nombre.out" 2>&1 || rc=$?

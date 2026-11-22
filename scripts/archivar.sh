@@ -42,7 +42,7 @@
 #   ARCHIVO_VENTANA     Días hacia atrás que se revisan (def. 10)
 #   ARCHIVO_RESERVA_GB  Espacio libre mínimo a dejar en el montaje (def. 2000)
 #   ARCHIVO_ZSTD        Compresor          (def. "zstd -T4 -3")
-#   ARCHIVO_LOCK        Candado            (def. /data/tmp/archivar.lock)
+#   ARCHIVO_LOCK        Candado propio     (def. /data/tmp/archivar.corrida.lock)
 # ==============================================================================
 
 set -uo pipefail
@@ -56,7 +56,7 @@ DESFASE="${ARCHIVO_DESFASE:-2}"
 VENTANA="${ARCHIVO_VENTANA:-10}"
 RESERVA_GB="${ARCHIVO_RESERVA_GB:-2000}"
 ZSTD="${ARCHIVO_ZSTD:-zstd -T4 -3}"
-LOCK="${ARCHIVO_LOCK:-/data/tmp/archivar.lock}"
+LOCK="${ARCHIVO_LOCK:-/data/tmp/archivar.corrida.lock}"
 
 # Al fondo de la cola de disco y de CPU. Se reejecuta una sola vez.
 if [ -z "${_ARCHIVAR_IONICE:-}" ] && command -v ionice >/dev/null; then
@@ -115,7 +115,10 @@ fi
 [ -f "$TSV" ] || { echo "❌ No existe la tabla $TSV" >&2; exit 1; }
 
 # Candado propio, además del flock del cron: una corrida a mano no debe pisarse
-# con la del cron.
+# con la del cron. Tiene que ser OTRO archivo que el del cron (archivar.lock):
+# flock(1) lo toma en un descriptor que hereda el script, y al abrir el mismo
+# archivo de nuevo el flock de aquí choca con el del padre. El cron del 2026-11-22
+# 05:30 salió así en "Otra corrida tiene el candado" sin haber ninguna.
 if [ "$DRY_RUN" -eq 0 ]; then
     exec 9>"$LOCK" || { echo "❌ No se pudo abrir el candado $LOCK" >&2; exit 1; }
     flock -n 9 || { echo "⏭  Otra corrida de archivar.sh tiene el candado $LOCK"; exit 0; }
