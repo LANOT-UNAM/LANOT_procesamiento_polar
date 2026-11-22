@@ -25,7 +25,7 @@ y en `docs/plan_metop.md`.
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
 3. **Revisar el 2026-11-23 en la mañana:**
-   - **La prueba de Polo repetida con ATMOS** (programada el 22 a las 23:00 CST):
+   - **La prueba de Polo repetida con ATMOS** (programada el 22 a las 23:30 CST):
      `/data/tmp/prueba_restauracion_polo/informe.txt`. Ver si salieron ATMOS, LSR y CRYO,
      qué se bajó de SSEC (¿hay GFS de ATMOS del 28 de septiembre?), y comparar a mano el SDR
      de NOAA-20 con el de la cadena vieja (en `/depot/polar/npp_jpss`, día 2026271).

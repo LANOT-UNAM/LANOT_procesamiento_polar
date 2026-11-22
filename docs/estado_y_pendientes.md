@@ -43,7 +43,7 @@ USNO, GFS y CMC de ACSPO, AF-LAND_MASK). **ATMOS falló en las dos** (`El caché
 está vacío`) y con él no hubo LSR ni CRYO: en modo externo el caché de ATMOS arranca vacío y
 `run_atmos_edr.sh` lo rechaza sin `--download`. Corregido en `a06ea38` con
 `ATMOS_DESCARGAR=1`, que la prueba exporta en modo externo. **Repetida la noche del 22 a
-las 23:00** (informe en el mismo `/data/tmp/prueba_restauracion_polo/`). Sin verificar
+las 23:30** (informe en el mismo `/data/tmp/prueba_restauracion_polo/`). Sin verificar
 todavía que SSEC conserve el GFS de ATMOS de esa fecha (`cspp_v_2_0`); si no, habría que
 archivar ese GFS (~6 GB al día, no los 78 GB del interpolado). La comparación contra
 producción de level2 no sirvió: los 284 originales ya se habían borrado por retención.
