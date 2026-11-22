@@ -23,6 +23,34 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-11-22: el cron de `archivar.sh` no archivó nada, y la prueba de Polo sin ATMOS
+
+**El candado de `archivar.sh` se bloqueaba a sí mismo.** El cron de las 05:30 salió con
+`Otra corrida de archivar.sh tiene el candado` y código 0, sin haber ninguna otra corrida.
+Causa: el cron envuelve el script en `flock -n /data/tmp/archivar.lock`, y el script
+volvía a abrir ese mismo archivo para su propio `flock`; son dos descriptores distintos,
+así que el segundo choca con el del padre. Reproducido con un archivo temporal.
+Corregido en `a06ea38`: el candado propio del script es `archivar.corrida.lock`, y el
+crontab no cambia. Instalado y corrido a mano ese mismo día: 34 partes, 47 GB, sin errores
+(el 20 de noviembre y METOP). **La primera corrida del cron con el candado bueno es la del
+23 de noviembre a las 05:30.**
+
+**Prueba de Polo (28 de septiembre, NOAA-21 y NOAA-20), corrida el 21 de 16:00 a ~20:00 CST,
+`--anc externo`.** Código 0 en las dos pasadas (23 y 25 min); salieron RT-STPS, los SDR de los
+cuatro sensores, ACSPO, fuegos, inundaciones, OMPS, HEAP, MiRS y Polar2Grid de level 1.
+Cero fugas a `/data/output/jpss`; 54 archivos de ancillary bajados de SSEC (TLE, RSBAUTOCAL,
+USNO, GFS y CMC de ACSPO, AF-LAND_MASK). **ATMOS falló en las dos** (`El caché de ancillary
+está vacío`) y con él no hubo LSR ni CRYO: en modo externo el caché de ATMOS arranca vacío y
+`run_atmos_edr.sh` lo rechaza sin `--download`. Corregido en `a06ea38` con
+`ATMOS_DESCARGAR=1`, que la prueba exporta en modo externo. **Repetida la noche del 22 a
+las 23:00** (informe en el mismo `/data/tmp/prueba_restauracion_polo/`). Sin verificar
+todavía que SSEC conserve el GFS de ATMOS de esa fecha (`cspp_v_2_0`); si no, habría que
+archivar ese GFS (~6 GB al día, no los 78 GB del interpolado). La comparación contra
+producción de level2 no sirvió: los 284 originales ya se habían borrado por retención.
+Pendiente: comparar a mano el SDR de NOAA-20 con el de la cadena vieja.
+
+---
+
 ## 2026-11-21: el archivo en `/depot` pasa a tahan (`archivar.sh`)
 
 **Hasta hoy, de la cadena nueva no se archivaba nada.** Lo que había en `/depot/polar` venía

@@ -12,9 +12,9 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-21)
+## Pendiente abierto (2026-11-22)
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-21", "2026-11-18", "2026-11-16" y "2026-11-14",
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-22", "2026-11-21", "2026-11-18", "2026-11-16" y "2026-11-14",
 y en `docs/plan_metop.md`.
 
 1. **Vistas de V8TOS: esperan a Polar2Grid 3.3** (decidido el 2026-11-18), que trae lector
@@ -24,18 +24,18 @@ y en `docs/plan_metop.md`.
    industriales) y qué se enmascara (`ErrorFlag`, `s_QualityFlags_*`, negativos).
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
-3. **Revisar el 2026-11-22 en la mañana:**
-   - **La prueba de Polo**, corrida el 21 de 16:00 a ~20:00 CST:
-     `/data/tmp/prueba_restauracion_polo/informe.txt`. Ver eslabones, qué se bajó de SSEC,
-     fugas, y comparar a mano el SDR de NOAA-20 con el de la cadena vieja (en
-     `/depot/polar/npp_jpss`, día 2026271).
-   - **La primera corrida del cron de `archivar.sh`** (05:30 CST), en `cadena/archivar.log`:
-     sin errores, solo lo nuevo (el 20 de noviembre y partes `.2`), la instantánea
-     `software/ancillary/*`, y los crudos del 20 (último día de stratus).
+3. **Revisar el 2026-11-23 en la mañana:**
+   - **La prueba de Polo repetida con ATMOS** (programada el 22 a las 23:00 CST):
+     `/data/tmp/prueba_restauracion_polo/informe.txt`. Ver si salieron ATMOS, LSR y CRYO,
+     qué se bajó de SSEC (¿hay GFS de ATMOS del 28 de septiembre?), y comparar a mano el SDR
+     de NOAA-20 con el de la cadena vieja (en `/depot/polar/npp_jpss`, día 2026271).
+   - **La primera corrida del cron de `archivar.sh` con el candado arreglado** (05:30 CST),
+     en `cadena/archivar.log`: sin errores y sin la línea del candado. La del 22 no archivó
+     nada (el candado se bloqueaba a sí mismo, `a06ea38`); se puso al día a mano.
 
    Después, la prueba en modo `depot` con una pasada de noviembre. El respaldo de crudos de
-   stratus ya se canceló (2026-11-21). Detalle en el estado, "2026-11-21: el archivo en
-   `/depot`".
+   stratus ya se canceló (2026-11-21). Detalle en el estado, "2026-11-22" y "2026-11-21: el
+   archivo en `/depot`".
 4. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
    "Criterio para apagar"). Casi seguro nadie consume lo que publica; depende de que la
    convivencia siga limpia.
