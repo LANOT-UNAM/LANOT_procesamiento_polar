@@ -199,7 +199,11 @@ for raw in "${RAWS[@]}"; do
         exec "$SCRIPT_DIR/procesar_pasada.sh" "$raw"
     ) > "$BASE/$nombre.out" 2>&1 || rc=$?
     dur=$(( $(date +%s) - t0 ))
-    resumen=$(grep -h -E "^\[.*\] === .* ===$" "$BASE"/logs/cadena/*"$nombre"*.log 2>/dev/null | tail -1)
+    # procesar_pasada.sh sale en 0 aunque fallen etapas: el veredicto está en las
+    # últimas líneas de su resumen, no en el código (así pasó por buena la prueba
+    # del 2026-11-21 con ATMOS caído)
+    resumen=$(grep -h -E "^  (Todas las etapas terminaron bien|Etapas con fallo|Etapas pospuestas)" \
+                "$BASE"/logs/cadena/*"$nombre"*.log 2>/dev/null | sed 's/^ *//' | paste -sd ';' -)
     RESULTADOS+=("$nombre|$rc|$dur|$resumen")
     printf "  %s: código %d en %dm %02ds\n    %s\n" "$nombre" "$rc" $((dur / 60)) $((dur % 60)) "${resumen:-(sin resumen en el log de cadena)}"
 done
@@ -210,6 +214,7 @@ FALLA=0
 for r in "${RESULTADOS[@]}"; do
     IFS='|' read -r n rc dur res <<< "$r"
     [ "$rc" -eq 0 ] || FALLA=1
+    [[ "$res" == "Todas las etapas terminaron bien." ]] || FALLA=1
 done
 
 echo "  Productos en el árbol:"

@@ -23,6 +23,55 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-11-23: la prueba de Polo, completa; el cron de `archivar.sh`, limpio
+
+**El cron de `archivar.sh` de las 05:30 CST corrió bien** con el candado de `a06ea38`: días
+2026-11-13 a 21 (archivó el 325), 31 partes, 1706 archivos, 45.9 GB en 4 min, sin errores
+y sin la línea del candado. Quedan 41 993 GB libres en `/depot`.
+
+**La prueba de Polo repetida con ATMOS salió completa.** Corrió la noche del 22 (23:30 CST,
+commit `a06ea38`), pero no en `prueba_restauracion_polo/` como decía el día anterior, sino en
+`/data/tmp/prueba_restauracion_20261123T053000Z/`, el nombre por omisión. Las dos pasadas, con
+**todas las etapas en `ok`** (34 min cada una): ahora sí ATMOS (228 archivos), LSR (19) y
+CRYO (38), y salieron todas las vistas de nivel 2, que el 21 estaban en cero. Cero fugas
+a producción.
+
+**SSEC conserva el GFS de ATMOS del 28 de septiembre**, ocho semanas después: se bajó
+`gfs.t12z.pgrb2.0p25.f006/f009`, más la SST de CMC y el mapa de nieve. Así que esta pasada
+se regenera sin el archivo, pero nada garantiza cuánto tiempo los guarda SSEC: lo archivado
+en `ancillary` sigue haciendo falta. La prueba en modo `depot` dirá si con eso basta.
+
+**El SDR de NOAA-20 contra el de la cadena vieja** (`/depot/polar/npp_jpss/viirs/level1`,
+día 2026271, misma ventana `t1949391_e2003518`), comparados con `h5diff` sobre M05, M15,
+I01, DNB, GMTCO y GITCO:
+
+| | Diferencia |
+|---|---|
+| Versión | vieja **CSPP SDR 4.0** (`2.O.000.008`), nueva **4.1** (`2.O.000.009`) |
+| Ancillary dinámico | idéntico: mismo USNO y misma autocalibración de VIIRS |
+| LUTs | las del DNB (DN0, gain ratios) son de 2026-09-11 en la nueva y de 2025-11-21 en la vieja |
+| M15 (térmica) | **idéntica** |
+| M05 (reflectancia) | ninguna diferencia de más de 10 cuentas (2.4 × 10⁻⁴); solo 72 de más de 1 |
+| DNB | distinta en casi todo, por las LUTs |
+| Latitud (GMTCO) | toda menor de 0.006°; 98 % menor de 0.002° (~200 m). Posición del satélite: menos de 1 km de diferencia |
+| Órbita del nombre | `b45917` en la nueva, `b45918` en la vieja |
+
+O sea: lo que cambia se explica por la versión de CSPP y por las LUTs, no por la
+restauración. La diferencia de geolocalización es menor que un píxel M (750 m).
+
+**La prueba daba por buena una pasada con etapas caídas.** `procesar_pasada.sh` sale siempre en
+0 —las etapas fallidas solo se cuentan en el resumen—, y `prueba_restauracion.sh` juzgaba
+por el código. Por eso el 21 terminó en "✅ RESTAURACIÓN OK" con ATMOS fallando en las dos
+pasadas. Además buscaba el resumen con una expresión que no casaba con nada, y de ahí el
+"(sin resumen en el log de cadena)". Corregido: ahora lee las últimas líneas del resumen y
+falla con cualquier cosa que no sea "Todas las etapas terminaron bien.", pospuestas
+incluidas. Comprobado contra los logs de las dos corridas: la del 21 da "Etapas con fallo: 2"
+y la del 23, OK.
+
+Siguiente: la prueba en modo `depot` con una pasada de noviembre.
+
+---
+
 ## 2026-11-22: el cron de `archivar.sh` no archivó nada, y la prueba de Polo sin ATMOS
 
 **El candado de `archivar.sh` se bloqueaba a sí mismo.** El cron de las 05:30 salió con
