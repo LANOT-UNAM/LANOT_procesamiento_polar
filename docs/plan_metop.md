@@ -538,3 +538,46 @@ la convivencia siga limpia. Los avisos de `.fallido` siguen sin canal decidido.
 - Sondeos de METOP por HEAP 3.0 al menos iguales a los de HEAP 2.x en tsom03.
 - Lo que publica la vieja en kawak lo publica la nueva, o se decidió dejarlo.
 - Aviso si un crudo de METOP llega a `.fallido`, igual que para JPSS.
+
+### La revisión, preparada el 2026-11-23
+
+Medido en tahan, stratus y tsom03 sobre las pasadas del 19 al 23 de noviembre (UTC).
+
+| Criterio | Estado |
+|---|---|
+| Procesa sola cada `chain6` | **Cumple.** 22 de 22 crudos con marcador, sin intervención, 5–8 min cada uno. Las dos cadenas vieron las **mismas 24 pasadas** (AMSU-A, por satélite y hora). |
+| Level 1 equivalente | **Cumple** (comparado el 2026-11-18, arriba). Se publican los mismos tipos de archivo por instrumento (`l1b`, `l1c`, `.h5`, el 1C de EUMETSAT); la vieja deja dos IASI 1C por pasada de METOP-C, la nueva uno. |
+| Sondeos al menos iguales | **Cumple.** Los mismos **57 gránulos** de `NUCAPS-EDR` en las dos. La vieja tiene el doble de archivos de METOP-C porque cada gránulo sale dos veces (uno por IASI 1C). Una pasada sin sondeo, `chain6-10_pass60` del 22 (METOP-C, 03:49 UTC): HEAP terminó "con éxito" en 11 s sin producir nada, con un IASI 1C de 137 MB y no de 210–220, que empieza 2.5 min después que AMSU-A. **La vieja tampoco sacó nada de esa pasada**: es la entrada. La nueva lo marca `sondeos FALLÓ`; la vieja no dice nada. |
+| Lo de kawak lo publica la nueva | **Cumple, con extras.** `polar/metop/avhrr` tiene las mismas bandas que `noaa-metop/avhrr`, más el RGB 1-2-3a y vistas en JPG (las de la vieja son los mismos GeoTIFF float32). Además, MiRS (`polar/metop/amsu-mhs`) y `NUCAPS-OLR`, que la vieja no tiene. **Solo la vieja** publica cuatro salidas de HEAP 2.0 que la 3.0 ya no produce: `NUCAPS-AGG-EDR`/`AGG-CCR-AR`, `EDR-MONITORING`, `GranuleInfo` y `L2-QC`. |
+| Aviso de `.fallido` | **No cumple**: sigue sin canal (`vigilar.sh`, estado "2026-11-18"). La vieja tampoco avisa de nada, así que no es una regresión. Se propone no bloquear el apagado por esto. |
+
+**¿Quién consume la vieja?** Desde el 1 de noviembre, en `/dataservice/noaa-metop` (NFS de
+`172.16.1.100`, montado con `relatime`), **nadie ha leído** un solo archivo de
+`amsua`, `mhs`, `iasi` ni `nucaps`. Esto se sabe por el `atime`, que nunca es posterior
+al `mtime`. Salvedad: se mide desde tsom03, así que no ve un servidor que monte con
+`noatime`. En `avhrr` hay dos lectores:
+
+- Unos 5 `.tif` justo después de cada pasada: es `crea_vistas_metop.sh` en kawak, consumo
+  interno de la vieja.
+- **El 2026-11-23 a las 12:27 CST, alguien leyó de golpe los 76 `.tif` del 21 al 23.** No es
+  ninguna de las dos cadenas. Hay que averiguar quién fue antes de apagar.
+
+**Qué se apaga, y dónde**:
+
+1. **stratus**, `~lanotadm/bin/recibe.sh`, líneas 52–53: la rama `chain6-` que lanza
+   `metop2.sh`. **El reenvío a tahan, que va antes, se queda**: por ahí llegan todos los
+   crudos.
+2. **tsom03**: nada que tocar. `cspp_nucaps_metop.sh` solo corre cuando `metop2.sh` lo llama
+   por `ssh`.
+3. **kawak**: el cron de `crea_vistas_metop.sh`, y la página de `polar/noaa-metop`, que debe
+   apuntar a `polar/metop`. Esto es fuera de esta cadena: quién y cuándo.
+4. **stratus**, cron `almacena_polar.sh -s noaa_metop`: se queda o se quita. Desde
+   noviembre no archiva nada, y lo de METOP ya lo archiva `archivar.sh` en tahan.
+5. **`/dataservice/noaa-metop`**: hay que decidir si se congela tal cual, se borra o se deja
+   que la retención lo vacíe. Si alguien baja de ahí, decirle que se mude a `metop`.
+
+**Preguntas para el 27**:
+
+- ¿Quién leyó los `.tif` de AVHRR el 23 a las 12:27?
+- ¿Alguien usa `NUCAPS-AGG-*` o `L2-QC`? Por el `atime`, no.
+- ¿Quién toca kawak, el paso 3?
