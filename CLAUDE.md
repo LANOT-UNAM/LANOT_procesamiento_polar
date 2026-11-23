@@ -156,7 +156,9 @@ RAW (CCSDS de antena)
   del propio bundle de CSPP, en run_flood_edr.sh, y aquí solo se viste; el de
   ozono (V8TOz) lo hace scripts/omps_a_geotiff.py, porque el lector de OMPS llega
   en Polar2Grid 3.3 —al pasar a 3.3, se borra—. Sin renderizar queda solo
-  cryo, que no tiene lector. Los sondeos van con el lector `nucaps`, a la
+  cryo, y NO por falta de lector: `viirs_edr` de 3.2 ya lee JRR-IceConcentration
+  y JRR-IceAge. Es que sobre México casi nunca hay hielo (2026-11-23: 33 de 688
+  gránulos con algo, en el borde norte). Los sondeos van con el lector `nucaps`, a la
   rejilla wgs84_geo_5km y una CPT por nivel de presión; el ozono, a esa misma.
 ```
 
@@ -205,8 +207,10 @@ de CSPP. Ese script exporta `POLAR2GRID_HOME` sin llegar a usarlo nunca, lo que 
 pista falsa. En sentido contrario, `referencia/test_render_fires.sh` es un intento fallido
 y sus trucos (quitar `_cspp_dev`, pasar `j01` a `J01`) resultaron innecesarios y uno de
 ellos dañino. O sea: `referencia/` sirve tanto para encontrar la solución como para
-descartar callejones, pero hay que leerlo entero antes de copiarlo. Queda pendiente
-aplicar esto a **criósfera**, que hoy se da por bloqueada por la misma clase de argumento.
+descartar callejones, pero hay que leerlo entero antes de copiarlo. Con **criósfera**
+pasó lo mismo: se dio por bloqueada por "no hay lector" y el lector estaba en el
+bundle desde 3.2 (`satpy/etc/readers/viirs_edr.yaml`, revisado el 2026-11-23). Lo
+que la frena es que aporta poco sobre México, no que no se pueda.
 
 ### Convenciones específicas del dominio
 
