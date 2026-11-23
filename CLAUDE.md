@@ -24,10 +24,12 @@ y en `docs/plan_metop.md`.
    industriales) y qué se enmascara (`ErrorFlag`, `s_QualityFlags_*`, negativos).
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
-3. **La prueba de restauración en modo `depot`** con una pasada de noviembre. La de Polo en
-   modo externo y el cron de `archivar.sh` ya salieron bien (estado, "2026-11-23"). Antes,
-   instalar en tahan el arreglo de `prueba_restauracion.sh`, que juzgaba por el código de
-   `procesar_pasada.sh` (siempre 0) y daba por buena una pasada con etapas caídas.
+3. **La prueba de restauración en modo `depot`**, programada el 2026-11-23 a las 15:30 CST
+   (`at`, lanotadm) con `chain1-8_pass8` y `chain2-8_pass18` del 2026-11-20: informe en
+   `/data/tmp/prueba_restauracion_depot/informe.txt`. Revisar que no se haya bajado nada
+   (si bajó algo, el archivo no alcanzó) y la comparación contra producción de level2, que
+   esta vez sí debe tener originales. La de Polo en modo externo y el cron de
+   `archivar.sh` ya salieron bien (estado, "2026-11-23").
 4. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
    "Criterio para apagar"). Casi seguro nadie consume lo que publica; depende de que la
    convivencia siga limpia.
