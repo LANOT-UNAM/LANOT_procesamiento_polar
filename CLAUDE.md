@@ -26,7 +26,8 @@ y en `docs/plan_metop.md`.
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
 3. **La prueba de restauración en modo `depot`**, programada el 2026-11-23 a las 15:30 CST
    (`at`, lanotadm) con `chain1-8_pass8` y `chain2-8_pass18` del 2026-11-20: informe en
-   `/data/tmp/prueba_restauracion_depot/informe.txt`. Revisar que no se haya bajado nada
+   `/data/tmp/prueba_restauracion_depot/informe.txt`. **Revisar el 2026-11-24 en la
+   mañana**: que haya corrido, que no se haya bajado nada
    (si bajó algo, el archivo no alcanzó) y la comparación contra producción de level2, que
    esta vez sí debe tener originales. La de Polo en modo externo y el cron de
    `archivar.sh` ya salieron bien (estado, "2026-11-23").
