@@ -24,8 +24,8 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 | `jpss/vistas/` | 90 días | `jpss/vistas/acspo`, `jpss/vistas/atmos`, `jpss/vistas/dnb`, `jpss/vistas/fire`, `jpss/vistas/flood`, `jpss/vistas/lsr`, `jpss/vistas/mirs`, `jpss/vistas/omps`, `jpss/vistas/rgb`, `jpss/vistas/sounder`, `jpss/vistas/sounder/skewt` |
 | `metop/level1/` | 7 días | `metop/level1/amsua`, `metop/level1/avhrr`, `metop/level1/iasi`, `metop/level1/mhs` |
 | `metop/level2/` | 14 días | `metop/level2/mirs`, `metop/level2/sounder` |
-| `metop/geotiff/` | 14 días | `metop/geotiff/avhrr` → `metop/level1/avhrr`, `metop/geotiff/mirs` → `metop/level2/mirs` |
-| `metop/vistas/` | 90 días | `metop/vistas/avhrr`, `metop/vistas/mirs` |
+| `metop/geotiff/` | 14 días | `metop/geotiff/avhrr` → `metop/level1/avhrr`, `metop/geotiff/mirs` → `metop/level2/mirs`, `metop/geotiff/sounder` → `metop/level2/sounder` |
+| `metop/vistas/` | 90 días | `metop/vistas/avhrr`, `metop/vistas/mirs`, `metop/vistas/sounder`, `metop/vistas/sounder/skewt` |
 
 ## Resumen
 
@@ -102,6 +102,10 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 | [Tasa de lluvia (microondas, METOP)](#gt-metop-mirs-rain) | AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
 | [Agua precipitable total (microondas, METOP)](#gt-metop-mirs-tpw) | AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
 | [Agua líquida de nube, temperatura de piel, 89 y 157 GHz (METOP)](#gt-metop-mirs-otros) | AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | no |
+| [Temperatura en 850 hPa (METOP)](#gt-metop-sounder-t850) | IASI+AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
+| [Temperatura en 700 hPa (METOP)](#gt-metop-sounder-t700) | IASI+AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
+| [Temperatura en 500 hPa (METOP)](#gt-metop-sounder-t500) | IASI+AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
+| [Temperatura de piel (sondeo) (METOP)](#gt-metop-sounder-skin) | IASI+AMSU-A+MHS | METOP-B, METOP-C | GeoTIFF float32 | sí |
 
 ### Vistas sin GeoTIFF propio
 
@@ -109,6 +113,7 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 |---|---|---|---|---|
 | [Diagrama Skew-T en estaciones de radiosondeo](#vista-skewt) | CrIS+ATMS | NOAA-20, NOAA-21 | SVG | sí |
 | [AVHRR RGB 1-2-3a](#vista-avhrr-rgb) | AVHRR | METOP-B, METOP-C | JPG | sí |
+| [Diagrama Skew-T en estaciones de radiosondeo (METOP)](#vista-metop-skewt) | IASI+AMSU-A+MHS | METOP-B, METOP-C | SVG | sí |
 
 ## Fichas
 
@@ -1286,6 +1291,90 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 
 </details>
 
+<a id="gt-metop-sounder-t850"></a>
+
+#### Temperatura en 850 hPa (METOP)
+
+`gt-metop-sounder-t850` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: Temperature_853mb [K]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Misma rejilla, paleta y decoración que gt-sounder-t850, para compararlas. Polar2Grid no lee la dimensión Number_of_Dice de los NUCAPS de METOP: se renombra en una copia (ver el script).
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/sounder/` · patrón `{sat}_amsua-iasi-mhs_Temperature_853mb_*_wgs84_geo_5km.tif`
+- Vista: `metop/vistas/sounder/` con `nucaps_temp_850.cpt`
+- Origen: Polar2Grid 3.2 → run_polar2grid_heap_metop.sh
+- Depende de: l2-metop-sounder
+- Polar2Grid `-p`: `Temperature_853mb`
+
+</details>
+
+<a id="gt-metop-sounder-t700"></a>
+
+#### Temperatura en 700 hPa (METOP)
+
+`gt-metop-sounder-t700` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: Temperature_707mb [K]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Misma rejilla, paleta y decoración que gt-sounder-t700, para compararlas. Polar2Grid no lee la dimensión Number_of_Dice de los NUCAPS de METOP: se renombra en una copia (ver el script).
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/sounder/` · patrón `{sat}_amsua-iasi-mhs_Temperature_707mb_*_wgs84_geo_5km.tif`
+- Vista: `metop/vistas/sounder/` con `nucaps_temp_700.cpt`
+- Origen: Polar2Grid 3.2 → run_polar2grid_heap_metop.sh
+- Depende de: l2-metop-sounder
+- Polar2Grid `-p`: `Temperature_707mb`
+
+</details>
+
+<a id="gt-metop-sounder-t500"></a>
+
+#### Temperatura en 500 hPa (METOP)
+
+`gt-metop-sounder-t500` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: Temperature_497mb [K]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Misma rejilla, paleta y decoración que gt-sounder-t500, para compararlas. Polar2Grid no lee la dimensión Number_of_Dice de los NUCAPS de METOP: se renombra en una copia (ver el script).
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/sounder/` · patrón `{sat}_amsua-iasi-mhs_Temperature_497mb_*_wgs84_geo_5km.tif`
+- Vista: `metop/vistas/sounder/` con `nucaps_temp_500.cpt`
+- Origen: Polar2Grid 3.2 → run_polar2grid_heap_metop.sh
+- Depende de: l2-metop-sounder
+- Polar2Grid `-p`: `Temperature_497mb`
+
+</details>
+
+<a id="gt-metop-sounder-skin"></a>
+
+#### Temperatura de piel (sondeo) (METOP)
+
+`gt-metop-sounder-skin` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: Skin_Temperature [K]
+- **Formato**: GeoTIFF float32
+- **Resolución**: wgs84_geo_5km
+- **Notas**: Misma rejilla, paleta y decoración que gt-sounder-skin, para compararlas. Polar2Grid no lee la dimensión Number_of_Dice de los NUCAPS de METOP: se renombra en una copia (ver el script).
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/geotiff/sounder/` · patrón `{sat}_amsua-iasi-mhs_Skin_Temperature_*_wgs84_geo_5km.tif`
+- Vista: `metop/vistas/sounder/` con `nucaps_skin_temp.cpt`
+- Origen: Polar2Grid 3.2 → run_polar2grid_heap_metop.sh
+- Depende de: l2-metop-sounder
+- Polar2Grid `-p`: `Skin_Temperature`
+
+</details>
+
 ### Vistas sin GeoTIFF propio
 
 <a id="vista-skewt"></a>
@@ -1325,6 +1414,26 @@ Lo que pasa de esta edad se borra solo: en `/data/output/` lo hace `scripts/limp
 - Vista: `metop/vistas/avhrr/` con `geotiff2view`
 - Origen: geotiff2view (LANOT_tools) → run_polar2grid_avhrr.sh
 - Depende de: gt-avhrr-bands
+
+</details>
+
+<a id="vista-metop-skewt"></a>
+
+#### Diagrama Skew-T en estaciones de radiosondeo (METOP)
+
+`vista-metop-skewt` · IASI+AMSU-A+MHS · METOP-B, METOP-C
+
+- **Contenido**: perfil de temperatura y humedad del sondeo más cercano a cada estación del SMN (config/sitios_skewt.tsv)
+- **Formato**: SVG
+- **Resolución**: FOR de IASI, ~50 km
+- **Notas**: Mismos sitios y criterio que vista-skewt. Que falte el de una estación es lo normal: fuera de la franja o perfil rechazado por NUCAPS (en IASI, la mayoría de los FOR sobre tierra nublada).
+
+<details><summary>Para operación</summary>
+
+- Ruta: `metop/vistas/sounder/skewt/` · patrón `{sat}_amsua-iasi-mhs_skewt_<OMM>_*.svg`
+- Vista: `metop/vistas/sounder/skewt/` con `skewt`
+- Origen: skewt (LANOT_tools) → run_polar2grid_heap_metop.sh
+- Depende de: l2-metop-sounder
 
 </details>
 

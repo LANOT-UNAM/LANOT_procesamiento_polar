@@ -63,7 +63,7 @@
 #     corregiría en el siguiente, pero alguien pudo bajarlo entre tanto).
 #   - GeoTIFF: solo si su pasada tiene marcador del renderizador más nuevo que
 #     el archivo —polar2grid_l1 para los de Level 1, polar2grid para los de
-#     Level 2, polar2grid_avhrr y polar2grid_mirs para los de METOP—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
+#     Level 2, polar2grid_avhrr, polar2grid_mirs y polar2grid_heap para los de METOP—. Polar2Grid escribe directo en geotiff/, así que un .tif puede
 #     estar a medias; el marcador se escribe solo cuando la etapa terminó bien.
 #     La clave sale del nombre: noaa20_viirs_…_20261014_083828_… es
 #     j01_d20261014_t083828.
@@ -87,6 +87,7 @@
 #   PUB_DS_METOP_DEST    Destino de METOP  (def. /dataservice/metop)
 #   AVHRR_STATE_DIR   Marcadores de AVHRR  (def. /data/output/metop/state/polar2grid_avhrr)
 #   MIRS_METOP_P2G_STATE  Marcadores de MiRS de METOP (def. /data/output/metop/state/polar2grid_mirs)
+#   HEAP_METOP_P2G_STATE  Marcadores de sondeos de METOP (def. /data/output/metop/state/polar2grid_heap)
 #
 # Uso:
 #   publicar_dataservice.sh            publica y poda
@@ -107,6 +108,7 @@ ORIGEN_METOP="${PUB_DS_METOP_ORIGEN:-/data/output/metop}"
 DEST_METOP="${PUB_DS_METOP_DEST:-/dataservice/metop}"
 DIR_P2G_AVHRR="${AVHRR_STATE_DIR:-/data/output/metop/state/polar2grid_avhrr}"
 DIR_P2G_MIRS_METOP="${MIRS_METOP_P2G_STATE:-/data/output/metop/state/polar2grid_mirs}"
+DIR_P2G_HEAP_METOP="${HEAP_METOP_P2G_STATE:-/data/output/metop/state/polar2grid_heap}"
 
 # Una línea por carpeta de destino: el destino y, detrás, las carpetas de
 # origen que se publican en él. Relativas a ORIGEN y DEST.
@@ -146,10 +148,12 @@ DESTINOS_METOP=(
     "level1/mhs      level1/mhs"
     "level1/iasi     level1/iasi"
     "level1/avhrr    level1/avhrr    geotiff/avhrr"
-    "level2/sounder  level2/sounder"
+    "level2/sounder  level2/sounder  geotiff/sounder"
     "level2/mirs     level2/mirs     geotiff/mirs"
     "vistas/avhrr    vistas/avhrr"
     "vistas/mirs     vistas/mirs"
+    "vistas/sounder        vistas/sounder"
+    "vistas/sounder/skewt  vistas/sounder/skewt"
 )
 
 # Carpetas de destino que ya no reciben nada: solo se podan.
@@ -255,6 +259,15 @@ geotiff_listo() {
             [ -e "$m" ] && { [ "$m" -nt "$ruta" ]; return; }
         done
         return 1
+    fi
+    # Sondeos de METOP: run_polar2grid_heap_metop.sh nombra su marcador con la
+    # hora del primer gránulo, que es la que Polar2Grid pone en el GeoTIFF:
+    # metopc_amsua-iasi-mhs_…_20261127_161648_… ↔ m03_s20261127161648.done.
+    if [[ "$nombre" =~ ^metop([bc])_amsua-iasi-mhs_.*_([0-9]{8})_([0-9]{6})_ ]]; then
+        [ "${BASH_REMATCH[1]}" = b ] && sat=m01 || sat=m03
+        m="$DIR_P2G_HEAP_METOP/${sat}_s${BASH_REMATCH[2]}${BASH_REMATCH[3]}.done"
+        [ -e "$m" ] && [ "$m" -nt "$ruta" ]
+        return
     fi
     # La hora va seguida de "_" (los de Polar2Grid) o de ".tif" (el de flood).
     # Los sondeos de NOAA-20 salían como j01_atms-cris_…, no noaa20_, hasta que

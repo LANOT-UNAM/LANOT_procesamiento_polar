@@ -37,6 +37,7 @@
 #
 #   metop/vistas/avhrr       → metop/avhrr        (otra raíz: PUB_KAWAK_METOP_*)
 #   metop/vistas/mirs        → metop/amsu-mhs     (como mirs → atms en JPSS)
+#   metop/vistas/sounder     → metop/sounder      (y skewt/, como en JPSS)
 #
 # Solo mira lo de los últimos PUB_KAWAK_DIAS días, y copia con --update: un
 # archivo que ya está en kawak se reemplaza solo si el de aquí es más nuevo (un
@@ -122,6 +123,8 @@ copia mirs          atms            '*.jpg'
 # METOP: otra raíz de origen y otro árbol en kawak; copia() las toma de ahí.
 VISTAS="$VISTAS_METOP" DEST="$DEST_METOP" copia avhrr  avhrr     '*.jpg'
 VISTAS="$VISTAS_METOP" DEST="$DEST_METOP" copia mirs   amsu-mhs  '*.jpg'
+VISTAS="$VISTAS_METOP" DEST="$DEST_METOP" copia sounder       sounder        '*.jpg'
+VISTAS="$VISTAS_METOP" DEST="$DEST_METOP" copia sounder/skewt sounder/skewt  '*.svg'
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Copiados: $copiados · fallos: $fallos"
 [ "$fallos" -eq 0 ]

@@ -291,7 +291,7 @@ Copias en `referencia/metop/`. Lo que hace falta saber para el contenedor:
 |---|---|
 | Recepción y enrutamiento (`recibe.sh`, `cadenas.tsv`, barrido) | **Hecho** (2026-11-18): rama `metop` en `cadenas.tsv` desde el 2026-11-19, código 4 de `consultar_cadena`; `recibe.sh` lanza `run_metop_l1.sh` y el barrido recoge lo pendiente. En operación desde el 2026-11-19: los 10 `chain6` de los dos primeros días, completos (Level 1, AVHRR y sondeos) sin intervención, 5–6 min por pasada; stratus vio las mismas 10. |
 | Level 0 → Level 1 (metopizer + AAPP + OPS-LRS) | Contenedor y `run_metop_l1.sh` **hechos y probados** con una pasada de cada satélite (2026-11-18). Comparado con stratus, con retención en `config/retencion.tsv` y con `update_aapp_ancillary.sh` (auxiliares de IASI, semanal) y la fase 8 de `preparar_servidor.sh` (2026-11-18). Filas de `tarballs.tsv` y catálogo de productos, hechos el 2026-11-20. |
-| Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Falta el render (mapas y Skew-T). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
+| Sondeos (IASI + AMSU-A + MHS) | **Hecho** (2026-11-18): `run_heap_metop.sh`, encadenado por `procesar_metop.sh`. Comparado con stratus: idéntico con los mismos coeficientes de AMSU-A. Render (mapas y Skew-T) **hecho el 2026-11-27** con `run_polar2grid_heap_metop.sh`. **METOP-B no da ni un FOR aceptado**, en las dos cadenas (abajo, §5). `amsua_clparams.dat`: la más reciente de NWP SAF (decidido el 2026-11-20, abajo). |
 | Microondas (AMSU-A + MHS) | **Hecho** (2026-11-20): `run_mirs_metop.sh` y `run_polar2grid_mirs_metop.sh`, cuarto eslabón de `procesar_metop.sh`, publicado en `polar/metop/amsu-mhs` y `/dataservice/metop/level2/mirs`. Producto nuevo: la vieja no lo tenía. |
 | AVHRR a GeoTIFF y vistas | **Hecho** (2026-11-18): `run_polar2grid_avhrr.sh`, encadenado tras el Level 1 por `procesar_metop.sh`. Publicado desde el 2026-11-20 (abajo). |
 | Publicación | **Hecho** (2026-11-20), en árboles propios al lado de los de la vieja, como `jpss` junto a `npp-jpss1`: `kawak:polar/metop/avhrr` (vistas, `publicar_kawak.sh`) y `/dataservice/metop/{level1,level2,vistas}` (`publicar_dataservice.sh`). Las dos cadenas publican a la vez y se comparan pasada por pasada; al apagar la vieja, la página de kawak y quien baje de `noaa-metop` tienen que mudarse a `metop`. |
@@ -430,11 +430,35 @@ operación ya era la 48 desde el 2026-11-18 a las 20:21 (CST), cuando una corrid
 todas las de la cadena nueva van con la 48. Consecuencia aceptada: mientras convivan, los
 sondeos de tahan difieren un poco de los de stratus (47).
 
-- Falta el render: mapas por nivel y Skew-T como los de JPSS (`run_polar2grid_edr.sh`, lector
-  `nucaps`). La vieja no tiene vistas de NUCAPS de METOP, así que no se pierde nada mientras.
-- Los nombres de los mapas y Skew-T hoy dicen `atms-cris`; para METOP, `iasi-amsu` o lo que
-  se acuerde, y la entrada correspondiente en `product_map`.
-- Confirmar que el lector `nucaps` de Polar2Grid lee igual la salida de METOP.
+- **Render, hecho el 2026-11-27**: `scripts/run_polar2grid_heap_metop.sh`, en
+  `procesar_metop.sh` justo después de HEAP. Lo mismo que la sección de sondeos de
+  `run_polar2grid_edr.sh` —temperatura en 850/700/500 hPa y de piel a 5 km, las mismas
+  paletas y la misma decoración, y un Skew-T por sitio de `config/sitios_skewt.tsv`— en
+  `metop/{geotiff,vistas}/sounder` y `vistas/sounder/skewt`. Kawak: `polar/metop/sounder`.
+  - **El lector `nucaps` no leía la salida de METOP**: HEAP llama a la dimensión
+    `Number_of_Dice` y no `Number_of_CrIS_FORs`, y el Satpy de 3.2 solo convierte en `y`
+    esa y `number_of_FORs`. El remuestreo moría con "coordinate Time has dimensions
+    ('Number_of_Dice',)…". Se renombra la dimensión en una copia (staging), con el
+    netCDF4 del bundle; datos y atributos no se tocan. Revisar al pasar a 3.3.
+  - **Nombres**: los que pone Polar2Grid, `metopc_amsua-iasi-mhs_…`, con `m01`/`m03`
+    pasados a `metopb`/`metopc` como en AVHRR y MiRS. La etiqueta sale bien sin tocar
+    `product_map` ("Metop-C Temp 500 hPa"). El subtítulo del Skew-T decía "CrIS+ATMS":
+    LANOT_tools `c2b4b49` lo lee del atributo `instrument`; entra con el pin nuevo del
+    `.def` de Polar2Grid (falta empujar y recompilar).
+  - Probado en tahan el 2026-11-27 hacia `/data/tmp`, ~19 s por pasada. METOP-C de las
+    16:16 UTC: 4 GeoTIFF, 4 vistas y el Skew-T de Tapachula (CAPE 2649 J/kg); los otros 13
+    sitios, fuera de la franja o con el perfil rechazado.
+  - **METOP-B: ni un FOR aceptado, en ninguna de las dos cadenas.** Sus dos pasadas del 27
+    salieron con las cuatro vistas "sin datos". Todos los FOR traen `Quality_Flag` 17
+    (`reject_phy_and_iNOAA`: la regresión inicial y la recuperación física rechazadas), y
+    también en los NUCAPS de HEAP 2.0 de la vieja (`/dataservice/noaa-metop/nucaps`, el 27:
+    4019 de 4080 con 17 y ninguno en 0). En METOP-C nuestra cadena sí acepta FOR (140 en
+    la pasada de las 16:16) y la vieja no acepta ninguno en todo el día (6650 de 8160 con
+    17), lo que cuadra con la diferencia de `amsua_clparams.dat` (47 allá, 48 aquí;
+    arriba). No es del render: es del sondeo de METOP-B, y estaba tapado porque nadie
+    miraba las banderas. **Para el 2 de diciembre**: ¿es AMSU-A de METOP-B (canales que
+    perdió el instrumento) o IASI? Por ahora las vistas de METOP-B no salen, como debe ser
+    con un producto sin datos válidos.
 - **Lo que la vieja publica y la nueva no** (`/dataservice/noaa-metop/nucaps`, revisado el
   2026-11-20; su `nucaps/vistas` está vacía). HEAP 2.0 (`v3r0`) deja, además de lo nuestro,
   `NUCAPS-AGG-EDR` y `NUCAPS-AGG-CCR-AR` (agregados por pasada), `NUCAPS-L2-QC` (un
@@ -584,3 +608,5 @@ siguen abiertas para esa fecha.
 - ¿Quién leyó los `.tif` de AVHRR el 23 a las 12:27?
 - ¿Alguien usa `NUCAPS-AGG-*` o `L2-QC`? Por el `atime`, no.
 - ¿Quién toca kawak, el paso 3?
+- ¿Por qué ningún sondeo de METOP-B pasa el control de calidad, en ninguna de las dos
+  cadenas? (§5, "METOP-B: ni un FOR aceptado".)

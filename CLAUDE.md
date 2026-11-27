@@ -28,7 +28,8 @@ y en `docs/plan_metop.md`.
    (pospuesto el 2026-11-27; `docs/plan_metop.md`, "La revisión, preparada el 2026-11-23").
    Cumple todo menos el aviso de `.fallido`, que la vieja tampoco tiene. Antes del 2:
    averiguar quién leyó los `.tif` de AVHRR de `/dataservice/noaa-metop` el 23 a las
-   12:27 CST, y quién toca kawak.
+   12:27 CST, y quién toca kawak. También: **ningún sondeo de METOP-B pasa el control
+   de calidad**, en ninguna de las dos cadenas (estado, "2026-11-27: mapas y Skew-T").
 4. **La rama JPSS vieja sigue viva para NOAA-20** (descubierto el 2026-11-27; estado,
    corrección al inicio de "2026-11-04"). Para apagarla: quitar las líneas 50–51 de
    `~lanotadm/bin/recibe.sh` en stratus (no el reenvío a tahan) y luego el cron de
@@ -160,7 +161,7 @@ RAW (CCSDS de antena)
   rejilla wgs84_geo_5km y una CPT por nivel de presión; el ozono, a esa misma.
 ```
 
-`run_polar2grid_edr.sh` es el **renderizador único de Level 2 de JPSS**: ningún `run_*_edr.sh` debe llamar a Polar2Grid por su cuenta. Los scripts de EDR producen `.nc` y nada más; ahí están las rejillas, las paletas y la separación `geotiff/` ÷ `vistas/`. La rama METOP tiene los suyos, uno por producto y por archivo de entrada (`run_polar2grid_avhrr.sh`, `run_polar2grid_mirs_metop.sh`), porque allá la unidad es el crudo y no la pasada de VIIRS; el de MiRS copia rejilla, paletas y decoración de la sección de MiRS de `run_polar2grid_edr.sh`, y si esas cambian, hay que cambiarlas en los dos.
+`run_polar2grid_edr.sh` es el **renderizador único de Level 2 de JPSS**: ningún `run_*_edr.sh` debe llamar a Polar2Grid por su cuenta. Los scripts de EDR producen `.nc` y nada más; ahí están las rejillas, las paletas y la separación `geotiff/` ÷ `vistas/`. La rama METOP tiene los suyos, uno por producto y por archivo de entrada (`run_polar2grid_avhrr.sh`, `run_polar2grid_mirs_metop.sh`, `run_polar2grid_heap_metop.sh`), porque allá la unidad es el crudo y no la pasada de VIIRS; los de MiRS y de sondeos copian rejilla, paletas y decoración de sus secciones en `run_polar2grid_edr.sh`, y si esas cambian, hay que cambiarlas en los dos. El de sondeos además renombra la dimensión `Number_of_Dice` de los NUCAPS de METOP, que el lector de Satpy 3.2 no conoce: revisarlo al pasar a 3.3.
 
 `cryo` y `lsr` consumen tanto SDR como los productos ATMOS, así que **ATMOS debe correr antes** que ellos. CLAVR-x y ASCI se descartaron por dos razones, no una: ya no se actualizan, y el nuevo CSPP ATMOS genera sus productos. (Estaba en `notas.txt`, que se borró el 2026-08-17 por superado; esto es lo único de ahí que no vivía en otro lado.) NUCAPS **no** entró en ese descarte aunque una versión anterior de este archivo lo decía: son sondeos hiperespectrales de CrIS+ATMS, no productos de nube de VIIRS, y ATMOS no los cubre. Los produce `run_heap_edr.sh` con CSPP HEAP v3.0, que es el paquete que hoy distribuye el algoritmo NUCAPS.
 

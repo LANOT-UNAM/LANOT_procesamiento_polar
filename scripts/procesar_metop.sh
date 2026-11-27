@@ -7,6 +7,7 @@
 #   1. run_metop_l1.sh          crudo → Level 1 (AMSU-A, MHS, AVHRR, IASI)
 #   2. run_polar2grid_avhrr.sh  AVHRR → GeoTIFF y vistas
 #   3. run_heap_metop.sh        IASI + AMSU-A + MHS → sondeos NUCAPS
+#      y run_polar2grid_heap_metop.sh, sus mapas, vistas y Skew-T
 #   4. run_mirs_metop.sh        AMSU-A + MHS → MiRS (lluvia, agua precipitable…)
 #      y run_polar2grid_mirs_metop.sh, su GeoTIFF y vistas
 #
@@ -36,6 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 RUN_L1="${SCRIPT_RUN_METOP_L1:-$SCRIPT_DIR/run_metop_l1.sh}"
 RUN_AVHRR="${SCRIPT_RUN_AVHRR:-$SCRIPT_DIR/run_polar2grid_avhrr.sh}"
 RUN_HEAP="${SCRIPT_RUN_HEAP_METOP:-$SCRIPT_DIR/run_heap_metop.sh}"
+RUN_P2G_HEAP="${SCRIPT_RUN_P2G_HEAP_METOP:-$SCRIPT_DIR/run_polar2grid_heap_metop.sh}"
 RUN_MIRS="${SCRIPT_RUN_MIRS_METOP:-$SCRIPT_DIR/run_mirs_metop.sh}"
 RUN_P2G_MIRS="${SCRIPT_RUN_P2G_MIRS_METOP:-$SCRIPT_DIR/run_polar2grid_mirs_metop.sh}"
 STATE_MIRS="${MIRS_METOP_STATE:-/data/output/metop/state/cspp-mirs}"
@@ -96,6 +98,14 @@ case $c in
     75) ESTADO_HEAP="pospuesto (candado de HEAP tomado)" ;;
     *)  ESTADO_HEAP="FALLÓ (código $c)" ;;
 esac
+# El render, solo si hay sondeo: run_heap_metop.sh también sale en 0 cuando ya
+# estaba hecho, y entonces el render dirá "ya fue renderizado" o lo hará si
+# faltaba (pasadas de antes del 2026-11-27).
+if [ "$c" -eq 0 ]; then
+    c=0
+    "$RUN_P2G_HEAP" "$BASE" || c=$?
+    [ "$c" -eq 0 ] || ESTADO_HEAP="ok, render FALLÓ (código $c)"
+fi
 
 # --- 4. MiRS --------------------------------------------------------------------
 c=0

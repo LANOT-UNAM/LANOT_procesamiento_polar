@@ -23,6 +23,32 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-11-27: mapas y Skew-T de los sondeos de METOP; METOP-B sin un sondeo aceptado
+
+`scripts/run_polar2grid_heap_metop.sh`, cuarto paso de `procesar_metop.sh` después de HEAP.
+Detalle en `docs/plan_metop.md` §5. Lo que hay que saber:
+
+- **Polar2Grid 3.2 no lee los NUCAPS de METOP tal cual**: la dimensión es `Number_of_Dice`
+  y el lector solo conoce `Number_of_CrIS_FORs`. Se renombra en una copia en
+  `/data/tmp/p2g_staging_heap_metop_*`.
+- **El marcador va por hora del primer gránulo** (`state/polar2grid_heap/m03_s<…>.done`),
+  que es la del nombre del GeoTIFF, para que `publicar_dataservice.sh` lo encuentre.
+  Publicado en `/dataservice/metop/{level2/sounder (GeoTIFF),vistas/sounder}` y en kawak
+  `polar/metop/sounder` (y `skewt/`).
+- **METOP-B no tiene ni un FOR aceptado** (`Quality_Flag` 17 en todo), y la cadena vieja
+  tampoco. Sus vistas no salen; METOP-C sí. Pregunta para el 2 de diciembre.
+- **Subtítulo del Skew-T**: decía "CrIS+ATMS". Arreglado en LANOT_tools `c2b4b49`, con el
+  pin del `.def` de Polar2Grid ya movido. Para que llegue: empujar LANOT_tools, recompilar
+  `polar2grid_v3.2-mapdrawer.sif` y copiarlo a `/opt/containers`.
+
+**Para operación**: empujar, `git pull` y `sudo ./scripts/instalar.sh` en tahan, y crear los
+directorios con `sudo ./scripts/preparar_servidor.sh --solo 1` (o a mano, como `lanotadm`:
+`metop/{geotiff,vistas}/sounder`, `vistas/sounder/skewt`, `state/polar2grid_heap`). Las
+pasadas ya procesadas se rinden con `run_polar2grid_heap_metop.sh <crudo>`, que toma la más
+reciente sin marcador si no se le da ninguna.
+
+---
+
 ## 2026-11-27: la prueba en modo `depot`, buena; el ❌ era del script
 
 **El archivo de `/depot` alcanza.** La prueba programada para el 2026-11-23 a las 15:30 CST

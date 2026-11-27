@@ -8,7 +8,7 @@ From: lanot_base_rocky9.sif
     Description Polar2Grid v3.2 + LANOT_tools (mapdrawer, geotiff2view, skewt) + MetaGráfica
     Version 3.2-mapdrawer-LANOT
     Base lanot_base_rocky9.sif
-    LANOT_tools_commit d8ccbe373f1da1010eff3629e5e3376dfd4157b5
+    LANOT_tools_commit c2b4b490778fcbfc311f9430785cf4ef5b47b3f0
     MetaGrafica_commit 89dfe5e018588add00222aabe8660f92e8bc49b7
 
 %help
@@ -118,6 +118,12 @@ From: lanot_base_rocky9.sif
     # Antes iba en 931ed29: el Lifted Index negativo ya no sale "n/d" en el
     # Skew-T. netCDF4 aplicaba solo el valid_range [0, 1e6] de Stability y lo borraba.
     #
+    # Antes iba en d8ccbe3 (AVHRR de METOP en product_map). c2b4b49 hace que el
+    # subtítulo del Skew-T diga los instrumentos del archivo (atributo
+    # `instrument`): los de METOP decían "CrIS+ATMS" y son IASI+AMSU-A+MHS
+    # (run_polar2grid_heap_metop.sh, 2026-11-27). Degrada en silencio: se
+    # comprueba abajo.
+    #
     # Antes iba en bcabcd4: el Skew-T lleva el logo del LANOT junto al título (--no-logo lo
     # quita), dice NOAA-21 en vez de "NOAA", separa el nivel de superficie de
     # NUCAPS del perfil y sale con 3 cuando no hay sondeo que dibujar, que es lo
@@ -146,7 +152,7 @@ From: lanot_base_rocky9.sif
     # viaja DENTRO del .sif y que un pin viejo deja atrás en silencio. Las CPT
     # son la excepción de siempre: van montadas desde el host, así que ésas se
     # arreglan con git pull + install.sh en tahan, sin tocar la imagen.
-    LANOT_TOOLS_COMMIT=d8ccbe373f1da1010eff3629e5e3376dfd4157b5
+    LANOT_TOOLS_COMMIT=c2b4b490778fcbfc311f9430785cf4ef5b47b3f0
 
     # MetaGráfica: skewt no dibuja pixeles, escribe un .mg y llama a `mg` para
     # compilarlo a SVG/PDF/EPS. Es un binario C++ fuera de pip, así que el venv
@@ -284,6 +290,7 @@ From: lanot_base_rocky9.sif
     skewt --help | grep -q -- "3 sin sondeo que dibujar"
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'set_auto_mask(False)' in inspect.getsource(n.read_sounding), 'pin anterior a 931ed29: LI negativo sale n/d'"
     /opt/lanot-tools/venv/bin/python -c "import skewt; assert hasattr(skewt.SkewT, 'isotherm'), 'pin anterior a eaa132d: isotermas de 61 puntos'"
+    /opt/lanot-tools/venv/bin/python -c "import nucaps_sounding as n; assert n._sensor_de('IASI, AMSUA, MHS') == 'IASI+AMSU-A+MHS', 'pin anterior a c2b4b49: el Skew-T de METOP dice CrIS+ATMS'"
     /opt/lanot-tools/venv/bin/python -c "import mapdrawer; assert hasattr(mapdrawer, 'LazyGeoTIFF'), 'pin anterior a 2f8b16f: --clip lee el GeoTIFF entero'"
     printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg
     mg /tmp/prueba_mg.mg /tmp/prueba_mg.svg
@@ -425,6 +432,7 @@ From: lanot_base_rocky9.sif
     skewt --help | grep -q -- "3 sin sondeo que dibujar"
     /opt/lanot-tools/venv/bin/python -c "import inspect, nucaps_sounding as n; assert 'set_auto_mask(False)' in inspect.getsource(n.read_sounding), 'pin anterior a 931ed29: LI negativo sale n/d'"
     /opt/lanot-tools/venv/bin/python -c "import skewt; assert hasattr(skewt.SkewT, 'isotherm'), 'pin anterior a eaa132d: isotermas de 61 puntos'"
+    /opt/lanot-tools/venv/bin/python -c "import nucaps_sounding as n; assert n._sensor_de('IASI, AMSUA, MHS') == 'IASI+AMSU-A+MHS', 'pin anterior a c2b4b49: el Skew-T de METOP dice CrIS+ATMS'"
     /opt/lanot-tools/venv/bin/python -c "import mapdrawer; assert hasattr(mapdrawer, 'LazyGeoTIFF'), 'pin anterior a 2f8b16f: --clip lee el GeoTIFF entero'"
     /opt/lanot-tools/venv/bin/python -c "import skewt, nucaps_sounding, thermo, netCDF4"
     printf 'display_size 2 2\nworld_window 0 1 0 1\npolyline { 0 0  1 1 }\n' > /tmp/prueba_mg.mg

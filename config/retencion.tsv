@@ -67,5 +67,6 @@
 /data/output/metop/state/cspp-heap	30	marcadores
 /data/output/metop/state/cspp-mirs	30	marcadores
 /data/output/metop/state/polar2grid_mirs	30	marcadores
+/data/output/metop/state/polar2grid_heap	30	marcadores
 /data/output/metop/state/aapp	1	marcadores_raw
 /data/ancillary/aapp/mmam	30	archivos

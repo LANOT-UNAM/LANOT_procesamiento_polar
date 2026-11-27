@@ -142,6 +142,10 @@ DIRS_775=(
     /data/output/metop/state/polar2grid_avhrr
     /data/output/metop/level2/sounder
     /data/output/metop/state/cspp-heap
+    /data/output/metop/geotiff/sounder
+    /data/output/metop/vistas/sounder
+    /data/output/metop/vistas/sounder/skewt
+    /data/output/metop/state/polar2grid_heap
     /data/output/metop/level2/mirs
     /data/output/metop/geotiff/mirs
     /data/output/metop/vistas/mirs
