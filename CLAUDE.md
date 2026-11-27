@@ -12,9 +12,9 @@ No hay build, tests ni linter. El "producto" son imágenes `.sif` que se compila
 
 Todo (comentarios, mensajes de log, documentación) está en español. Mantener ese idioma.
 
-## Pendiente abierto (2026-11-23)
+## Pendiente abierto (2026-11-27)
 
-Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-23", "2026-11-22", "2026-11-21", "2026-11-18", "2026-11-16" y "2026-11-14",
+Detalle en `docs/estado_y_pendientes.md`, secciones "2026-11-27", "2026-11-23", "2026-11-22", "2026-11-21", "2026-11-18", "2026-11-16" y "2026-11-14",
 y en `docs/plan_metop.md`.
 
 1. **Vistas de V8TOS: esperan a Polar2Grid 3.3** (decidido el 2026-11-18), que trae lector
@@ -24,14 +24,7 @@ y en `docs/plan_metop.md`.
    Ejemplos en https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue (privada).
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
-3. **La prueba de restauración en modo `depot`**, programada el 2026-11-23 a las 15:30 CST
-   (`at`, lanotadm) con `chain1-8_pass8` y `chain2-8_pass18` del 2026-11-20: informe en
-   `/data/tmp/prueba_restauracion_depot/informe.txt`. **Revisar el 2026-11-24 en la
-   mañana**: que haya corrido, que no se haya bajado nada
-   (si bajó algo, el archivo no alcanzó) y la comparación contra producción de level2, que
-   esta vez sí debe tener originales. La de Polo en modo externo y el cron de
-   `archivar.sh` ya salieron bien (estado, "2026-11-23").
-4. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
+3. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
    "La revisión, preparada el 2026-11-23"). Cumple todo menos el aviso de `.fallido`, que la
    vieja tampoco tiene. Antes del 27: averiguar quién leyó los `.tif` de AVHRR de
    `/dataservice/noaa-metop` el 23 a las 12:27 CST, y quién toca kawak.

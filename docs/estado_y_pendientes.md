@@ -23,6 +23,31 @@ que describen la primera fase de la migración y ya no reflejan cómo corre la c
 
 ---
 
+## 2026-11-27: la prueba en modo `depot`, buena; el ❌ era del script
+
+**El archivo de `/depot` alcanza.** La prueba programada para el 2026-11-23 a las 15:30 CST
+(`chain1-8_pass8` de NOAA-21 y `chain2-8_pass18` de NOAA-20, del 2026-11-20, código `1e0225d`)
+corrió entera: esperó a que se desocupara el racimo de las 21 UTC, las dos pasadas salieron en 0 con todas las etapas bien
+(unos 36 min cada una), sin fugas a `/data/output/jpss`, y **contra producción de level2: 574
+iguales, 0 distintos** y 20 sin original (retención). El informe terminó en ❌ "el archivo NO
+alcanzó" por 40 archivos "descargados", y ninguno era un hueco del archivo:
+
+- **39 eran `active_fire_cache/AF-LAND_MASK_*`**: las genera Active Fire por gránulo, no se
+  bajan, y `archivo.tsv` las excluye a propósito. La cuenta de antes/después las tomaba por
+  descargas.
+- **1 sí se bajó de internet, pero estaba en `/depot`**: `off_USNO-PolarWander…_20261113…`.
+  Esa serie es semanal y cada archivo vale 8 días, así que el SDR de una pasada del 20 pide
+  también el del 13 (`ancillary_staging.py`: "Using 2 files for off_USNO-PolarWander"). Está en
+  `2026/46/ancillary-2026317.tar`; el script solo restauraba el día de la pasada ±1.
+
+Arreglado en `prueba_restauracion.sh`: la comparación ignora `active_fire_cache/` y, en modo
+`depot`, se restaura además el PolarWander de 8 a 2 días antes de la pasada (solo esa serie:
+la semana completa pesa decenas de GB). Si no está, avisa y sigue, para que lo diga la cuenta
+de descargados. **Falta una corrida con el arreglo** para ver el informe en verde; no es
+urgente, porque el resultado de fondo ya está.
+
+---
+
 ## 2026-11-23: la prueba de Polo, completa; el cron de `archivar.sh`, limpio
 
 **El cron de `archivar.sh` de las 05:30 CST corrió bien** con el candado de `a06ea38`: días

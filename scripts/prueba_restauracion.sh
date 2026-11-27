@@ -9,7 +9,8 @@
 # modos, según de dónde salga el ancillary:
 #
 #   --anc depot    (def.) Todo de /depot: el ancillary del día de la pasada y
-#                  del anterior (ciclos de GFS de la víspera), más la instantánea
+#                  del anterior (ciclos de GFS de la víspera), el PolarWander
+#                  de la semana anterior, más la instantánea
 #                  de lo fijo (LUTs, leapsec, cachés de ACSPO). Los cachés se
 #                  listan antes y después: si un driver bajó algo, el archivo NO
 #                  alcanzó, y la prueba falla aunque la pasada salga bien.
@@ -157,6 +158,21 @@ if [ "$MODO_ANC" = "depot" ]; then
     ANT=$(date -d "$FECHA -1 day" +%F)
     "$SCRIPT_DIR/restaurar.sh" -s ancillary -d "$ANT" -a "$SIG" -o "$ANC" \
         || fallo_inicio "No se pudo restaurar el ancillary del $ANT al $SIG"
+    # El PolarWander del USNO es semanal y cada archivo vale 8 días: el SDR
+    # pide también el de la semana anterior (el del 13 para una pasada del 20),
+    # que queda fuera de la víspera. Sin él, CSPP lo baja de internet aunque
+    # esté en /depot (prueba del 2026-11-23). Solo esa serie: el resto de la
+    # semana pesa decenas de GB.
+    # Si no aparece (pasada de la primera semana del archivo), no se aborta:
+    # lo bajará CSPP y la cuenta de descargados lo dirá.
+    rc=0
+    "$SCRIPT_DIR/restaurar.sh" -s ancillary -d "$(date -d "$FECHA -8 day" +%F)" \
+        -a "$(date -d "$FECHA -2 day" +%F)" -p 'off_USNO-PolarWander-' -o "$ANC" || rc=$?
+    case $rc in
+        0) ;;
+        3) echo "  ⚠ Sin PolarWander de la semana anterior en /depot" ;;
+        *) fallo_inicio "No se pudo restaurar el PolarWander de la semana anterior" ;;
+    esac
     # La versión más reciente de lo fijo: las LUTs se acumulan, y CSPP elige
     # por fecha de validez, no por la de la instantánea.
     "$SCRIPT_DIR/restaurar.sh" -s software/ancillary --instantanea "$(date +%F)" -o "$ANC" \
@@ -223,9 +239,12 @@ for d in "$BASE"/output/level1/* "$BASE"/output/level2/* "$BASE"/output/vistas/*
     printf "    %-22s %5d archivos\n" "${d#$BASE/output/}" "$(find "$d" -type f | wc -l)"
 done
 
-# Lo que los drivers bajaron
+# Lo que los drivers bajaron. active_fire_cache/ no cuenta: las AF-LAND_MASK
+# las genera Active Fire por gránulo, no se descargan (y por eso archivo.tsv
+# no las archiva); en la prueba del 2026-11-23 eran 39 de los 40 "descargados".
 (cd "$ANC" && find . -type f | sort) > "$BASE/anc_despues.txt"
-comm -13 "$BASE/anc_antes.txt" "$BASE/anc_despues.txt" | grep -v -E '\.lock$' > "$BASE/descargado.txt"
+comm -13 "$BASE/anc_antes.txt" "$BASE/anc_despues.txt" \
+    | grep -v -E '\.lock$|^\./active_fire_cache/' > "$BASE/descargado.txt" || true
 ndesc=$(wc -l < "$BASE/descargado.txt")
 echo "  Ancillary descargado durante la prueba: $ndesc archivos"
 sed 's/^/    /' "$BASE/descargado.txt" | head -15
