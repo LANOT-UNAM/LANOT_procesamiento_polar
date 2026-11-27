@@ -41,11 +41,19 @@ Detalle en `docs/plan_metop.md` §5. Lo que hay que saber:
   pin del `.def` de Polar2Grid ya movido. Para que llegue: empujar LANOT_tools, recompilar
   `polar2grid_v3.2-mapdrawer.sif` y copiarlo a `/opt/containers`.
 
-**Para operación**: empujar, `git pull` y `sudo ./scripts/instalar.sh` en tahan, y crear los
-directorios con `sudo ./scripts/preparar_servidor.sh --solo 1` (o a mano, como `lanotadm`:
-`metop/{geotiff,vistas}/sounder`, `vistas/sounder/skewt`, `state/polar2grid_heap`). Las
-pasadas ya procesadas se rinden con `run_polar2grid_heap_metop.sh <crudo>`, que toma la más
-reciente sin marcador si no se le da ninguna.
+**En operación desde la tarde del 27**: empujado, instalado, directorios creados y
+`polar2grid_v3.2-mapdrawer.sif` recompilado con LANOT_tools `c2b4b49`. Pasa su `%test` y el
+Skew-T dice "MetOp-C IASI+AMSU-A+MHS".
+
+**Relleno de las 38 pasadas con sondeo** (del 20 al 27 de noviembre, como `lanotadm`): las 38
+con marcador y sin un error.
+- METOP-C, 18 pasadas: las 4 vistas en todas. 31 Skew-T, entre 0 y 5 por pasada (3
+  pasadas sin ninguno).
+- METOP-B, 20 pasadas: 4 GeoTIFF y ninguna vista en todas, "sin datos" (lo de arriba).
+- 152 GeoTIFF, 72 vistas y 31 Skew-T.
+- Publicado en el siguiente tic, sin fallos: `/dataservice/metop` con los 152 GeoTIFF,
+  porque el marcador por hora de gránulo los encuentra ("GeoTIFF esperando su marcador:
+  0"), y kawak `polar/metop/sounder`.
 
 ---
 
