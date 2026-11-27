@@ -24,10 +24,11 @@ y en `docs/plan_metop.md`.
    Ejemplos en https://claude.ai/artifact/2PfAevsXNGp4ZNHyq9Szue (privada).
 2. **Avisos de fallos (`vigilar.sh`)**: propuesta en el estado, sección "2026-11-18". Falta
    decidir el canal (tahan no tiene `mail`) y a quién le llega.
-3. **Revisión para apagar la rama METOP vieja, el 2026-11-27** (`docs/plan_metop.md`,
-   "La revisión, preparada el 2026-11-23"). Cumple todo menos el aviso de `.fallido`, que la
-   vieja tampoco tiene. Antes del 27: averiguar quién leyó los `.tif` de AVHRR de
-   `/dataservice/noaa-metop` el 23 a las 12:27 CST, y quién toca kawak.
+3. **Apagar la rama METOP vieja: la revisa Víctor y se decide el miércoles 2026-12-02**
+   (pospuesto el 2026-11-27; `docs/plan_metop.md`, "La revisión, preparada el 2026-11-23").
+   Cumple todo menos el aviso de `.fallido`, que la vieja tampoco tiene. Antes del 2:
+   averiguar quién leyó los `.tif` de AVHRR de `/dataservice/noaa-metop` el 23 a las
+   12:27 CST, y quién toca kawak.
 
 Al resolver cada punto, anotarlo en el estado y quitarlo de aquí.
 

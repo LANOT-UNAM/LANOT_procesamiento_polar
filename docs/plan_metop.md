@@ -576,7 +576,10 @@ al `mtime`. Salvedad: se mide desde tsom03, así que no ve un servidor que monte
 5. **`/dataservice/noaa-metop`**: hay que decidir si se congela tal cual, se borra o se deja
    que la retención lo vacíe. Si alguien baja de ahí, decirle que se mude a `metop`.
 
-**Preguntas para el 27**:
+**El 27 no se decidió: la revisa Víctor y se decide el miércoles 2026-12-02.** Las preguntas
+siguen abiertas para esa fecha.
+
+**Preguntas para el 2 de diciembre** (eran para el 27):
 
 - ¿Quién leyó los `.tif` de AVHRR el 23 a las 12:27?
 - ¿Alguien usa `NUCAPS-AGG-*` o `L2-QC`? Por el `atime`, no.
