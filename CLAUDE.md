@@ -29,6 +29,10 @@ y en `docs/plan_metop.md`.
    Cumple todo menos el aviso de `.fallido`, que la vieja tampoco tiene. Antes del 2:
    averiguar quién leyó los `.tif` de AVHRR de `/dataservice/noaa-metop` el 23 a las
    12:27 CST, y quién toca kawak.
+4. **La rama JPSS vieja sigue viva para NOAA-20** (descubierto el 2026-11-27; estado,
+   corrección al inicio de "2026-11-04"). Para apagarla: quitar las líneas 50–51 de
+   `~lanotadm/bin/recibe.sh` en stratus (no el reenvío a tahan) y luego el cron de
+   `almacena_polar.sh -s npp_jpss`. Hasta entonces, stratus no se puede reinstalar.
 
 Al resolver cada punto, anotarlo en el estado y quitarlo de aquí.
 

@@ -661,7 +661,17 @@ los archivos después con `chown`.
 
 ---
 
-## 2026-11-04: la rama JPSS de la cadena vieja, apagada; kawak lo publicamos todo
+## 2026-11-04: kawak lo publicamos todo (la rama JPSS vieja NO se apagó: corrección del 27)
+
+> **Corrección del 2026-11-27: la rama JPSS vieja NO se apagó.** Lo que cambió el 4 es la
+> publicación en kawak (`polar/jpss` pasó a ser solo nuestro). Revisado en stratus el 27:
+> `~lanotadm/bin/recibe.sh`, líneas 50–51, sigue lanzando `cspp.sh` con cada `chain2-`
+> (NOAA-20) y `chain4-`, y `cspp.sh` sigue disparando en tsom03 Polar2Grid, incendios, ASCI,
+> NUCAPS, ACSPO, inundaciones y CLAVR-x: el log de CLAVR-x de NOAA-20 del 27 a las 19:25 UTC
+> terminó bien. `almacena_polar.sh -s npp_jpss` sigue en cron a las 06:00 y archiva lo que
+> produce (en `/depot/polar/npp_jpss` hay tars hasta el día 330). Para apagarla falta quitar
+> esas dos líneas de `recibe.sh` (el reenvío a tahan, que va antes, se queda) y después el
+> cron de `almacena_polar.sh -s npp_jpss`. La frase original sigue abajo, como registro.
 
 La rama JPSS de la cadena vieja (`cspp.sh` en stratus) ya no corre. METOP sigue aparte, en la
 vieja, y en kawak vive en otro árbol: `polar/jpss` es solo nuestro. En `/dataservice` no cambia
